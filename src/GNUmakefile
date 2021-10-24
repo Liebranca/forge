@@ -13,11 +13,12 @@ AOBJ = $(patsubst %.asm,%.o,$(ASRC))
 .PHONY: asm
 
 as: $(AOBJ)
-	@gcc $(AOBJ) -o a.exe
+#	@ld $(AOBJ) -o hello.exe
 
-# intel sucks but I can't argue with cleaner asm syntax
-
+# well, might have to sieve between coff & pe later on!
+# for now lets just make them all executables and no linking
 $(AOBJ): $(ASRC)
-	@as --64 -msyntax=intel -mnaked-reg $< -o $@
+	@fasm $<
+#$@
 
 #   ---     ---     ---     ---     ---
