@@ -1,2 +1,1 @@
-# AS
- Newbie assembly studies on Win64
+ GNU/Linux experiments with flat assembler
