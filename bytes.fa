@@ -1,0 +1,179 @@
+format ELF64 executable
+
+; ---   *   ---   *   ---
+
+struc Log_Unit a,b,c,d {
+
+  .a dq a
+  db $20
+
+  .b dq b
+  db $20
+
+  .c dq c
+  db $20
+
+  .d dq d
+  db $0A,$00
+
+}
+
+; ---   *   ---   *   ---
+
+define SYS_EXIT $3C
+
+macro exit {
+
+  leave
+
+  xor rdi,rdi
+  mov rax,SYS_EXIT
+
+  syscall
+
+}
+
+; ---   *   ---   *   ---
+
+define SYS_WRITE $01
+
+macro write msg*,f* {
+
+  mov rdi,f
+  mov rsi,msg
+  mov rdx,$24
+
+  mov rax,SYS_WRITE
+
+  syscall
+
+}
+
+; ---   *   ---   *   ---
+
+;define SYS_BRK 0x0C
+;
+;macro brk n* {
+;
+;  mov rdi,n
+;  mov rax,SYS_BRK
+;
+;  mov [heap.top],rax
+;
+;  syscall
+;
+;}
+
+; ---   *   ---   *   ---
+
+segment readable executable
+
+_start:
+
+  enter 8,1
+
+  mov rdi,$1122334455667788
+  mov rsi,log_unit
+  call qword_str
+
+  mov rdi,$99AABBCCDDEEFF00
+  mov rsi,log_unit+18
+  call qword_str
+
+  write log_unit,1
+
+  exit
+
+; ---   *   ---   *   ---
+; converts word to 16 ascii bytes
+; in hexadecimal format
+
+; rdi: src qword
+; rsi: dst buff
+
+qword_str:
+
+  push rsp
+  push rbx
+  push rbp
+
+  xor rax,rax
+  xor rbp,rbp
+  xor rcx,rcx
+
+; ---   *   ---   *   ---
+; walk the word
+
+.top:
+
+  ; copy byte from source
+  xor rbx,rbx
+  mov bl,dil
+
+  ; first nyb
+  and bl,$0F
+
+  mov bl,[HEX_TAB+rbx]
+  add cl,$08
+
+  ; ^assign byte from nyb
+  shl rbx,cl
+  or rax,rbx
+
+; ---   *   ---   *   ---
+; ^repeat
+
+  xor rbx,rbx
+  mov bl,dil
+
+  ; nyb
+  shr bl,$04
+
+  mov bl,[HEX_TAB+rbx]
+  add cl,$08
+
+  ; ^assign
+  shl rbx,cl
+  or rax,rbx
+
+; ---   *   ---   *   ---
+; up counters && shift source
+
+  inc bpl
+  shr rdi,$08
+
+  ; move on half qword
+  cmp cl,$40
+  jne .tail
+
+  ror rax,8
+  mov [rsi],rax
+
+  xor cl,cl
+  add rsi,9
+
+  xor rax,rax
+
+; ---   *   ---   *   ---
+
+.tail:
+  cmp bpl,$08
+  jl .top
+
+; ---   *   ---   *   ---
+
+  pop rbp
+  pop rbx
+  pop rsp
+
+  ret
+
+; ---   *   ---   *   ---
+
+segment readable writeable
+  log_unit Log_Unit 0,0,0,0
+
+segment readable
+  HEX_TAB db "0123456789ABCDEF"
+
+; ---   *   ---   *   ---

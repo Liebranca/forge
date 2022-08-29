@@ -1,0 +1,98 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# deps
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use English qw(-no_match_vars);
+  use Cwd qw(abs_path);
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+
+  use Style;
+  use Arstd::Path;
+  use Arstd::IO;
+
+  use Shb7;
+  use Cli;
+
+# ---   *   ---   *   ---
+# get args
+
+my $m=Cli->nit(
+
+  {id=>'shared',long=>'--shared',argc=>0},
+  {id=>'output',short=>'-o',argc=>1},
+  {id=>'libs',short=>'-l',argc=>1},
+
+);
+
+my ($src)=$m->take(@ARGV);
+
+errout(
+
+  q[Bad filename '%s'],
+
+  args=>[$src],
+  lvl=>$AR_FATAL
+
+) unless -e $src;
+
+# ---   *   ---   *   ---
+
+my $out;
+if($m->{output}!=$NULL) {
+  $out=$m->{output};
+
+} else {
+  $out=nxbasef($src);
+
+};
+
+# ---   *   ---   *   ---
+
+my $dst=Shb7::obj_from_src(
+  abs_path($src)
+
+);
+
+unlink $dst if -f $dst;
+
+my @call=('fasm',$src,$dst);
+system {$call[0]} @call;
+
+die "\n^Build failed\n" unless -e $dst;
+
+# ---   *   ---   *   ---
+
+my $libs=$NULLSTR;
+
+if($m->{libs} ne $NULL) {
+
+  $libs=q{-l}.join q{ -l},
+    split $COMMA_RE,$m->{libs};
+
+};
+
+# ---   *   ---   *   ---
+
+#my $shared=$m->{shared}!=$NULL;
+#if($shared) {$out=Shb7::so($out)};
+#
+#Shb7::olink(
+#  $dst,$out,
+#
+#  flat=>0,
+#  shared=>$shared,
+#
+#  libs=>$libs,
+#
+#);
+#
+#@call=('strip','-s',$out);
+#system {$call[0]} @call;
+
+# ---   *   ---   *   ---
+1; # ret
