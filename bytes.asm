@@ -1,22 +1,35 @@
-format ELF64 executable
+format ELF64
 
 ; ---   *   ---   *   ---
 
-struc Log_Unit a,b,c,d {
+struc Mem {
 
-  .a dq a
-  db $20
-
-  .b dq b
-  db $20
-
-  .c dq c
-  db $20
-
-  .d dq d
-  db $0A,$00
+  .top dq $00
+  .sz  dq $00
 
 }
+
+define Mem.sz 16
+
+; ---   *   ---   *   ---
+
+struc Log_Unit {
+
+  .a dq $00
+  .ws0 db $20
+
+  .b dq $00
+  .ws1 db $20
+
+  .c dq $00
+  .ws2 db $20
+
+  .d dq $00
+  .ws3 word $000A
+
+}
+
+define Log_Unit.sz 37
 
 ; ---   *   ---   *   ---
 
@@ -51,36 +64,62 @@ macro write msg*,f* {
 
 ; ---   *   ---   *   ---
 
-;define SYS_BRK 0x0C
-;
-;macro brk n* {
-;
-;  mov rdi,n
-;  mov rax,SYS_BRK
-;
-;  mov [heap.top],rax
-;
-;  syscall
-;
-;}
+define SYS_BRK 0x0C
+
+macro brk n* {
+
+  mov rdi,[mem.top]
+  add rdi,n
+
+  mov rax,SYS_BRK
+
+  syscall
+
+  mov [mem.top],rax
+  add [mem.sz],n
+
+}
+
+macro nit_mem {brk 0}
+
+macro del_mem {
+
+  mov rax,[mem.top]
+  sub rax,[mem.sz]
+  brk rax
+
+}
 
 ; ---   *   ---   *   ---
 
-segment readable executable
+section '.text' executable
+  public _start
 
 _start:
 
   enter 8,1
+  define log_unit qword [rbp-8]
+
+  nit_mem
+
+  mov rax,qword [mem.top]
+  mov log_unit,rax
+
+  brk Log_Unit.sz
 
   mov rdi,$1122334455667788
   mov rsi,log_unit
   call qword_str
 
   mov rdi,$99AABBCCDDEEFF00
-  mov rsi,log_unit+18
+  mov rsi,log_unit
+  add rsi,18
   call qword_str
 
+  mov word [rsi-1],$000A
+
   write log_unit,1
+  del_mem
 
   exit
 
@@ -93,13 +132,17 @@ _start:
 
 qword_str:
 
-  push rsp
-  push rbx
   push rbp
+  mov rbp,rsp
 
-  xor rax,rax
-  xor rbp,rbp
+  push rbx
   xor rcx,rcx
+  xor rax,rax
+
+  define cnt rbp-1
+  define vsz 1
+
+  mov byte [cnt],$00
 
 ; ---   *   ---   *   ---
 ; walk the word
@@ -139,7 +182,7 @@ qword_str:
 ; ---   *   ---   *   ---
 ; up counters && shift source
 
-  inc bpl
+  inc byte [cnt]
   shr rdi,$08
 
   ; move on half qword
@@ -148,6 +191,7 @@ qword_str:
 
   ror rax,8
   mov [rsi],rax
+  mov byte [rsi+8],$20
 
   xor cl,cl
   add rsi,9
@@ -157,23 +201,21 @@ qword_str:
 ; ---   *   ---   *   ---
 
 .tail:
-  cmp bpl,$08
+  cmp byte [cnt],$08
   jl .top
 
 ; ---   *   ---   *   ---
 
-  pop rbp
   pop rbx
-  pop rsp
-
+  pop rbp
   ret
 
 ; ---   *   ---   *   ---
 
-segment readable writeable
-  log_unit Log_Unit 0,0,0,0
+section '.data' writeable
+  mem Mem
 
-segment readable
+section '.rodata'
   HEX_TAB db "0123456789ABCDEF"
 
 ; ---   *   ---   *   ---

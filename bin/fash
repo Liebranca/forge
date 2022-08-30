@@ -64,6 +64,7 @@ my @call=('fasm',$src,$dst);
 system {$call[0]} @call;
 
 die "\n^Build failed\n" unless -e $dst;
+@call=('strip',$dst);
 
 # ---   *   ---   *   ---
 
@@ -78,21 +79,21 @@ if($m->{libs} ne $NULL) {
 
 # ---   *   ---   *   ---
 
-#my $shared=$m->{shared}!=$NULL;
-#if($shared) {$out=Shb7::so($out)};
-#
-#Shb7::olink(
-#  $dst,$out,
-#
-#  flat=>0,
-#  shared=>$shared,
-#
-#  libs=>$libs,
-#
-#);
-#
-#@call=('strip','-s',$out);
-#system {$call[0]} @call;
+my $shared=$m->{shared}!=$NULL;
+if($shared) {$out=Shb7::so($out)};
+
+Shb7::olink(
+  $dst,$out,
+
+  flat=>1,
+
+  shared=>$shared,
+  libs=>$libs,
+
+);
+
+@call=('strip',$out);
+system {$call[0]} @call;
 
 # ---   *   ---   *   ---
 1; # ret
