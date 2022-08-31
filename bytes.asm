@@ -1,4 +1,5 @@
 format ELF64
+include '%ARPATH%/forge/St.inc'
 
 ; ---   *   ---   *   ---
 
@@ -9,27 +10,25 @@ struc Mem {
 
 }
 
-define Mem.sz 16
+define sizeof.Mem $10
 
 ; ---   *   ---   *   ---
 
-struc Log_Unit {
+%St
 
-  .a dq $00
-  .ws0 db $20
+  dq .a ?
+  db .ws0 ?
 
-  .b dq $00
-  .ws1 db $20
+  dq .b ?
+  db .ws1 ?
 
-  .c dq $00
-  .ws2 db $20
+  dq .c ?
+  db .ws2 ?
 
-  .d dq $00
-  .ws3 word $000A
+  dq .d ?
+  dw .nl ?
 
-}
-
-define Log_Unit.sz 37
+^St Log_Unit
 
 ; ---   *   ---   *   ---
 
@@ -50,11 +49,11 @@ macro exit {
 
 define SYS_WRITE $01
 
-macro write msg*,f* {
+macro write f*,msg*,len* {
 
   mov rdi,f
   mov rsi,msg
-  mov rdx,$24
+  mov rdx,len
 
   mov rax,SYS_WRITE
 
@@ -64,7 +63,7 @@ macro write msg*,f* {
 
 ; ---   *   ---   *   ---
 
-define SYS_BRK 0x0C
+define SYS_BRK $0C
 
 macro brk n* {
 
@@ -86,6 +85,7 @@ macro del_mem {
 
   mov rax,[mem.top]
   sub rax,[mem.sz]
+
   brk rax
 
 }
@@ -105,7 +105,7 @@ _start:
   mov rax,qword [mem.top]
   mov log_unit,rax
 
-  brk Log_Unit.sz
+  brk sizeof.Log_Unit
 
   mov rdi,$1122334455667788
   mov rsi,log_unit
@@ -116,9 +116,10 @@ _start:
   add rsi,18
   call qword_str
 
-  mov word [rsi-1],$000A
+  mov rsi,log_unit
+  mov word [rsi+Log_Unit.nl],$000A
 
-  write log_unit,1
+  write 1,rsi,sizeof.Log_Unit
   del_mem
 
   exit
@@ -155,13 +156,12 @@ qword_str:
 
   ; first nyb
   and bl,$0F
-
   mov bl,[HEX_TAB+rbx]
-  add cl,$08
 
   ; ^assign byte from nyb
   shl rbx,cl
   or rax,rbx
+  add cl,$08
 
 ; ---   *   ---   *   ---
 ; ^repeat
@@ -169,15 +169,14 @@ qword_str:
   xor rbx,rbx
   mov bl,dil
 
-  ; nyb
+  ; second nyb
   shr bl,$04
-
   mov bl,[HEX_TAB+rbx]
-  add cl,$08
 
   ; ^assign
   shl rbx,cl
   or rax,rbx
+  add cl,$08
 
 ; ---   *   ---   *   ---
 ; up counters && shift source
@@ -189,13 +188,11 @@ qword_str:
   cmp cl,$40
   jne .tail
 
-  ror rax,8
   mov [rsi],rax
-  mov byte [rsi+8],$20
+  mov byte [rsi+Log_Unit.ws0],$20
+  add rsi,Log_Unit.b
 
   xor cl,cl
-  add rsi,9
-
   xor rax,rax
 
 ; ---   *   ---   *   ---
@@ -208,12 +205,15 @@ qword_str:
 
   pop rbx
   pop rbp
+
   ret
 
 ; ---   *   ---   *   ---
 
 section '.data' writeable
   mem Mem
+
+; ---   *   ---   *   ---
 
 section '.rodata'
   HEX_TAB db "0123456789ABCDEF"
