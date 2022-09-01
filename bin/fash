@@ -26,6 +26,7 @@ my $m=Cli->nit(
   {id=>'shared',long=>'--shared',argc=>0},
   {id=>'output',short=>'-o',argc=>1},
   {id=>'libs',short=>'-l',argc=>1},
+  {id=>'no_trash',short=>'-nt',long=>'--no_trash',argc=>0},
 
 );
 
@@ -54,7 +55,8 @@ if($m->{output}!=$NULL) {
 # ---   *   ---   *   ---
 
 my $dst=Shb7::obj_from_src(
-  abs_path($src)
+  abs_path($src),
+  use_trash=>($m->{no_trash} == $NULL)
 
 );
 

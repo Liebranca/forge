@@ -3,30 +3,28 @@ include '%ARPATH%/forge/St.inc'
 
 ; ---   *   ---   *   ---
 
-struc Mem {
+%St
 
-  .top dq $00
-  .sz  dq $00
+  dq top ?
+  dq sz ?
 
-}
-
-define sizeof.Mem $10
+^St Mem
 
 ; ---   *   ---   *   ---
 
 %St
 
-  dq .a ?
-  db .ws0 ?
+  dq a ?
+  db ws0 ?
 
-  dq .b ?
-  db .ws1 ?
+  dq b ?
+  db ws1 ?
 
-  dq .c ?
-  db .ws2 ?
+  dq c ?
+  db ws2 ?
 
-  dq .d ?
-  dw .nl ?
+  dq d ?
+  dw nl ?
 
 ^St Log_Unit
 
