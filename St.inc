@@ -10,17 +10,6 @@
 ; lyeb,
 ; ---   *   ---   *   ---
 
-; pastes comma separated as lines
-macro npaste [line] {forward line}
-
-; comma cats constants (taken from manual ;>)
-macro append list,item {
-
-  match any,list \{list equ list ',' item\}
-  match ,list \{list equ item\}
-
-}
-
 ; ---   *   ---   *   ---
 ; for <namespace>.elem
 
@@ -97,18 +86,24 @@ macro St.make name {
   St.nit name
   name name
 
+  define St#.#name#.#elem_list
+  St#.#name#.#elem_list equ St.list
+
+  define St#.#name#.#elem_cnt
+  St#.#name#.#elem_cnt equ St.elem_cnt
+
 ; ---   *   ---   *   ---
 ; make struct instantiable
-
-  local list
-  list equ St.list
-
-  local cnt
-  cnt equ St.elem_cnt
 
   ; redefine
   restruc name
   struc name \{
+
+    local list
+    list equ St#.#name#.#elem_list
+
+    local cnt
+    cnt equ St#.#name#.#elem_cnt
 
     ; start of instance
     . = $
@@ -120,9 +115,9 @@ macro St.make name {
       status equ 0
 
       ; match up to ',' and go to next
-      match name type value comma next,list \\\{
+      match n type value comma next,list \\\{
 
-        dotcat .,name
+        dotcat .,n
         catted type value
 
         list equ next
@@ -131,9 +126,9 @@ macro St.make name {
       \\\}
 
       ; no ','
-      match =0 name type value,status list \\\{
+      match =0 n type value,status list \\\{
 
-        dotcat .,name
+        dotcat .,n
         catted type value
 
         list equ
@@ -146,14 +141,10 @@ macro St.make name {
 
   \}
 
-  ; remove globals
-  restore St.elem_cnt
-  restore St.list
-
 }
 
 ; ---   *   ---   *   ---
-; generator header and tail
+; generator header/tail
 
 %St fix macro St.nit name {\
   npaste struc name \{virtual at 0,\

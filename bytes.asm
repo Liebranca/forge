@@ -1,14 +1,10 @@
 format ELF64
-include '%ARPATH%/forge/St.inc'
 
 ; ---   *   ---   *   ---
+; deps
 
-%St
-
-  dq top ?
-  dq sz ?
-
-^St Mem
+  include '%ARPATH%/forge/Worg.inc'
+  arch '%ARPATH%/forge/OS.inc'
 
 ; ---   *   ---   *   ---
 
@@ -30,95 +26,33 @@ include '%ARPATH%/forge/St.inc'
 
 ; ---   *   ---   *   ---
 
-define SYS_EXIT $3C
-
-macro exit {
-
-  leave
-
-  xor rdi,rdi
-  mov rax,SYS_EXIT
-
-  syscall
-
-}
-
-; ---   *   ---   *   ---
-
-define SYS_WRITE $01
-
-macro write f*,msg*,len* {
-
-  mov rdi,f
-  mov rsi,msg
-  mov rdx,len
-
-  mov rax,SYS_WRITE
-
-  syscall
-
-}
-
-; ---   *   ---   *   ---
-
-define SYS_BRK $0C
-
-macro brk n* {
-
-  mov rdi,[mem.top]
-  add rdi,n
-
-  mov rax,SYS_BRK
-
-  syscall
-
-  mov [mem.top],rax
-  add [mem.sz],n
-
-}
-
-macro nit_mem {brk 0}
-
-macro del_mem {
-
-  mov rax,[mem.top]
-  sub rax,[mem.sz]
-
-  brk rax
-
-}
-
-; ---   *   ---   *   ---
-
 section '.text' executable
   public _start
 
 _start:
 
   enter 8,1
-  define log_unit qword [rbp-8]
+  define log_unit rbp-8
 
-  nit_mem
-
-  mov rax,qword [mem.top]
-  mov log_unit,rax
-
-  brk sizeof.Log_Unit
+  Mem.nit mem
+  Mem.alloc Log_Unit lu @ rbp-8
 
   mov rdi,$1122334455667788
-  mov rsi,log_unit
+  mov rsi,qword [log_unit]
   call qword_str
 
   mov rdi,$99AABBCCDDEEFF00
-  mov rsi,log_unit
+  mov rsi,qword [log_unit]
   add rsi,18
   call qword_str
 
-  mov rsi,log_unit
+  mov rsi,qword [log_unit]
   mov word [rsi+Log_Unit.nl],$000A
 
+  restore log_unit
+
   write 1,rsi,sizeof.Log_Unit
-  del_mem
+  Mem.del mem
 
   exit
 
