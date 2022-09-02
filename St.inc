@@ -8,7 +8,21 @@
 ;
 ; CONTRIBUTORS
 ; lyeb,
+
 ; ---   *   ---   *   ---
+; deps
+
+if ~ defined loaded?Worg
+  include '%ARPATH%/forge/Worg.inc'
+
+end if
+
+; ---   *   ---   *   ---
+
+  TITLE     St
+
+  VERSION   v0.00.2a
+  AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; for <namespace>.elem
@@ -37,21 +51,15 @@ macro __fields_beg base {
       ; ^(decl) label value
       match name value,x \\\{
 
-        local cnt
-
         ; increment
-        cnt equ St.elem_cnt
-        cnt equ cnt+1
+        Worg@$symcnt St@elem_cnt
 
         ; capture
-        append St.list,name type value
+        Worg@$append St@list,name type value
 
         ; paste in virtual decl
         dotcat base,name
         catted type value
-
-        ; save counter
-        St.elem_cnt equ cnt
 
       \\\}
 
@@ -76,21 +84,21 @@ macro __fields_end {
 ; ---   *   ---   *   ---
 ; entry point
 
-macro St.make name {
+macro St@$make name {
 
   ; accumulate to
-  define St.list
-  define St.elem_cnt 0
+  define St@list
+  define St@elem_cnt 0
 
   ; generate virtual instance
-  St.nit name
+  St@$nit name
   name name
 
-  define St#.#name#.#elem_list
-  St#.#name#.#elem_list equ St.list
+  define St#@#name#@#elem_list
+  St#@#name#@#elem_list equ St@list
 
-  define St#.#name#.#elem_cnt
-  St#.#name#.#elem_cnt equ St.elem_cnt
+  define St#@#name#@#elem_cnt
+  St#@#name#@#elem_cnt equ St@elem_cnt
 
 ; ---   *   ---   *   ---
 ; make struct instantiable
@@ -100,10 +108,10 @@ macro St.make name {
   struc name \{
 
     local list
-    list equ St#.#name#.#elem_list
+    list equ St#@#name#@#elem_list
 
     local cnt
-    cnt equ St#.#name#.#elem_cnt
+    cnt equ St#@#name#@#elem_cnt
 
     ; start of instance
     . = $
@@ -111,29 +119,17 @@ macro St.make name {
     ; walk the elems
     rept cnt \\{
 
-      local status
-      status equ 0
+      define elem
+      Worg@$shift list,elem
 
-      ; match up to ',' and go to next
-      match n type value comma next,list \\\{
-
-        dotcat .,n
-        catted type value
-
-        list equ next
-        status equ 1
-
-      \\\}
-
-      ; no ','
-      match =0 n type value,status list \\\{
+      match n type value,elem \\\{
 
         dotcat .,n
         catted type value
 
-        list equ
-
       \\\}
+
+      restore elem
 
 ; ---   *   ---   *   ---
 
@@ -146,12 +142,13 @@ macro St.make name {
 ; ---   *   ---   *   ---
 ; generator header/tail
 
-%St fix macro St.nit name {\
-  npaste struc name \{virtual at 0,\
+%St fix macro St@$nit name {\
+  Worg@$npaste struc name \{virtual at 0,\
     first=$,__fields_beg name
 
-^St fix npaste __fields_end,sizeof.#name=$-first,\
+^St fix Worg@$npaste __fields_end,\
+  sizeof.#name=$-first,\
   end virtual,\}}\
-  St.make
+  St@$make
 
 ; ---   *   ---   *   ---

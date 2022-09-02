@@ -294,6 +294,12 @@ macro Worg@$get_files header {
 ; ---   *   ---   *   ---
 ; cat resulting vars together and load module
 
+        match ,Worg@subdir_alt \\\\{
+          Worg@subdir_alt equ Worg@fname
+          Worg@subdir equ ''
+
+        \\\\}
+
         match md sd sd_alt fname ,\
           Worg@module Worg@subdir \
           Worg@subdir_alt Worg@fname  \\\\{
@@ -366,6 +372,8 @@ macro Worg@$disable_use {purge use}
 
 ; ---   *   ---   *   ---
 ; generator header/tail
+
+Token fix npaste
 
 %Worg fix macro Worg@$fetch header {\
   Worg@$npaste Worg@$enable_use,\

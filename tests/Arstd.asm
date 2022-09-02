@@ -8,7 +8,16 @@ end if
 %Worg
 
   use '.inc' Arstd:IO
+  use '.inc' St
 
 ^Worg ARPATH '/forge/'
 
-module_info Worg,Arstd.IO
+%St
+
+  dq a $2424242426262626
+  dq b $110011FF0099AABB
+
+^St Kls
+
+inst Kls
+dq sizeof.Kls
