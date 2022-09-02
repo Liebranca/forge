@@ -2,22 +2,33 @@
 include '%ARPATH%/forge/St.inc'
 
 ; ---   *   ---   *   ---
+; info
 
-define SYSTAG           \
-  $1B,$5B,'37;1m<',     \
-  $1B,$5B,'34;22m','AR',\
-  $1B,$5B,'37;1m>',     \
-  $1B,$5B,'0m'
+  TITLE     Arstd.IO
 
-define CHDTAG           \
-  $1B,$5B,'37;1m::',    \
-  $1B,$5B,'0m'
+  VERSION   v0.00.1a
+  AUTHOR    'IBN-3DILA'
 
-define ERRTAG           \
-  $1B,$5B,'37;1m<',     \
-  $1B,$5B,'31;1m','AR', \
-  $1B,$5B,'37;1m>',     \
-  $1B,$5B,'0m'
+; ---   *   ---   *   ---
+; GBL
+
+  define SYSTAG $0A,      \
+    $1B,$5B,'37;1m<',     \
+    $1B,$5B,'34;22m','AR',\
+    $1B,$5B,'37;1m>',     \
+    $1B,$5B,'0m'
+
+  define CHDTAG           \
+    $1B,$5B,'37;1m::',    \
+    $1B,$5B,'0m'
+
+  define ERRTAG $0A,      \
+    $1B,$5B,'37;1m<',     \
+    $1B,$5B,'31;1m','AR', \
+    $1B,$5B,'37;1m>',     \
+    $1B,$5B,'0m'
+
+; ---   *   ---   *   ---
 
 macro d'oh! src,[args] {
 
@@ -48,6 +59,27 @@ macro out@chd args& {d'oh! CHDTAG,args}
 macro out@err args& {d'oh! ERRTAG,args}
 
 ; ---   *   ---   *   ---
+
+macro module_info [name] {
+
+forward
+  if ~ defined loaded?#name
+    out@err name,'not loaded'
+
+  else
+
+    match v a,name#?#version name#?#author \{
+      out@sys name,v
+      out@chd 'Copyleft',a
+
+    \}
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; testing stuff, nevermind this
 
 macro __ptr_decl kls,NTA {
 

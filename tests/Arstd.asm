@@ -1,16 +1,14 @@
 include '%ARPATH%/forge/Worg.inc'
 
+if ~ defined loaded?Worg
+  include '%ARPATH%/forge/Worg.inc'
+
+end if
+
 %Worg
 
   use '.inc' Arstd:IO
 
 ^Worg ARPATH '/forge/'
 
-if ~ defined loaded?Arstd.IO
-  display 'Arstd.IO not loaded!',$0A
-
-else
-  out@chd 'Arstd.IO loaded ;>'
-
-end if
-
+module_info Worg,Arstd.IO

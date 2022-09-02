@@ -10,9 +10,45 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
+; quick and dirty namespace aggregation ;>
 
-;  include '%ARPATH%/forge/Arstd/IO.inc'
+macro INFO_FIELD line {
+
+  match module field value,this?module line \{
+
+    module \# ? \# field equ module \# ? \# field
+    define module \# ? \# field value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^please only aggregate to it this way
+
+macro TITLE name {
+  define this?module name
+  define loaded?#name 1
+
+}
+
+macro VERSION number {
+  INFO_FIELD version number
+
+}
+
+macro AUTHOR name {
+  INFO_FIELD author name
+
+}
+
+; ---   *   ---   *   ---
+; info
+
+  TITLE     Worg
+
+  VERSION   v0.00.1a
+  AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; utils
@@ -44,7 +80,9 @@ macro Worg@$ecat list,item {
 
 }
 
+; ---   *   ---   *   ---
 ; ^space cats at beg
+
 macro Worg@$bcat list,item {
 
   match any,list \{list equ item list\}
@@ -106,11 +144,7 @@ macro Worg@$symcnt sym {
 }
 
 ; ---   *   ---   *   ---
-
-define loaded?Worg 1
-define Worg?version 'v0.00.1a'
-
-display 'Using Worg ',Worg?version,$0A
+; ensures file is included only once
 
 macro Worg@$load name,fpath {
 
@@ -119,7 +153,9 @@ macro Worg@$load name,fpath {
     define loaded?#name 1
     include fpath
 
-    display fpath,$0A
+    display $1B,$5B,'37;1m',\
+      ':: ',$1B,$5B,'0m',\
+      fpath,' included',$0A
 
   else
 
@@ -132,6 +168,8 @@ macro Worg@$load name,fpath {
 }
 
 ; ---   *   ---   *   ---
+; cats vars from get_files and attemps
+; to load in the file
 
 macro Worg@$mkpath env,md,sd,sd_alt,fname,ext {
 
@@ -160,6 +198,7 @@ macro stirr99 a,b {
 }
 
 ; ---   *   ---   *   ---
+; walks collected file list
 
 macro Worg@$get_files header {
 
@@ -176,6 +215,7 @@ macro Worg@$get_files header {
       Worg@$shift Worg@file_list,elem
 
 ; ---   *   ---   *   ---
+; break down the path for this module
 
       match ext path,elem \\\{
 
@@ -186,12 +226,20 @@ macro Worg@$get_files header {
 
         status equ 0
 
+; ---   *   ---   *   ---
+; handle dir/subdir/.../file
+; up to 7 levels deep
+
         rept 7 \\\\{
 
           if status<2
           status equ 0
 
           match any next,Worg@path \\\\\{
+
+; ---   *   ---   *   ---
+; cat 'dir' to 'subdir'
+; this makes 'dir/subdir' ;>
 
             match prev,Worg@subdir \\\\\\{
 
@@ -212,6 +260,9 @@ macro Worg@$get_files header {
 
             \\\\\\}
 
+; ---   *   ---   *   ---
+; only filename pending!
+
             match ,Worg@subdir \\\\\\{
               Worg@subdir equ any
               Worg@subdir_alt equ any
@@ -221,9 +272,11 @@ macro Worg@$get_files header {
             Worg@path equ next
             status equ 1
 
-          \\\\\}
 
 ; ---   *   ---   *   ---
+; path fully solved
+
+          \\\\\}
 
           match =0 any,status Worg@path \\\\\{
 
@@ -239,6 +292,7 @@ macro Worg@$get_files header {
         \\\\}
 
 ; ---   *   ---   *   ---
+; cat resulting vars together and load module
 
         match md sd sd_alt fname ,\
           Worg@module Worg@subdir \
@@ -267,18 +321,22 @@ macro Worg@$enable_use {
     define remain
 
 ; ---   *   ---   *   ---
+; break down value (use '.ext' path:to:file)
 
     match ext path,value \\{
 
+      ; again, paths go 7 subdirs deep at most
       remain equ path
       rept 7 \\\{
 
+        ; iter until path is empty
         match any,remain \\\\{
           define elem
 
           Worg@$shift remain,elem
           Worg@$ecat nested,elem
 
+          ; ^then push to list
           match ,remain \\\\\{
 
             Worg@$append Worg@file_list,ext nested
@@ -303,7 +361,7 @@ macro Worg@$enable_use {
 
 }
 
-; ^destroys it
+; ^destroys the use keyword
 macro Worg@$disable_use {purge use}
 
 ; ---   *   ---   *   ---
