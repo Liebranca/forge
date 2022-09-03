@@ -47,7 +47,7 @@ macro AUTHOR name {
 
   TITLE     Worg
 
-  VERSION   v0.00.1a
+  VERSION   v0.00.2a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -146,24 +146,42 @@ macro Worg@$symcnt sym {
 ; ---   *   ---   *   ---
 ; ensures file is included only once
 
-macro Worg@$load name,fpath {
+macro Worg@$load {
 
-  if ~ defined loaded?#name
+  local fcnt
+  local list
 
-    define loaded?#name 1
-    include fpath
+  list equ Worg@pending_list
+  fcnt equ Worg@pending_cnt
 
-    display $1B,$5B,'37;1m',\
-      ':: ',$1B,$5B,'0m',\
-      fpath,' included',$0A
+  rept fcnt \{
 
-  else
+  define elem
+  Worg@$shift list,elem
 
-    display $1B,$5B,'37;1m',\
-      ':: ',$1B,$5B,'0m',\
-      fpath,' already included',$0A
+  match name fpath,elem \\{
 
-  end if
+    if ~ defined loaded?#name
+
+      define loaded?#name 1
+      include fpath
+
+      display $1B,$5B,'37;1m',\
+        ':: ',$1B,$5B,'0m',\
+        fpath,' included',$0A
+
+    else
+
+      display $1B,$5B,'37;1m',\
+        ':: ',$1B,$5B,'0m',\
+        fpath,' already included',$0A
+
+    end if
+
+  \\}
+  restore elem
+
+  \}
 
 }
 
@@ -173,7 +191,7 @@ macro Worg@$load name,fpath {
 
 macro Worg@$mkpath env,md,sd,sd_alt,fname,ext {
 
-  Worg@$load sd_alt#.#fname,\
+  Worg@$append Worg@pending_list,sd_alt#.#fname \
     '%'#`env#'%'#md#`sd#`/#`fname#ext
 
 }
@@ -203,7 +221,13 @@ macro stirr99 a,b {
 macro Worg@$get_files header {
 
   local cnt
+  local fcnt
+  local status
+
   cnt equ Worg@file_count
+  status equ 0
+
+  define tmp 0
 
   rept cnt \{
 
@@ -212,18 +236,20 @@ macro Worg@$get_files header {
       define elem
       define Worg@module module
 
+      define Worg@path
+      define Worg@fname
+      define Worg@subdir
+      define Worg@subdir_alt
+
       Worg@$shift Worg@file_list,elem
+      Worg@$symcnt tmp
 
 ; ---   *   ---   *   ---
 ; break down the path for this module
 
       match ext path,elem \\\{
 
-        define Worg@path path
-        define Worg@fname
-        define Worg@subdir
-        define Worg@subdir_alt
-
+        Worg@path equ path
         status equ 0
 
 ; ---   *   ---   *   ---
@@ -279,7 +305,6 @@ macro Worg@$get_files header {
           \\\\\}
 
           match =0 any,status Worg@path \\\\\{
-
             Worg@fname equ any
             Worg@path equ
 
@@ -295,7 +320,7 @@ macro Worg@$get_files header {
 ; cat resulting vars together and load module
 
         match ,Worg@subdir_alt \\\\{
-          Worg@subdir_alt equ Worg@fname
+          Worg@subdir_alt equ _
           Worg@subdir equ ''
 
         \\\\}
@@ -308,11 +333,31 @@ macro Worg@$get_files header {
 
         \\\\}
 
+; ---   *   ---   *   ---
+
       \\\}
+
+      restore Worg@subdir_alt
+      restore Worg@subdir
+      restore Worg@fname
+      restore Worg@path
+
+      restore Worg@module
+      restore elem
 
     \\}
 
   \}
+
+  restore Worg@file_list
+  restore Worg@file_count
+
+  Worg@pending_cnt equ tmp
+
+  Worg@$load
+
+  restore Worg@pending_cnt
+  restore Worg@pending_list
 
 }
 
@@ -337,6 +382,7 @@ macro Worg@$enable_use {
 
         ; iter until path is empty
         match any,remain \\\\{
+
           define elem
 
           Worg@$shift remain,elem
@@ -360,8 +406,8 @@ macro Worg@$enable_use {
 
     \\}
 
-    restore nested
     restore remain
+    restore nested
 
   \}
 
@@ -373,15 +419,14 @@ macro Worg@$disable_use {purge use}
 ; ---   *   ---   *   ---
 ; generator header/tail
 
-Token fix npaste
-
-%Worg fix macro Worg@$fetch header {\
+%Worg fix Worg@$npaste
   Worg@$npaste Worg@$enable_use,\
   define Worg@file_count 0,\
-  define Worg@file_list
+  define Worg@file_list,\
+  define Worg@pending_list,\
+  define Worg@pending_cnt 0
 
 ^Worg fix Worg@$npaste Worg@$disable_use,\
-  Worg@$get_files header,}\
-  Worg@$fetch
+  Worg@$get_files
 
 ; ---   *   ---   *   ---

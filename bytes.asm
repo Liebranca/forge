@@ -10,6 +10,7 @@ end if
 
 %Worg
   use '.inc' OS
+  use '.inc' Arstd:IO
 
 ^Worg ARPATH '/forge/'
 

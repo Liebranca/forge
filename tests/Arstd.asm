@@ -1,5 +1,3 @@
-include '%ARPATH%/forge/Worg.inc'
-
 if ~ defined loaded?Worg
   include '%ARPATH%/forge/Worg.inc'
 
@@ -7,8 +5,9 @@ end if
 
 %Worg
 
+  use '.inc' OS
   use '.inc' Arstd:IO
-  use '.inc' St
+  use '.inc' Worg
 
 ^Worg ARPATH '/forge/'
 

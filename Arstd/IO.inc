@@ -1,5 +1,26 @@
-;format ELF64
-include '%ARPATH%/forge/St.inc'
+; ---   *   ---   *   ---
+; ARSTD IO
+; Debug prints
+;
+; LIBRE SOFTWARE
+; Licensed under GNU GPL3
+; be a bro and inherit
+;
+; CONTRIBUTORS
+; lyeb
+
+; ---   *   ---   *   ---
+; deps
+
+if ~ defined loaded?Worg
+  include '%ARPATH%/forge/Worg.inc'
+
+end if
+
+%Worg
+  use '.inc' St
+
+^Worg ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 ; info
