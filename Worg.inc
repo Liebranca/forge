@@ -131,13 +131,13 @@ macro Worg@$shift list,elem {
 ; ---   *   ---   *   ---
 ; uses a symbolic constant as a counter (!!)
 
-macro Worg@$symcnt sym {
+macro Worg@$symcnt sym,value=1 {
 
   local cnt
 
   ; increment
   cnt equ sym
-  cnt equ cnt+1
+  cnt equ cnt+value
 
   sym equ cnt
 

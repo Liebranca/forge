@@ -7,20 +7,17 @@ end if
 
   use '.inc' OS
   use '.inc' Arstd:IO
-  use '.inc' Worg
+  use '.inc' Peso:Proc
 
 ^Worg ARPATH '/forge/'
 
-%St
+Proc@$enter here,$
 
-  db a $24
-  db b $26
-  dw c $21
+dq $9AD
 
-^St Kls
-inst virtual_Kls 0x0100
+Proc@$enter there,$
+Proc@$var x,rbp-8
 
-match any,Kls@self {
-  dw any#.b
+.a=-8
 
-}
+db here.there.a

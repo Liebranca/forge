@@ -11,6 +11,7 @@ end if
 %Worg
   use '.inc' OS
   use '.inc' Arstd:IO
+  use '.inc' Peso:Proc
 
 ^Worg ARPATH '/forge/'
 
@@ -55,15 +56,17 @@ section '.rodata'
 section '.text' executable
   public _start
 
-_start:
+Proc@$enter _start
 
   enter 8,1
 
+  Proc@$var qword ptr
+
   Mem@$nit
-  Mem@$alloc Log_Unit rbp-8
+  Mem@$alloc Log_Unit %ptr
 
   mov rdi,$1122334455667788
-  mov rsi,[rbp-8]
+  mov rsi,[%_start.ptr]
   call qword_str
 
   mov rdi,$99AABBCCDDEEFF00
