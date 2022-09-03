@@ -14,10 +14,14 @@ end if
 
 %St
 
-  dq a $2424242426262626
-  dq b $110011FF0099AABB
+  db a $24
+  db b $26
+  dw c $21
 
 ^St Kls
+inst virtual_Kls 0x0100
 
-inst Kls
-dq sizeof.Kls
+match any,Kls@self {
+  dw any#.b
+
+}

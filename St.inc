@@ -82,6 +82,28 @@ macro __fields_end {
 }
 
 ; ---   *   ---   *   ---
+
+macro St@$elem_paste inst,list,cnt {
+
+  rept cnt \{
+
+    define elem
+    Worg@$shift list,elem
+
+    match n type value,elem \\{
+
+      dotcat inst,n
+      catted type value
+
+    \\}
+
+    restore elem
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; entry point
 
 macro St@$make name {
@@ -89,6 +111,10 @@ macro St@$make name {
   ; accumulate to
   define St@list
   define St@elem_cnt 0
+
+  ; runtime access
+  define name#@self
+  define name#@other
 
   ; generate virtual instance
   St@$nit name
@@ -99,6 +125,19 @@ macro St@$make name {
 
   define St#@#name#@#elem_cnt
   St#@#name#@#elem_cnt equ St@elem_cnt
+
+; ---   *   ---   *   ---
+; setters (!!)
+
+  macro name#@$self instance \{
+    name#@self equ instance
+
+  \}
+
+  macro name#@$other instance& \{
+    name#@other equ instance
+
+  \}
 
 ; ---   *   ---   *   ---
 ; make struct instantiable
@@ -117,23 +156,33 @@ macro St@$make name {
     . = $
 
     ; walk the elems
-    rept cnt \\{
+    St@$elem_paste .,list,cnt
 
-      define elem
-      Worg@$shift list,elem
+    ; refsym to new instance
+    name#@$self .
 
-      match n type value,elem \\\{
+  \}
 
-        dotcat .,n
-        catted type value
+  ; repeat definition
+  struc virtual_#name addr \{
 
-      \\\}
+    local list
+    list equ St#@#name#@#elem_list
 
-      restore elem
+    local cnt
+    cnt equ St#@#name#@#elem_cnt
 
-; ---   *   ---   *   ---
+    ; start of instance
+    virtual at addr
+    . = addr
 
-    \\}
+    ; walk the elems
+    St@$elem_paste .,list,cnt
+
+    ; refsym to new instance
+    name#@$self .
+
+    end virtual
 
   \}
 

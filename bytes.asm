@@ -3,8 +3,23 @@ format ELF64
 ; ---   *   ---   *   ---
 ; deps
 
+if ~ defined loaded?Worg
   include '%ARPATH%/forge/Worg.inc'
-  arch '%ARPATH%/forge/OS.inc'
+
+end if
+
+%Worg
+  use '.inc' OS
+
+^Worg ARPATH '/forge/'
+
+; ---   *   ---   *   ---
+; info
+
+  TITLE     bytes
+
+  VERSION   v0.00.3b
+  AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 
@@ -26,34 +41,43 @@ format ELF64
 
 ; ---   *   ---   *   ---
 
+section '.data' writeable
+  mem Mem
+
+; ---   *   ---   *   ---
+
+section '.rodata'
+  HEX_TAB db "0123456789ABCDEF"
+
+; ---   *   ---   *   ---
+
 section '.text' executable
   public _start
 
 _start:
 
   enter 8,1
-  define log_unit rbp-8
 
-  Mem.nit mem
-  Mem.alloc Log_Unit lu @ rbp-8
+  Mem@$nit
+  Mem@$alloc Log_Unit rbp-8
 
   mov rdi,$1122334455667788
-  mov rsi,qword [log_unit]
+  mov rsi,[rbp-8]
   call qword_str
 
   mov rdi,$99AABBCCDDEEFF00
-  mov rsi,qword [log_unit]
+  mov rsi,[rbp-8]
   add rsi,18
   call qword_str
 
-  mov rsi,qword [log_unit]
+  mov rsi,[rbp-8]
   mov word [rsi+Log_Unit.nl],$000A
 
   restore log_unit
 
   write 1,rsi,sizeof.Log_Unit
-  Mem.del mem
 
+  Mem@$del
   exit
 
 ; ---   *   ---   *   ---
@@ -139,15 +163,5 @@ qword_str:
   pop rbp
 
   ret
-
-; ---   *   ---   *   ---
-
-section '.data' writeable
-  mem Mem
-
-; ---   *   ---   *   ---
-
-section '.rodata'
-  HEX_TAB db "0123456789ABCDEF"
 
 ; ---   *   ---   *   ---
