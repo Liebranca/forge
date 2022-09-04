@@ -34,13 +34,18 @@ end if
 ; GBL
 
   define Proc@current
+  define Proc@current_depth 0
   define Proc@name_stack
   define Proc@name_stack_top 0
 
-  define sizeof.byte  1
-  define sizeof.word  2
-  define sizeof.dword 4
-  define sizeof.qword 8
+  define Proc@args_order \
+    rdi : rsi : rdx : rcx : r8  :& r9
+
+  define sizeof.byte $01
+  define sizeof.wide $02
+  define sizeof.half $04
+  define sizeof.word $08
+  define sizeof.unit $10
 
 ; ---   *   ---   *   ---
 
@@ -61,12 +66,12 @@ macro Proc@$grow_list cur,name,size {
 ; ---   *   ---   *   ---
 ; aggregate to current namespace
 
-macro Proc@$enter name,addr=$ {
+macro Proc@$enter name,size=0 {
 
   status equ 0
 
   match ,Proc@current \{
-    label name at addr
+    label name at $
 
     Proc@current equ name
     status equ 1
@@ -81,7 +86,7 @@ macro Proc@$enter name,addr=$ {
 ; ---   *   ---   *   ---
 
   match =0 any,status Proc@current \{
-    label any\#.\#name at addr
+    label any\#.\#name at $
 
     Proc@current equ any\#.\#name
     Proc@$make_list any
@@ -96,6 +101,11 @@ macro Proc@$enter name,addr=$ {
 
   List@$push Proc@name_stack,name
   Worg@$symcnt Proc@name_stack_top
+
+  enter size,Proc@current_depth
+  xor spl,spl
+
+  Worg@$symcnt Proc@current_depth
 
 }
 
@@ -141,6 +151,87 @@ macro Proc@$leave {
     \\}
 
   \}
+
+  Worg@$symcnt Proc@current_depth,-1
+  leave
+
+}
+
+; ---   *   ---   *   ---
+
+macro Proc@$ret {
+  Proc@$leave
+  ret
+
+}
+
+; ---   *   ---   *   ---
+
+macro Proc@$ins_on_args dst,iv {
+
+  match ins value,iv \{
+    ins dst,value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+
+macro Proc@$call name,[args] {
+
+  common
+    local order
+    local stack_args_list
+    local stack_args_sz
+    local next
+
+    order equ Proc@args_order
+    stack_args_sz equ 0
+
+  forward
+    List@$shift order,next
+
+    ; registers avail
+    match r,next \{
+
+      local status
+      status equ 0
+
+      match value =|> iv,args \\{
+        mov r,value
+        Proc@$ins_on_args r,iv
+
+        status equ 1
+
+      \\}
+
+      match =0,status \\{
+        mov r,args
+
+      \\}
+
+    \}
+
+    ; else push to stack
+    match ,next \{
+      List@$unshift stack_args_list,args
+      stack_args_sz equ stack_args_sz+1
+
+    \}
+
+  common
+
+    rept stack_args_sz \{
+      List@$shift stack_args_list,next
+      push next
+
+    \}
+
+    local n
+    List@$shift Proc@bytecnt,n
+
+    call name
 
 }
 

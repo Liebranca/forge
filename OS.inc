@@ -53,8 +53,6 @@ end if
 
 macro exit exit_code=0 {
 
-  leave
-
   mov rdi,exit_code
   mov rax,SYS_EXIT
 

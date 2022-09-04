@@ -10,11 +10,3 @@ end if
   use '.inc' Peso:Proc
 
 ^Worg ARPATH '/forge/'
-
-Proc@$enter here
-
-Proc@$var word pt
-
-db .pt
-
-Proc@$leave

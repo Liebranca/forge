@@ -56,54 +56,46 @@ section '.rodata'
 section '.text' executable
   public _start
 
-Proc@$enter _start
+Proc@$enter _start,8
 
-  enter 8,1
-
-  Proc@$var qword ptr
+  Proc@$var word ptr
 
   Mem@$nit
   Mem@$alloc Log_Unit %ptr
 
-  mov rdi,$1122334455667788
-  mov rsi,[%_start.ptr]
-  call qword_str
+  Proc@$call word_str,\
+    $1122334455667788,[%ptr]
 
-  mov rdi,$99AABBCCDDEEFF00
-  mov rsi,[rbp-8]
-  add rsi,18
-  call qword_str
+  Proc@$call word_str,\
+    $99AABBCCDDEEFF00,\
+    [%ptr] |> add Log_Unit.c
 
-  mov rsi,[rbp-8]
+  mov rsi,[%ptr]
   mov word [rsi+Log_Unit.nl],$000A
-
-  restore log_unit
 
   write 1,rsi,sizeof.Log_Unit
 
   Mem@$del
   exit
 
+Proc@$leave
+
 ; ---   *   ---   *   ---
 ; converts word to 16 ascii bytes
 ; in hexadecimal format
 
-; rdi: src qword
+; rdi: src word
 ; rsi: dst buff
 
-qword_str:
-
-  push rbp
-  mov rbp,rsp
+Proc@$enter word_str,1
 
   push rbx
   xor rcx,rcx
   xor rax,rax
 
-  define cnt rbp-1
-  define vsz 1
+  Proc@$var byte cnt
 
-  mov byte [cnt],$00
+  mov byte [%cnt],$00
 
 ; ---   *   ---   *   ---
 ; walk the word
@@ -141,7 +133,7 @@ qword_str:
 ; ---   *   ---   *   ---
 ; up counters && shift source
 
-  inc byte [cnt]
+  inc byte [%cnt]
   shr rdi,$08
 
   ; move on half qword
@@ -158,14 +150,13 @@ qword_str:
 ; ---   *   ---   *   ---
 
 .tail:
-  cmp byte [cnt],$08
+  cmp byte [%cnt],$08
   jl .top
 
 ; ---   *   ---   *   ---
 
   pop rbx
-  pop rbp
 
-  ret
+Proc@$ret
 
 ; ---   *   ---   *   ---
