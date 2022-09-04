@@ -11,13 +11,10 @@ end if
 
 ^Worg ARPATH '/forge/'
 
-Proc@$enter here,$
+Proc@$enter here
 
-dq $9AD
+Proc@$var word pt
 
-Proc@$enter there,$
-Proc@$var x,rbp-8
+db .pt
 
-.a=-8
-
-db here.there.a
+Proc@$leave

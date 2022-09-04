@@ -34,6 +34,8 @@ end if
 ; GBL
 
   define Proc@current
+  define Proc@name_stack
+  define Proc@name_stack_top 0
 
   define sizeof.byte  1
   define sizeof.word  2
@@ -51,8 +53,8 @@ macro Proc@$make_list cur {
 
 macro Proc@$grow_list cur,name,size {
 
-  Worg@$unshift cur#@var_list,name
-  Worg@$symcnt cur#@var_sz,size
+  List@$unshift cur#@var_list,name
+  Worg@$symcnt cur#@var_sz,+size
 
 }
 
@@ -92,30 +94,53 @@ macro Proc@$enter name,addr=$ {
 
   \}
 
+  List@$push Proc@name_stack,name
+  Worg@$symcnt Proc@name_stack_top
+
 }
 
-macro longcat [tokens] {
+; ---   *   ---   *   ---
+; ^substract
 
-  common
-    local status
-    local name
+macro Proc@$leave {
 
-    name equ
+  match ,Proc@current \{
+    out@err 'No current procedure'
 
-  forward
+  \}
+
+  local name
+  List@$pop Proc@name_stack,name
+  Worg@$symcnt Proc@name_stack_top,-1
+
+  name equ
+  List@$flatten Proc@name_stack,\
+    Proc@name_stack_top,name
+
+; ---   *   ---   *   ---
+
+  local status
+  Proc@current equ
+
+  rept Proc@name_stack_top {
 
     status equ 0
 
-    match ,name \{
-      name equ tokens
+    match any next,name \\{
+      stirr7 Proc@current,.,any
+      name equ next
+
       status equ 1
 
-    \}
+    \\}
 
-    match =0 prev,status name \{
-      name equ prev \# tokens
+    match =0 any,status name \\{
+      stirr7 Proc@current,.,any
+      name equ
 
-    \}
+    \\}
+
+  \}
 
 }
 

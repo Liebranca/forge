@@ -10,37 +10,12 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; quick and dirty namespace aggregation ;>
+; deps
 
-macro INFO_FIELD line {
+if ~ defined loaded?Arstd.List
+  include '%ARPATH%/forge/Arstd/List.inc'
 
-  match module field value,this?module line \{
-
-    module \# ? \# field equ module \# ? \# field
-    define module \# ? \# field value
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^please only aggregate to it this way
-
-macro TITLE name {
-  define this?module name
-  define loaded?#name 1
-
-}
-
-macro VERSION number {
-  INFO_FIELD version number
-
-}
-
-macro AUTHOR name {
-  INFO_FIELD author name
-
-}
+end if
 
 ; ---   *   ---   *   ---
 ; info
@@ -56,21 +31,33 @@ macro AUTHOR name {
 ; pastes comma separated as lines
 macro Worg@$npaste [line] {forward line}
 
-; colon cats at end
-macro Worg@$append list,item {
+; ---   *   ---   *   ---
+; pops first elem from path:to:file
 
-  match any,list \{list equ list : item\}
-  match ,list \{list equ item\}
+macro Worg@$break_path list,elem {
+
+  local status
+  status equ 0
+
+  match value =: next,list \{
+
+    elem equ value
+    list equ next
+
+    status equ 1
+
+  \}
+
+  match =0 value,status list \{
+
+    elem equ value
+    list equ
+
+  \}
 
 }
 
-; ^colon cats at beg
-macro Worg@$unshift list,item {
-
-  match any,list \{list equ item : list\}
-  match ,list \{list equ item\}
-
-}
+; ---   *   ---   *   ---
 
 ; ^space cats at end
 macro Worg@$ecat list,item {
@@ -97,32 +84,6 @@ macro Worg@$uncat list,elem {
 
     elem equ value
     list equ next
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; pops first elem from list
-
-macro Worg@$shift list,elem {
-
-  local status
-  status equ 0
-
-  match value =: next,list \{
-
-    elem equ value
-    list equ next
-
-    status equ 1
-
-  \}
-
-  match =0 value,status list \{
-
-    elem equ value
-    list equ
 
   \}
 
@@ -157,7 +118,10 @@ macro Worg@$load {
   rept fcnt \{
 
   define elem
-  Worg@$shift list,elem
+  List@$shift list,elem
+
+; ---   *   ---   *   ---
+; get next item in list
 
   match name fpath,elem \\{
 
@@ -191,7 +155,7 @@ macro Worg@$load {
 
 macro Worg@$mkpath env,md,sd,sd_alt,fname,ext {
 
-  Worg@$append Worg@pending_list,sd_alt#.#fname \
+  List@$push Worg@pending_list,sd_alt#.#fname \
     '%'#`env#'%'#md#`sd#`/#`fname#ext
 
 }
@@ -206,7 +170,16 @@ macro stirr3 a,b,c {
 }
 
 macro stirr7 a,b,c {
-  a equ a#b#c
+
+  match any,a \{
+    a equ any\#b#c
+
+  \}
+
+  match ,a \{
+    a equ c
+
+  \}
 
 }
 
@@ -241,7 +214,7 @@ macro Worg@$get_files header {
       define Worg@subdir
       define Worg@subdir_alt
 
-      Worg@$shift Worg@file_list,elem
+      List@$shift Worg@file_list,elem
       Worg@$symcnt tmp
 
 ; ---   *   ---   *   ---
@@ -385,13 +358,13 @@ macro Worg@$enable_use {
 
           define elem
 
-          Worg@$shift remain,elem
+          Worg@$break_path remain,elem
           Worg@$ecat nested,elem
 
           ; ^then push to list
           match ,remain \\\\\{
 
-            Worg@$append Worg@file_list,ext nested
+            List@$push Worg@file_list,ext nested
             Worg@$symcnt Worg@file_count
 
           \\\\\}

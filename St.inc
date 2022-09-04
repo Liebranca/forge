@@ -55,7 +55,7 @@ macro __fields_beg base {
         Worg@$symcnt St@elem_cnt
 
         ; capture
-        Worg@$append St@list,name type value
+        List@$push St@list,name type value
 
         ; paste in virtual decl
         dotcat base,name
@@ -88,7 +88,7 @@ macro St@$elem_paste inst,list,cnt {
   rept cnt \{
 
     define elem
-    Worg@$shift list,elem
+    List@$shift list,elem
 
     match n type value,elem \\{
 

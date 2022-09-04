@@ -49,7 +49,7 @@ end if
 
 Uppon first being included, Worg inserts itself into the `loaded?` namespace to allow it's own status to be evaluated in this way.
 
-In addition to file imports, Worg provides the macros `TITLE`, `VERSION` and `AUTHOR` to go along with it. These are used like so:
+In addition to file imports, Worg provides the macros `TITLE`, `VERSION` and `AUTHOR` from `Arstd/INCFILE.inc` to go along with it. These are used like so:
 
 ```asm
 
