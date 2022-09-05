@@ -57,9 +57,8 @@ macro Proc@$make_list cur {
 }
 
 macro Proc@$grow_list cur,name,size {
-
   List@$unshift cur#@var_list,name
-  Worg@$symcnt cur#@var_sz,+size
+  Worg@$symcnt cur#@var_sz,size
 
 }
 
@@ -229,13 +228,56 @@ macro Proc@$call name,[args] {
 ; ---   *   ---   *   ---
 
 macro Proc@$get_varoffset cur,dst {
-  dst equ cur#@var_sz
+
+  match num,cur#@var_sz \{
+    dst equ num
+
+  \}
+
+}
+
+macro Proc@$set_varoffset cur,v {
+  cur#@var_sz equ v
 
 }
 
 macro Proc@$catvar cur,name,value {
   define %#cur#.#name %#cur#.#name
   %#cur#.#name equ value
+
+}
+
+macro Proc@$align_to size {
+
+  match any,Proc@current \{
+
+    local off
+    local diff
+    local status
+
+    status equ 0
+    Proc@$get_varoffset any,off
+
+    match =0,off \\{
+      status equ 1
+
+    \\}
+
+    match =0,status \\{
+
+      local do
+      do equ (off) mod size
+
+      rept do \\\{
+        off equ 0+((off+size) and (-size))
+
+      \\\}
+
+      Proc@$set_varoffset any,off
+
+    \\}
+
+  \}
 
 }
 
@@ -260,12 +302,12 @@ macro Proc@$var TN {
 ; ---   *   ---   *   ---
 
       local off
-      off equ 0
 
+      Proc@$align_to size
       Proc@$get_varoffset any,off
 
-      Proc@$catvar any,name,rbp-#size#+off
-      %\#name equ rbp-size+off
+      Proc@$catvar any,name,rbp-(off+size)
+      %\#name equ rbp-(off+size)
 
       Proc@$grow_list any,name,size
 
@@ -285,10 +327,8 @@ macro Proc@$def_open name {
 
     match any,Proc@current \\{
 
-      stirr7 any,@var_sz
-
       PROCBEG=$+1
-      enter any,Proc@current_depth
+      enter 0,Proc@current_depth
       xor spl,spl
 
       Worg@$symcnt Proc@current_depth

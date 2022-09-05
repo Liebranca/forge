@@ -18,7 +18,11 @@ section '.text' executable
 proc s
 
   Proc@$var word x
-  Proc@$var byte y
-  xor spl,spl
+  Proc@$var half y
+  Proc@$var half z
+
+  mov rax,[%x]
+  mov rax,[%y]
+  mov rax,[%z]
 
 end_proc leave

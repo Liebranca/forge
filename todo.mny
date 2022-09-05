@@ -9,5 +9,6 @@
 ~ Allow blank env for absolute paths when importing
 
 *>Proc
-~ Auto-size Proc@$enter
+x Auto-size Proc@$enter
+x Align stack allocations
 ~ Args on stack
