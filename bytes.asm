@@ -56,7 +56,9 @@ section '.rodata'
 section '.text' executable
   public _start
 
-Proc@$enter _start,8
+; ---   *   ---   *   ---
+
+proc _start
 
   Proc@$var word ptr
 
@@ -64,7 +66,8 @@ Proc@$enter _start,8
   Mem@$alloc Log_Unit %ptr
 
   Proc@$call word_str,\
-    $1122334455667788,[%ptr]
+    $1122334455667788,\
+    [%ptr]
 
   Proc@$call word_str,\
     $99AABBCCDDEEFF00,\
@@ -78,7 +81,7 @@ Proc@$enter _start,8
   Mem@$del
   exit
 
-Proc@$leave
+end_proc leave
 
 ; ---   *   ---   *   ---
 ; converts word to 16 ascii bytes
@@ -87,7 +90,7 @@ Proc@$leave
 ; rdi: src word
 ; rsi: dst buff
 
-Proc@$enter word_str,1
+proc word_str
 
   push rbx
   xor rcx,rcx
@@ -157,6 +160,6 @@ Proc@$enter word_str,1
 
   pop rbx
 
-Proc@$ret
+end_proc ret
 
 ; ---   *   ---   *   ---

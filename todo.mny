@@ -7,3 +7,7 @@
 
 *>Worg
 ~ Allow blank env for absolute paths when importing
+
+*>Proc
+~ Auto-size Proc@$enter
+~ Args on stack

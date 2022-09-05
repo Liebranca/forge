@@ -66,7 +66,7 @@ macro Proc@$grow_list cur,name,size {
 ; ---   *   ---   *   ---
 ; aggregate to current namespace
 
-macro Proc@$enter name,size=0 {
+macro Proc@$enter name {
 
   status equ 0
 
@@ -76,36 +76,23 @@ macro Proc@$enter name,size=0 {
     Proc@current equ name
     status equ 1
 
-    match any,Proc@current \\{
-      Proc@$make_list any
-
-    \\}
-
   \}
 
 ; ---   *   ---   *   ---
 
   match =0 any,status Proc@current \{
     label any\#.\#name at $
-
     Proc@current equ any\#.\#name
-    Proc@$make_list any
 
   \}
 
-  ; debug
   match any,Proc@current \{
-    out@chd any
+    Proc@$make_list any
 
   \}
 
   List@$push Proc@name_stack,name
   Worg@$symcnt Proc@name_stack_top
-
-  enter size,Proc@current_depth
-  xor spl,spl
-
-  Worg@$symcnt Proc@current_depth
 
 }
 
@@ -190,33 +177,37 @@ macro Proc@$call name,[args] {
     stack_args_sz equ 0
 
   forward
-    List@$shift order,next
 
-    ; registers avail
-    match r,next \{
+    match any,args \{
+      List@$shift order,next
 
-      local status
-      status equ 0
+      ; registers avail
+      match r,next \\{
 
-      match value =|> iv,args \\{
-        mov r,value
-        Proc@$ins_on_args r,iv
+        local status
+        status equ 0
 
-        status equ 1
+        match value =|> iv,args \\\{
+          mov r,value
+          Proc@$ins_on_args r,iv
+
+          status equ 1
+
+        \\\}
+
+        match =0,status \\\{
+          mov r,args
+
+        \\\}
 
       \\}
 
-      match =0,status \\{
-        mov r,args
+      ; else push to stack
+      match ,next \\{
+        List@$unshift stack_args_list,args
+        stack_args_sz equ stack_args_sz+1
 
       \\}
-
-    \}
-
-    ; else push to stack
-    match ,next \{
-      List@$unshift stack_args_list,args
-      stack_args_sz equ stack_args_sz+1
 
     \}
 
@@ -283,5 +274,59 @@ macro Proc@$var TN {
   \}
 
 }
+
+; ---   *   ---   *   ---
+
+macro Proc@$def_open name {
+
+  Proc@$enter name
+
+  macro Proc@$def_#name \{
+
+    match any,Proc@current \\{
+
+      stirr7 any,@var_sz
+
+      PROCBEG=$+1
+      enter any,Proc@current_depth
+      xor spl,spl
+
+      Worg@$symcnt Proc@current_depth
+
+    \\}
+
+  \}
+
+  Proc@$def_#name
+
+}
+
+macro Proc@$def_close at_end {
+
+  Proc@$def_body
+
+  ; a hack: rewrite first operand of
+  ; enter directive with stack frame size
+  match any,Proc@current \{
+
+    local off
+    off equ 0
+
+    Proc@$get_varoffset any,off
+    store word off at PROCBEG
+
+  \}
+
+  Proc@$#at_end
+
+}
+
+; ---   *   ---   *   ---
+
+proc fix macro Proc@$def_body {\
+  Proc@$def_open
+
+end_proc fix }\
+  Proc@$def_close
 
 ; ---   *   ---   *   ---
