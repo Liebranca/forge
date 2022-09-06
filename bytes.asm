@@ -20,40 +20,40 @@ end if
 
   TITLE     bytes
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 
-%St
+reg
 
-  dq a ?
-  db ws0 ?
+  dq a    ?
+  db ws0  ?
 
-  dq b ?
-  db ws1 ?
+  dq b    ?
+  db ws1  ?
 
-  dq c ?
-  db ws2 ?
+  dq c    ?
+  db ws2  ?
 
-  dq d ?
-  dw nl ?
+  dq d    ?
+  dw nl   ?
 
-^St Log_Unit
+end_reg Log_Unit
 
 ; ---   *   ---   *   ---
 
-section '.data' writeable
+section '.data' writeable align $10
   mem Mem
 
 ; ---   *   ---   *   ---
 
-section '.rodata'
+section '.rodata' align $10
   HEX_TAB db "0123456789ABCDEF"
 
 ; ---   *   ---   *   ---
 
-section '.text' executable
+section '.text' executable align $10
   public _start
 
 ; ---   *   ---   *   ---

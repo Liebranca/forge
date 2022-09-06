@@ -18,7 +18,7 @@ if ~ defined loaded?Worg
 end if
 
 %Worg
-  use '.inc' St
+  use '.inc' Peso:Reg
 
 ^Worg ARPATH '/forge/'
 
@@ -42,12 +42,12 @@ end if
 ; ---   *   ---   *   ---
 ; types
 
-  %St
+reg
 
-    dq top  ?
-    dq sz   ?
+  dq top  ?
+  dq sz   ?
 
-  ^St Mem
+end_reg Mem
 
 ; ---   *   ---   *   ---
 

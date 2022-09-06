@@ -34,6 +34,10 @@ end if
 ; GBL
 
   define Proc@current
+
+  ; these are useless as I can't seem to nest
+  ; procedure decls way I want without a preproc
+  ; ... saving them until I write one ;>
   define Proc@current_depth 0
   define Proc@name_stack
   define Proc@name_stack_top 0
@@ -41,18 +45,15 @@ end if
   define Proc@args_order \
     rdi : rsi : rdx : rcx : r8  :& r9
 
-  define sizeof.byte $01
-  define sizeof.wide $02
-  define sizeof.half $04
-  define sizeof.word $08
-  define sizeof.unit $10
-
 ; ---   *   ---   *   ---
 
 macro Proc@$make_list cur {
 
   define cur#@var_list
   define cur#@var_sz 0
+
+  define cur#@arg_list
+  define cur#@arg_cnt 0
 
 }
 
@@ -319,27 +320,40 @@ macro Proc@$var TN {
 
 ; ---   *   ---   *   ---
 
-macro Proc@$def_open name {
+macro Proc@$def_open name,[args] {
 
-  Proc@$enter name
+  common
 
-  macro Proc@$def_#name \{
+    Proc@$enter name
 
-    match any,Proc@current \\{
+    macro Proc@$def_#name \{
 
-      PROCBEG=$+1
-      enter 0,Proc@current_depth
-      xor spl,spl
+      match any,Proc@current \\{
 
-      Worg@$symcnt Proc@current_depth
+        PROCBEG=$+1
+        enter 0,Proc@current_depth
+        xor spl,spl
 
-    \\}
+        Worg@$symcnt Proc@current_depth
 
-  \}
+      \\}
 
-  Proc@$def_#name
+    \}
+
+    Proc@$def_#name
+
+; ---   *   ---   *   ---
+
+  forward
+
+    match type name,args \{
+      out@chd type,':',name
+
+    \}
 
 }
+
+; ---   *   ---   *   ---
 
 macro Proc@$def_close at_end {
 

@@ -18,7 +18,7 @@ if ~ defined loaded?Worg
 end if
 
 %Worg
-  use '.inc' St
+  use '.inc' Peso:Reg
 
 ^Worg ARPATH '/forge/'
 

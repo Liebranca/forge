@@ -7,8 +7,18 @@
 
 *>Worg
 ~ Allow blank env for absolute paths when importing
+~ Ditch the %open/^close syntax, it's horrible
 
 *>Proc
 x Auto-size Proc@$enter
 x Align stack allocations
+~ Specify nihil/stark/signal on decl
 ~ Args on stack
+
+*>Reg
+~ Apply peso rules to St
+x ^Alignment
+~ ^Proc linking
+
+*>Conditionals
+~ on && ur statements
