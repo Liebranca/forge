@@ -12,15 +12,15 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Worg
-  include '%ARPATH%/forge/Worg.inc'
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-%Worg
-  use '.inc' Arstd:IO
+imp
+  use '.inc' Arstd::IO
 
-^Worg ARPATH '/forge/'
+end_imp ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 ; info
@@ -59,7 +59,7 @@ macro Proc@$make_list cur {
 
 macro Proc@$grow_list cur,name,size {
   List@$unshift cur#@var_list,name
-  Worg@$symcnt cur#@var_sz,size
+  symcnt cur#@var_sz,+size
 
 }
 
@@ -92,7 +92,7 @@ macro Proc@$enter name {
   \}
 
   List@$push Proc@name_stack,name
-  Worg@$symcnt Proc@name_stack_top
+  symcnt Proc@name_stack_top
 
 }
 
@@ -108,7 +108,7 @@ macro Proc@$leave {
 
   local name
   List@$pop Proc@name_stack,name
-  Worg@$symcnt Proc@name_stack_top,-1
+  symcnt Proc@name_stack_top,-1
 
   name equ
   List@$flatten Proc@name_stack,\
@@ -139,7 +139,7 @@ macro Proc@$leave {
 
   \}
 
-  Worg@$symcnt Proc@current_depth,-1
+  symcnt Proc@current_depth,-1
   leave
 
 }
@@ -334,7 +334,7 @@ macro Proc@$def_open name,[args] {
         enter 0,Proc@current_depth
         xor spl,spl
 
-        Worg@$symcnt Proc@current_depth
+        symcnt Proc@current_depth
 
       \\}
 

@@ -1,13 +1,14 @@
->Runtime v0.00.1
+>Runtime v0.00.1b
 
 *>Strings
 ~ length
 ~ alloc
 ~ cat
 
-*>Worg
-~ Allow blank env for absolute paths when importing
-~ Ditch the %open/^close syntax, it's horrible
+>Environment v0.00.1b
+*>Imp
+x Allow blank env for absolute paths when importing
+x Ditch the %open/^close syntax, it's horrible
 
 *>Proc
 x Auto-size Proc@$enter

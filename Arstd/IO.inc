@@ -12,15 +12,15 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Worg
-  include '%ARPATH%/forge/Worg.inc'
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-%Worg
-  use '.inc' Peso:Reg
+imp
+  use '.inc' Peso::Reg
 
-^Worg ARPATH '/forge/'
+end_imp ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 ; info
@@ -96,35 +96,6 @@ forward
     \}
 
   end if
-
-}
-
-; ---   *   ---   *   ---
-; testing stuff, nevermind this
-
-macro __ptr_decl kls,NTA {
-
-  local status
-  status equ 0
-
-  match type name =: addr,NTA \{
-    out@sys type,name,':',addr
-    out@chd 'fukkkkkk'
-
-    status equ 1
-
-  \}
-
-  match =0,status \{
-    out@err 'bad NTA for',kls
-
-  \}
-
-}
-
-macro nit NTA {
-
-  __ptr_decl 'obj',NTA
 
 }
 

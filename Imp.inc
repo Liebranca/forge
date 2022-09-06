@@ -1,6 +1,6 @@
 ; ---   *   ---   *   ---
-; WORG
-; Hunts you down
+; IMP
+; Little depsearchin devil
 ;
 ; LIBRE SOFTWARE
 ; Licensed under GNU GPL3
@@ -12,6 +12,11 @@
 ; ---   *   ---   *   ---
 ; deps
 
+if ~ defined loaded?Arstd.Style
+  include '%ARPATH%/forge/Arstd/Style.inc'
+
+end if
+
 if ~ defined loaded?Arstd.List
   include '%ARPATH%/forge/Arstd/List.inc'
 
@@ -20,26 +25,20 @@ end if
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     Worg
+  TITLE     Imp
 
-  VERSION   v0.00.2a
+  VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; utils
-
-; pastes comma separated as lines
-macro Worg@$npaste [line] {forward line}
 
 ; ---   *   ---   *   ---
 ; pops first elem from path:to:file
 
-macro Worg@$break_path list,elem {
+macro Imp@$break_path list,elem {
 
   local status
   status equ 0
 
-  match value =: next,list \{
+  match value =:: next,list \{
 
     elem equ value
     list equ next
@@ -58,62 +57,15 @@ macro Worg@$break_path list,elem {
 }
 
 ; ---   *   ---   *   ---
-
-; ^space cats at end
-macro Worg@$ecat list,item {
-
-  match any,list \{list equ list item\}
-  match ,list \{list equ item\}
-
-}
-
-; ---   *   ---   *   ---
-; ^space cats at beg
-
-macro Worg@$bcat list,item {
-
-  match any,list \{list equ item list\}
-  match ,list \{list equ item\}
-
-}
-
-; ^takes left-most token
-macro Worg@$uncat list,elem {
-
-  match value next,list \{
-
-    elem equ value
-    list equ next
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; uses a symbolic constant as a counter (!!)
-
-macro Worg@$symcnt sym,value=1 {
-
-  local cnt
-
-  ; increment
-  cnt equ sym
-  cnt equ cnt+value
-
-  sym equ cnt
-
-}
-
-; ---   *   ---   *   ---
 ; ensures file is included only once
 
-macro Worg@$load {
+macro Imp@$load {
 
   local fcnt
   local list
 
-  list equ Worg@pending_list
-  fcnt equ Worg@pending_cnt
+  list equ Imp@pending_list
+  fcnt equ Imp@pending_cnt
 
   rept fcnt \{
 
@@ -153,51 +105,40 @@ macro Worg@$load {
 ; cats vars from get_files and attemps
 ; to load in the file
 
-macro Worg@$mkpath env,md,sd,sd_alt,fname,ext {
+macro Imp@$mkpath env,md,sd,sd_alt,fname,ext {
 
-  List@$push Worg@pending_list,sd_alt#.#fname \
-    '%'#`env#'%'#md#`sd#`/#`fname#ext
+  local status
+  status equ 0
 
-}
+  ; blank env
+  match =_,env \{
+    List@$push Imp@pending_list,sd_alt#.#fname \
+      md#`sd#`/#`fname#ext
 
-; ---   *   ---   *   ---
-; ive been writing macros for 17 hours straight and
-; no longer know what to call them: the movie
-
-macro stirr3 a,b,c {
-  a equ `a#`b#`c
-
-}
-
-macro stirr7 a,b,c {
-
-  match any,a \{
-    a equ any\#b#c
+    status equ 1
 
   \}
 
-  match ,a \{
-    a equ c
+  ; use env
+  match =0,status \{
+
+    List@$push Imp@pending_list,sd_alt#.#fname \
+      '%'#`env#'%'#md#`sd#`/#`fname#ext
 
   \}
-
-}
-
-macro stirr99 a,b {
-  a equ b#a
 
 }
 
 ; ---   *   ---   *   ---
 ; walks collected file list
 
-macro Worg@$get_files header {
+macro Imp@$get_files header {
 
   local cnt
   local fcnt
   local status
 
-  cnt equ Worg@file_count
+  cnt equ Imp@file_count
   status equ 0
 
   define tmp 0
@@ -207,22 +148,22 @@ macro Worg@$get_files header {
     match env module,header \\{
 
       define elem
-      define Worg@module module
+      define Imp@module module
 
-      define Worg@path
-      define Worg@fname
-      define Worg@subdir
-      define Worg@subdir_alt
+      define Imp@path
+      define Imp@fname
+      define Imp@subdir
+      define Imp@subdir_alt
 
-      List@$shift Worg@file_list,elem
-      Worg@$symcnt tmp
+      List@$shift Imp@file_list,elem
+      symcnt tmp
 
 ; ---   *   ---   *   ---
 ; break down the path for this module
 
       match ext path,elem \\\{
 
-        Worg@path equ path
+        Imp@path equ path
         status equ 0
 
 ; ---   *   ---   *   ---
@@ -234,13 +175,13 @@ macro Worg@$get_files header {
           if status<2
           status equ 0
 
-          match any next,Worg@path \\\\\{
+          match any next,Imp@path \\\\\{
 
 ; ---   *   ---   *   ---
 ; cat 'dir' to 'subdir'
 ; this makes 'dir/subdir' ;>
 
-            match prev,Worg@subdir \\\\\\{
+            match prev,Imp@subdir \\\\\\{
 
               define tmp prev
 
@@ -248,12 +189,12 @@ macro Worg@$get_files header {
               match pprev,tmp \\\\\\\{
 
                 stirr7 pprev,.,any
-                Worg@subdir_alt equ pprev
+                Imp@subdir_alt equ pprev
 
               \\\\\\\}
 
-              stirr3 prev,'/',any
-              Worg@subdir equ prev
+              strfcat prev,'/',any
+              Imp@subdir equ prev
 
               restore tmp
 
@@ -262,13 +203,13 @@ macro Worg@$get_files header {
 ; ---   *   ---   *   ---
 ; only filename pending!
 
-            match ,Worg@subdir \\\\\\{
-              Worg@subdir equ any
-              Worg@subdir_alt equ any
+            match ,Imp@subdir \\\\\\{
+              Imp@subdir equ any
+              Imp@subdir_alt equ any
 
             \\\\\\}
 
-            Worg@path equ next
+            Imp@path equ next
             status equ 1
 
 
@@ -277,9 +218,9 @@ macro Worg@$get_files header {
 
           \\\\\}
 
-          match =0 any,status Worg@path \\\\\{
-            Worg@fname equ any
-            Worg@path equ
+          match =0 any,status Imp@path \\\\\{
+            Imp@fname equ any
+            Imp@path equ
 
             status equ 2
 
@@ -292,17 +233,17 @@ macro Worg@$get_files header {
 ; ---   *   ---   *   ---
 ; cat resulting vars together and load module
 
-        match ,Worg@subdir_alt \\\\{
-          Worg@subdir_alt equ _
-          Worg@subdir equ ''
+        match ,Imp@subdir_alt \\\\{
+          Imp@subdir_alt equ _
+          Imp@subdir equ ''
 
         \\\\}
 
         match md sd sd_alt fname ,\
-          Worg@module Worg@subdir \
-          Worg@subdir_alt Worg@fname  \\\\{
+          Imp@module Imp@subdir \
+          Imp@subdir_alt Imp@fname  \\\\{
 
-          Worg@$mkpath env,md,sd,sd_alt,fname,ext
+          Imp@$mkpath env,md,sd,sd_alt,fname,ext
 
         \\\\}
 
@@ -310,34 +251,34 @@ macro Worg@$get_files header {
 
       \\\}
 
-      restore Worg@subdir_alt
-      restore Worg@subdir
-      restore Worg@fname
-      restore Worg@path
+      restore Imp@subdir_alt
+      restore Imp@subdir
+      restore Imp@fname
+      restore Imp@path
 
-      restore Worg@module
+      restore Imp@module
       restore elem
 
     \\}
 
   \}
 
-  restore Worg@file_list
-  restore Worg@file_count
+  restore Imp@file_list
+  restore Imp@file_count
 
-  Worg@pending_cnt equ tmp
+  Imp@pending_cnt equ tmp
 
-  Worg@$load
+  Imp@$load
 
-  restore Worg@pending_cnt
-  restore Worg@pending_list
+  restore Imp@pending_cnt
+  restore Imp@pending_list
 
 }
 
 ; ---   *   ---   *   ---
 ; creates the 'use' keyword
 
-macro Worg@$enable_use {
+macro Imp@$enable_use {
 
   macro use value \{
 
@@ -358,14 +299,14 @@ macro Worg@$enable_use {
 
           define elem
 
-          Worg@$break_path remain,elem
-          Worg@$ecat nested,elem
+          Imp@$break_path remain,elem
+          spacecat nested,elem
 
           ; ^then push to list
           match ,remain \\\\\{
 
-            List@$push Worg@file_list,ext nested
-            Worg@$symcnt Worg@file_count
+            List@$push Imp@file_list,ext nested
+            symcnt Imp@file_count
 
           \\\\\}
 
@@ -387,19 +328,18 @@ macro Worg@$enable_use {
 }
 
 ; ^destroys the use keyword
-macro Worg@$disable_use {purge use}
+macro Imp@$disable_use {purge use}
 
 ; ---   *   ---   *   ---
 ; generator header/tail
 
-%Worg fix Worg@$npaste
-  Worg@$npaste Worg@$enable_use,\
-  define Worg@file_count 0,\
-  define Worg@file_list,\
-  define Worg@pending_list,\
-  define Worg@pending_cnt 0
+imp fix npaste Imp@$enable_use,\
+  define Imp@file_count 0,\
+  define Imp@file_list,\
+  define Imp@pending_list,\
+  define Imp@pending_cnt 0
 
-^Worg fix Worg@$npaste Worg@$disable_use,\
-  Worg@$get_files
+end_imp fix npaste Imp@$disable_use,\
+  Imp@$get_files
 
 ; ---   *   ---   *   ---

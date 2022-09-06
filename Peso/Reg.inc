@@ -12,8 +12,8 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Worg
-  include '%ARPATH%/forge/Worg.inc'
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
 
 end if
 
@@ -39,16 +39,6 @@ end if
   define sizeof.xword $10
   define sizeof.yword $20
   define sizeof.zword $40
-
-; ---   *   ---   *   ---
-; for <namespace>.elem
-
-macro dotcat a,b {
-
-  define catted
-  catted equ a#.#b
-
-}
 
 ; ---   *   ---   *   ---
 
@@ -162,13 +152,16 @@ macro __fields_beg base {
         Reg@$align_to type
 
         ; increment
-        Worg@$symcnt Reg@elem_cnt
+        symcnt Reg@elem_cnt
 
         ; capture
         List@$push Reg@list,name type value
 
         ; paste in virtual decl
-        dotcat base,name
+        local catted
+        catted equ base
+
+        stirr7 catted,.,name
         catted type value
 
         status equ 1
@@ -177,7 +170,7 @@ macro __fields_beg base {
 
       ; anon
       match =0 value,status x \\\{
-        Worg@$symcnt Reg@elem_cnt
+        symcnt Reg@elem_cnt
         List@$push Reg@list,type value
 
         type value
@@ -222,7 +215,11 @@ macro Reg@$elem_paste inst,list,cnt {
 
     ; labeled
     match n type value,elem \\{
-      dotcat inst,n
+
+      local catted
+      catted equ inst
+
+      stirr7 catted,.,n
       catted type value
 
       status equ 1
@@ -330,10 +327,10 @@ macro Reg@$make name {
 ; generator header/tail
 
 reg fix macro Reg@$nit name {\
-  Worg@$npaste struc name \{virtual at 0,\
+  npaste struc name \{virtual at 0,\
     first=$,__fields_beg name
 
-end_reg fix Worg@$npaste __fields_end,\
+end_reg fix npaste __fields_end,\
   sizeof.#name=$-first,\
   end virtual,\}}\
   Reg@$make

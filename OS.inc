@@ -12,15 +12,15 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Worg
-  include '%ARPATH%/forge/Worg.inc'
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-%Worg
-  use '.inc' Peso:Reg
+imp
+  use '.inc' Peso::Reg
 
-^Worg ARPATH '/forge/'
+end_imp ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 ; info

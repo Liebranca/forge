@@ -3,17 +3,18 @@ format ELF64
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Worg
-  include '%ARPATH%/forge/Worg.inc'
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-%Worg
-  use '.inc' OS
-  use '.inc' Arstd:IO
-  use '.inc' Peso:Proc
+imp
 
-^Worg ARPATH '/forge/'
+  use '.inc' OS
+  use '.inc' Arstd::IO
+  use '.inc' Peso::Proc
+
+end_imp ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 ; info
