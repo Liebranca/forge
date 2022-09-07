@@ -13,6 +13,7 @@ x Ditch the %open/^close syntax, it's horrible
 *>Proc
 x Auto-size Proc@$enter
 x Align stack allocations
+x Nested blocks
 ~ Specify nihil/stark/signal on decl
 ~ Args on stack
 

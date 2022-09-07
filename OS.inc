@@ -65,7 +65,7 @@ macro exit exit_code=0 {
 macro write f*,msg*,len* {
 
   mov rdi,f
-  mov rsi,msg
+  lea rsi,[msg]
   mov rdx,len
 
   mov rax,SYS_WRITE

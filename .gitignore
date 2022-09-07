@@ -1,4 +1,10 @@
 
 *.bin
 *.o
+
+mig/
+
+# test binaries
 bytes
+dlink
+tests/proc

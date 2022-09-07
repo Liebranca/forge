@@ -31,6 +31,11 @@ end if
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; GBL
+
+  define interp@default '/lib64/ld-linux-x86-64.so.2'
+
+; ---   *   ---   *   ---
 ; pops first elem from path:to:file
 
 macro Imp@$break_path list,elem {

@@ -23,7 +23,7 @@ A recurring question in fasm boards: how do I ensure a file is included only onc
 
 # WAY IT WORKS
 
-Worg checks for a `define`d symbol by the name of `loaded?<ID>` to identify if a file has already been imported by another dependency somewhere else in the program; `ID` always corresponds to the name of the file without extensions.
+Imp checks for a `define`d symbol by the name of `loaded?<ID>` to identify if a file has already been imported by another dependency somewhere else in the program; `ID` always corresponds to the name of the file without extensions.
 
 The following snippet:
 
@@ -49,7 +49,7 @@ end if
 
 Uppon first being included, Imp inserts itself into the `loaded?` namespace to allow it's own status to be evaluated in this way.
 
-In addition to file imports, Worg provides the macros `TITLE`, `VERSION` and `AUTHOR` from `Arstd/INCFILE.inc` to go along with it. These are used like so:
+In addition to file imports, Imp provides the macros `TITLE`, `VERSION` and `AUTHOR` from `Arstd/INCFILE.inc` to go along with it. These are used like so:
 
 ```asm
 
@@ -78,7 +78,7 @@ The only requirement is that all your fields are defined *after* `TITLE`.
 
 # FUTURE PLANS
 
-Right from the very start Worg was complete enough for what I needed it for. However, improvements can always be made. For any other corner-cases, oddities or annoyances you might encounter, please open an issue or contact me directly.
+Right from the very start Imp was complete enough for what I needed it for. However, improvements can always be made. For any oddities or annoyances you might encounter, please open an issue or contact me directly.
 
 # CHANGELOG
 
@@ -87,3 +87,5 @@ Right from the very start Worg was complete enough for what I needed it for. How
 - Importing from absolute paths. If you do not wish for Imp to use an environment variable to build the path to the files, you may simply pass a single `_` underscore in place of the name of an environ.
 
 - General purpose macros moved to `Arstd::Style`
+
+- Using `::` two colons for module paths instead of a single one, to keep consistency with the Perl and C++ sides of the codebase.

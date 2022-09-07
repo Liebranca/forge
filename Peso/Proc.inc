@@ -35,9 +35,6 @@ end_imp ARPATH '/forge/'
 
   define Proc@current
 
-  ; these are useless as I can't seem to nest
-  ; procedure decls way I want without a preproc
-  ; ... saving them until I write one ;>
   define Proc@current_depth 0
   define Proc@name_stack
   define Proc@name_stack_top 0
@@ -285,34 +282,49 @@ macro Proc@$align_to size {
 ; ---   *   ---   *   ---
 ; declare in current namespace
 
-macro Proc@$var TN {
+macro Proc@$var type,name {
 
-  match type name,TN\{
+  match any,Proc@current \{
 
-    match any,Proc@current \\{
+    match ,sizeof.\#type \\{
+      out@err 'Unrecognized type:',type
 
-      if defined sizeof.\#type
-        size equ sizeof.\#type
-        size equ size
+    \\}
 
-      else
-        out@err 'Unrecognized type:',type
-
-      end if
+    size equ sizeof.\#type
+    size equ size
 
 ; ---   *   ---   *   ---
 
-      local off
+    local off
 
-      Proc@$align_to size
-      Proc@$get_varoffset any,off
+    Proc@$align_to size
+    Proc@$get_varoffset any,off
 
-      Proc@$catvar any,name,rbp-(off+size)
-      %\#name equ rbp-(off+size)
+    Proc@$catvar any,name,rbp-(off+size)
+    %\#name equ rbp-(off+size)
 
-      Proc@$grow_list any,name,size
+    Proc@$grow_list any,name,size
 
-    \\}
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; aliases do/undo
+
+macro Proc@$enable_var {
+
+  irp type, byte,word,dword,qword \{
+    macro type name \\{Proc@$var type,name\\}
+
+  \}
+
+}
+
+macro Proc@$disable_var {
+  irp type, byte,word,dword,qword \{
+    purge type
 
   \}
 
@@ -320,44 +332,24 @@ macro Proc@$var TN {
 
 ; ---   *   ---   *   ---
 
-macro Proc@$def_open name,[args] {
+macro Proc@$def_open name,type=nihil {
 
-  common
+  Proc@$enter name
+  match any,Proc@current \{
 
-    Proc@$enter name
+    any\#_beg=$+1
+    enter 0,Proc@current_depth
+    xor spl,spl
 
-    macro Proc@$def_#name \{
+    symcnt Proc@current_depth
 
-      match any,Proc@current \\{
-
-        PROCBEG=$+1
-        enter 0,Proc@current_depth
-        xor spl,spl
-
-        symcnt Proc@current_depth
-
-      \\}
-
-    \}
-
-    Proc@$def_#name
-
-; ---   *   ---   *   ---
-
-  forward
-
-    match type name,args \{
-      out@chd type,':',name
-
-    \}
+  \}
 
 }
 
 ; ---   *   ---   *   ---
 
 macro Proc@$def_close at_end {
-
-  Proc@$def_body
 
   ; a hack: rewrite first operand of
   ; enter directive with stack frame size
@@ -367,7 +359,7 @@ macro Proc@$def_close at_end {
     off equ 0
 
     Proc@$get_varoffset any,off
-    store word off at PROCBEG
+    store word off at any\#_beg
 
   \}
 
@@ -377,10 +369,12 @@ macro Proc@$def_close at_end {
 
 ; ---   *   ---   *   ---
 
-proc fix macro Proc@$def_body {\
+proc fix npaste\
+  Proc@$enable_var,\
   Proc@$def_open
 
-end_proc fix }\
+end_proc fix npaste\
+  Proc@$disable_var,\
   Proc@$def_close
 
 ; ---   *   ---   *   ---
