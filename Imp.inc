@@ -30,6 +30,8 @@ end if
   VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
 
+  define    loaded?Imp 1
+
 ; ---   *   ---   *   ---
 ; GBL
 

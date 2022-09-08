@@ -17,11 +17,6 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
-  use '.inc' Peso::Reg
-
-end_imp ARPATH '/forge/'
-
 ; ---   *   ---   *   ---
 ; info
 
@@ -57,13 +52,20 @@ macro d'oh! src,[args] {
     display src
 
   forward
-    if args eq '__FILE__'
-      display $20,__FILE__
 
-    else
+    local status
+    status equ 0
+
+    match '__FILE__',args \{
+      display $20,__FILE__
+      status equ 1
+
+    \}
+
+    match =0,status \{
       display $20,`args
 
-    end if
+    \}
 
   common
     display $0A

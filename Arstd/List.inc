@@ -25,6 +25,8 @@ end if
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
 
+  define    loaded?List 1
+
 ; ---   *   ---   *   ---
 
 macro List@$push list,elem& {

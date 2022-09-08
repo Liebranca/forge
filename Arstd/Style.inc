@@ -25,6 +25,8 @@ end if
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
 
+  define    loaded?Style 1
+
 ; ---   *   ---   *   ---
 ; pastes comma separated as lines
 

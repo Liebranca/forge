@@ -111,14 +111,29 @@ macro Mem@$del {
 
 }
 
-macro Mem@$alloc TP {
+macro Mem@$alloc TP,alt=0 {
 
-  match self vt pt,Mem@self TP \{
+  local status
+  status equ 0
+
+  match =0 self vt pt,alt Mem@self TP \{
 
     mov rax,qword [self\#.top]
     mov [pt],rax
 
     brk self,sizeof.\#vt
+
+    status equ 1
+
+  \}
+
+  match =0 self size dst,\
+    status Mem@self TP alt \{
+
+    mov rax,qword [self\#.top]
+    mov [dst],rax
+
+    brk self,size
 
   \}
 

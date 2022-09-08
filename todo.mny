@@ -1,5 +1,10 @@
 >Runtime v0.00.1b
 
+*>Allocator
+~ block headers
+~ memcpy
+~ free
+
 *>Strings
 ~ length
 ~ alloc
@@ -22,5 +27,8 @@ x Nested blocks
 x ^Alignment
 ~ ^Proc linking
 
+~ Stack allocation
+
 *>Conditionals
-~ on && ur statements
+x on && off statements
+~ ^ nested

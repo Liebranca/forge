@@ -18,6 +18,7 @@ if ~ defined loaded?Imp
 end if
 
 imp
+  use '.inc' Peso::Reg
   use '.inc' Arstd::IO
 
 end_imp ARPATH '/forge/'
@@ -61,6 +62,26 @@ macro Proc@$grow_list cur,name,size {
 }
 
 ; ---   *   ---   *   ---
+; quick namespace open/close
+; might make a more refined system later
+
+macro clan name {
+  Proc@current equ name
+  Proc@current_depth equ 0
+  Proc@name_stack equ
+  Proc@name_stack_top equ 0
+
+}
+
+macro end_clan {
+  Proc@current equ
+  Proc@current_depth equ 0
+  Proc@name_stack equ
+  Proc@name_stack_top equ 0
+
+}
+
+; ---   *   ---   *   ---
 ; aggregate to current namespace
 
 macro Proc@$enter name {
@@ -96,7 +117,7 @@ macro Proc@$enter name {
 ; ---   *   ---   *   ---
 ; ^substract
 
-macro Proc@$leave {
+macro Proc@$leave is_clan=0 {
 
   match ,Proc@current \{
     out@err 'No current procedure'
@@ -137,7 +158,11 @@ macro Proc@$leave {
   \}
 
   symcnt Proc@current_depth,-1
-  leave
+
+  match =0,is_clan \{
+    leave
+
+  \}
 
 }
 
@@ -155,6 +180,27 @@ macro Proc@$ins_on_args dst,iv {
 
   match ins value,iv \{
     ins dst,value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; that is the question
+
+macro Proc@$mov_or_lea dst,src {
+
+  local status
+  status equ 0
+
+  match =* addr,src \{
+    lea dst,addr
+    status equ 1
+
+  \}
+
+  match =0,status \{
+    mov dst,src
 
   \}
 
@@ -185,15 +231,15 @@ macro Proc@$call name,[args] {
         status equ 0
 
         match value =|> iv,args \\\{
-          mov r,value
-          Proc@$ins_on_args r,iv
 
+          Proc@$mov_or_lea r,value
+          Proc@$ins_on_args r,iv
           status equ 1
 
         \\\}
 
         match =0,status \\\{
-          mov r,args
+          Proc@$mov_or_lea r,args
 
         \\\}
 
@@ -219,7 +265,7 @@ macro Proc@$call name,[args] {
     local n
     List@$shift Proc@bytecnt,n
 
-    call name
+;    call name
 
 }
 
@@ -313,20 +359,28 @@ macro Proc@$var type,name {
 ; ---   *   ---   *   ---
 ; aliases do/undo
 
-macro Proc@$enable_var {
+macro Proc@$enable_keyw {
 
   irp type, byte,word,dword,qword \{
     macro type name \\{Proc@$var type,name\\}
 
   \}
 
+  macro call name,args& \{
+    Proc@$call name,args
+    call name
+
+  \}
+
 }
 
-macro Proc@$disable_var {
+macro Proc@$disable_keyw {
   irp type, byte,word,dword,qword \{
     purge type
 
   \}
+
+  purge call
 
 }
 
@@ -339,7 +393,7 @@ macro Proc@$def_open name,type=nihil {
 
     any\#_beg=$+1
     enter 0,Proc@current_depth
-    xor spl,spl
+    and spl,$F0
 
     symcnt Proc@current_depth
 
@@ -370,11 +424,11 @@ macro Proc@$def_close at_end {
 ; ---   *   ---   *   ---
 
 proc fix npaste\
-  Proc@$enable_var,\
+  Proc@$enable_keyw,\
   Proc@$def_open
 
 end_proc fix npaste\
-  Proc@$disable_var,\
+  Proc@$disable_keyw,\
   Proc@$def_close
 
 ; ---   *   ---   *   ---

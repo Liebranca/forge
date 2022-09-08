@@ -1,4 +1,4 @@
-format ELF64
+format ELF64 executable 3
 
 ; ---   *   ---   *   ---
 ; deps
@@ -24,6 +24,8 @@ end_imp ARPATH '/forge/'
   VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
+  entry     _start
+
 ; ---   *   ---   *   ---
 
 reg
@@ -44,37 +46,34 @@ end_reg Log_Unit
 
 ; ---   *   ---   *   ---
 
-section '.data' writeable align $10
+segment readable writeable
   mem Mem
 
 ; ---   *   ---   *   ---
 
-section '.rodata' align $10
+segment readable
   HEX_TAB db "0123456789ABCDEF"
 
 ; ---   *   ---   *   ---
 
-section '.text' executable align $10
-  public _start
-
-; ---   *   ---   *   ---
+segment executable
 
 proc _start
 
-  Proc@$var word ptr
+  qword lu
 
   Mem@$nit
-  Mem@$alloc Log_Unit %ptr
+  Mem@$alloc Log_Unit %lu
 
   Proc@$call word_str,\
     $1122334455667788,\
-    [%ptr]
+    [%lu]
 
   Proc@$call word_str,\
     $99AABBCCDDEEFF00,\
-    [%ptr] |> add Log_Unit.c
+    [%lu] |> add Log_Unit.c
 
-  mov rsi,[%ptr]
+  mov rsi,[%lu]
   mov word [rsi+Log_Unit.nl],$000A
 
   write 1,rsi,sizeof.Log_Unit
@@ -97,8 +96,7 @@ proc word_str
   xor rcx,rcx
   xor rax,rax
 
-  Proc@$var byte cnt
-
+  byte cnt
   mov byte [%cnt],$00
 
 ; ---   *   ---   *   ---

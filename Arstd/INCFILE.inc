@@ -28,7 +28,6 @@ macro INFO_FIELD line {
 
 macro TITLE name {
   define this?module name
-  define loaded?#name 1
 
 }
 
@@ -49,5 +48,7 @@ macro AUTHOR name {
 
   VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
+
+  define    loaded?INCFILE 1
 
 ; ---   *   ---   *   ---

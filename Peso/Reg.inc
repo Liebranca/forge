@@ -17,6 +17,11 @@ if ~ defined loaded?Imp
 
 end if
 
+imp
+  use '.inc' Arstd::IO
+
+end_imp ARPATH '/forge/'
+
 ; ---   *   ---   *   ---
 
   TITLE     Reg
@@ -26,6 +31,8 @@ end if
 
 ; ---   *   ---   *   ---
 ; GBL
+
+  define Reg@curkls
 
   define Reg@t_sz_db $01
   define Reg@t_sz_dw $02
@@ -334,5 +341,41 @@ end_reg fix npaste __fields_end,\
   sizeof.#name=$-first,\
   end virtual,\}}\
   Reg@$make
+
+; ---   *   ---   *   ---
+
+macro wed ni {
+
+  local status
+  status equ 0
+
+  match name ins,ni \{
+    Reg@curkls equ name
+    match any,Reg@curkls \\{
+      any\#@$self ins
+
+    \\}
+
+    status equ 1
+
+  \}
+
+  match =0,status \{
+    Reg@curkls equ ni
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+
+macro xmac name,args& {
+
+  match any,Reg@curkls \{
+    any\#@$#name args
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
