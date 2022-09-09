@@ -105,6 +105,12 @@ macro on ev {
   switch@$get_next_label next,0
 
   EVAL ev,c
+
+  match any,c \{
+    c equ jnz
+
+  \}
+
   c next
 
 }
@@ -112,25 +118,30 @@ macro on ev {
 ; ---   *   ---   *   ---
 ; ^primitive else
 
-macro off ev= {
+macro off fall= {
 
-  local name
-  local endt
+  match any,fall \{
 
-  switch@$get_next_label name,1
-  label name
+    local endt
+    switch@$get_end_label endt,0
 
-  match ,ev \{
-    end_switch
+    jmp endt
 
   \}
+
+  local name
+  switch@$get_next_label name,1
+
+  label name
+
+  match ,fall \{end_on\}
 
 }
 
 ; ---   *   ---   *   ---
 ; obligatory endof
 
-macro end_switch {
+macro end_on {
 
   local name
 

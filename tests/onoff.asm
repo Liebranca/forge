@@ -18,12 +18,7 @@ end_imp ARPATH '/forge/'
 
 _start:
 
-  mov al,0
-  on ! al
-    inc al
-
-  off
-  xor al,al
+  sub sp,word $10
 
 exit
 

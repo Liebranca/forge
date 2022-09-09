@@ -33,8 +33,8 @@ end_imp ARPATH '/forge/'
 ; ---   *   ---   *   ---
 ; GBL
 
-  define Logic@$stack
-  define Logic@$stack_ptr 0
+  define Logic@stack
+  define Logic@stack_ptr 0
 
 ; ---   *   ---   *   ---
 
@@ -53,8 +53,8 @@ macro Logic@$oppy c,a,b {
     bmath lhand,a
     bmath rhand,b
 
-    List@$push Logic@$stack,ins lhand,rhand
-    symcnt Logic@$stack_ptr
+    List@$push Logic@stack,cmp lhand,rhand
+    symcnt Logic@stack_ptr
 
     status equ 1
 
@@ -62,7 +62,9 @@ macro Logic@$oppy c,a,b {
 
   match =0,status \{
 
+    bmath lhand,lhand
     umath lhand,c
+
     status equ 1
 
   \}
@@ -232,8 +234,8 @@ macro umath ev,c {
   ; is zero
   match =0 =! a,status ev \{
 
-    List@$push Logic@$stack,or a,0
-    symcnt Logic@$stack_ptr
+    List@$push Logic@stack,or a,0
+    symcnt Logic@stack_ptr
 
     c equ jnz
 
@@ -244,8 +246,8 @@ macro umath ev,c {
   ; is non-zero
   match =0 =? a,status ev \{
 
-    List@$push Logic@$stack,or a,0
-    symcnt Logic@$stack_ptr
+    List@$push Logic@stack,or a,0
+    symcnt Logic@stack_ptr
 
     c equ jz
 
@@ -256,8 +258,8 @@ macro umath ev,c {
   ; negated
   match =0 =~ a,status ev \{
 
-    List@$push Logic@$stack,not a
-    symcnt Logic@$stack_ptr
+    List@$push Logic@stack,not a
+    symcnt Logic@stack_ptr
 
     status equ 1
 
@@ -274,10 +276,21 @@ macro bmath l,ev {
   status equ 0
 
   ; addition
-  match =0 a =+ b,status ev \{
+;  match =0 a =+ b,status ev \{
+;
+;    List@$push Logic@stack,add a,b
+;    symcnt Logic@stack_ptr
+;
+;    l equ a
+;
+;    status equ 1
+;
+;  \}
 
-    List@$push Logic@$stack,add a,b
-    symcnt Logic@$stack_ptr
+  match =0 a =& b,status ev \{
+
+    List@$push Logic@stack,and a,b
+    symcnt Logic@stack_ptr
 
     l equ a
 
@@ -308,10 +321,10 @@ macro EVAL ev,c {
 
   equality exp,c
 
-  rept Logic@$stack_ptr \{
+  rept Logic@stack_ptr \{
 
     local elem
-    List@$shift Logic@$stack,elem
+    List@$shift Logic@stack,elem
 
     elem
 

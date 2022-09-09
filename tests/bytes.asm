@@ -65,11 +65,11 @@ proc _start
   Mem@$nit
   Mem@$alloc Log_Unit %lu
 
-  Proc@$call word_str,\
+  call qword_str,\
     $1122334455667788,\
     [%lu]
 
-  Proc@$call word_str,\
+  call qword_str,\
     $99AABBCCDDEEFF00,\
     [%lu] |> add Log_Unit.c
 
@@ -87,72 +87,59 @@ end_proc leave
 ; converts word to 16 ascii bytes
 ; in hexadecimal format
 
-; rdi: src word
+; rdi: src qword
 ; rsi: dst buff
 
-proc word_str
+proc qword_str
 
   push rbx
-  xor rcx,rcx
+  xor cx,cx
+  xor rbx,rbx
   xor rax,rax
 
   byte cnt
   mov byte [%cnt],$00
+  add rsi,Log_Unit.b
 
 ; ---   *   ---   *   ---
-; walk the word
+; walk the qword
 
 .top:
 
-  ; copy byte from source
-  xor rbx,rbx
-  mov bl,dil
-
   ; first nyb
-  and bl,$0F
-  mov bl,[HEX_TAB+rbx]
-
-  ; ^assign byte from nyb
-  shl rbx,cl
-  or rax,rbx
-  add cl,$08
-
-; ---   *   ---   *   ---
-; ^repeat
-
-  xor rbx,rbx
   mov bl,dil
+  and bl,$0F
+  or  al,[HEX_TAB+rbx]
 
   ; second nyb
+  mov bl,dil
   shr bl,$04
-  mov bl,[HEX_TAB+rbx]
-
-  ; ^assign
-  shl rbx,cl
-  or rax,rbx
-  add cl,$08
+  or  ah,[HEX_TAB+rbx]
 
 ; ---   *   ---   *   ---
 ; up counters && shift source
 
-  inc byte [%cnt]
   shr rdi,$08
+  inc cl
 
   ; move on half qword
-  cmp cl,$40
-  jne .tail
+  on cl == $04
 
-  mov [rsi],rax
-  mov byte [rsi+Log_Unit.ws0],$20
-  add rsi,Log_Unit.b
+    mov [rsi],rax
+    mov byte [rsi+Log_Unit.ws0],$20
+    sub rsi,Log_Unit.b
 
-  xor cl,cl
-  xor rax,rax
+    xor rax,rax
+    xor cl,cl
+    inc ch
+
+  off
+
+  shl rax,$10
 
 ; ---   *   ---   *   ---
 
-.tail:
-  cmp byte [%cnt],$08
+  cmp ch,2
   jl .top
 
 ; ---   *   ---   *   ---

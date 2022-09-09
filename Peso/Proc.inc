@@ -19,6 +19,8 @@ end if
 
 imp
   use '.inc' Peso::Reg
+  use '.inc' Peso::Switch
+
   use '.inc' Arstd::IO
 
 end_imp ARPATH '/forge/'
@@ -40,8 +42,20 @@ end_imp ARPATH '/forge/'
   define Proc@name_stack
   define Proc@name_stack_top 0
 
+  define Switch@jmp_labels
+  define Switch@label_cnt 0
+
   define Proc@args_order \
     rdi : rsi : rdx : rcx : r8  :& r9
+
+; ---   *   ---   *   ---
+
+macro Proc@$fnret dst {
+
+  genlabel dst,.CR,\
+    Switch@jmp_labels,Switch@label_cnt,1
+
+}
 
 ; ---   *   ---   *   ---
 
@@ -117,7 +131,7 @@ macro Proc@$enter name {
 ; ---   *   ---   *   ---
 ; ^substract
 
-macro Proc@$leave is_clan=0 {
+macro Proc@$leave use_key,is_clan=0 {
 
   match ,Proc@current \{
     out@err 'No current procedure'
@@ -159,8 +173,13 @@ macro Proc@$leave is_clan=0 {
 
   symcnt Proc@current_depth,-1
 
-  match =0,is_clan \{
+  match =1 =0,use_key is_clan \{
     leave
+
+  \}
+
+  match =0 =0,use_key is_clan \{
+    pop rbp
 
   \}
 
@@ -168,8 +187,8 @@ macro Proc@$leave is_clan=0 {
 
 ; ---   *   ---   *   ---
 
-macro Proc@$ret {
-  Proc@$leave
+macro Proc@$ret use_key {
+  Proc@$leave use_key
   ret
 
 }
@@ -264,8 +283,6 @@ macro Proc@$call name,[args] {
 
     local n
     List@$shift Proc@bytecnt,n
-
-;    call name
 
 }
 
@@ -368,6 +385,17 @@ macro Proc@$enable_keyw {
 
   macro call name,args& \{
     Proc@$call name,args
+
+; if you can't use call, this will do
+;
+;    local cr
+;    Proc@$fnret cr
+;    push cr
+;    jmp name
+;    label cr
+;
+; however, it's more and longer instructions
+
     call name
 
   \}
@@ -391,8 +419,11 @@ macro Proc@$def_open name,type=nihil {
   Proc@$enter name
   match any,Proc@current \{
 
-    any\#_beg=$+1
-    enter 0,Proc@current_depth
+    push rbp
+    mov rbp,rsp
+
+    any\#_beg=$+3
+    sub sp,word 0
     and spl,$F0
 
     symcnt Proc@current_depth
@@ -405,19 +436,28 @@ macro Proc@$def_open name,type=nihil {
 
 macro Proc@$def_close at_end {
 
-  ; a hack: rewrite first operand of
-  ; enter directive with stack frame size
+  local status
+
+  ; a hack: rewrite src for sub sp
+  ; with stack frame size
   match any,Proc@current \{
 
     local off
+
     off equ 0
+    status equ 1
 
     Proc@$get_varoffset any,off
     store word off at any\#_beg
 
+    match =0,off \{
+      status equ 0
+
+    \}
+
   \}
 
-  Proc@$#at_end
+  Proc@$#at_end status
 
 }
 
