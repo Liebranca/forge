@@ -81,7 +81,11 @@ macro write f*,msg*,len* {
 
 macro get_time dst* {
 
-  mov rdi,$01
+  mov qword [dst],0
+  mov qword [dst+8],0
+
+  ; CLOCK_THREAD_CPUTIME_ID
+  mov rdi,$03
   lea rsi,[dst]
   mov rax,SYS_TIME
 

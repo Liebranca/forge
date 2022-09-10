@@ -424,7 +424,6 @@ macro Proc@$def_open name,type=nihil {
 
     any\#_beg=$+3
     sub sp,word 0
-    and spl,$F0
 
     symcnt Proc@current_depth
 
