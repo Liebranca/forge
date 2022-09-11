@@ -384,6 +384,7 @@ macro Proc@$enable_keyw {
   \}
 
   macro call name,args& \{
+
     Proc@$call name,args
 
 ; if you can't use call, this will do
@@ -415,6 +416,8 @@ macro Proc@$disable_keyw {
 ; ---   *   ---   *   ---
 
 macro Proc@$def_open name,type=nihil {
+
+  align $10
 
   Proc@$enter name
   match any,Proc@current \{

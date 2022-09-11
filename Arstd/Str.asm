@@ -28,7 +28,7 @@ end_imp ARPATH '/forge/'
 
   TITLE     Arstd.Str
 
-  VERSION   v0.00.1a
+  VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

@@ -10,7 +10,17 @@
 ~ alloc
 ~ cat
 
+*>Misc
+~ Proc pointers
+x kbdmode ioctls
+x tc set/get attr
+~ Subdivide OS
+~ ^ Mem
+x ^ Clock
+x ^ Term
+
 >Environment v0.00.1b
+
 *>Imp
 x Allow blank env for absolute paths when importing
 x Ditch the %open/^close syntax, it's horrible

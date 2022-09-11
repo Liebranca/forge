@@ -27,7 +27,7 @@ end_imp ARPATH '/forge/'
 
   TITLE     OS
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -35,10 +35,9 @@ end_imp ARPATH '/forge/'
 
   define SYS_WRITE  $01
   define SYS_BRK    $0C
-  define SYS_SLEEP  $23
   define SYS_EXIT   $3C
-  define SYS_TIME   $E4
 
+  define STDIN      $00
   define STDOUT     $01
 
 ; ---   *   ---   *   ---
@@ -77,42 +76,6 @@ macro write f*,msg*,len* {
 }
 
 ; ---   *   ---   *   ---
-; *in nanoseconds
-
-macro get_time dst* {
-
-  mov qword [dst],0
-  mov qword [dst+8],0
-
-  ; CLOCK_THREAD_CPUTIME_ID
-  mov rdi,$03
-  lea rsi,[dst]
-  mov rax,SYS_TIME
-
-  syscall
-
-  mov rax,[dst]
-  mov rbx,1000000000
-  mul rbx
-  add rax,[dst+8]
-
-}
-
-; ---   *   ---   *   ---
-
-macro usleep src*,delta* {
-
-  lea rdi,[clk]
-  mov qword [rdi],$00
-  mov qword [rdi+8],delta
-  xor rsi,rsi
-
-  mov rax,SYS_SLEEP
-  syscall
-
-}
-
-; ---   *   ---   *   ---
 
 macro brk m,n* {
 
@@ -127,6 +90,8 @@ macro brk m,n* {
   add [m#.sz],n
 
 }
+
+; ---   *   ---   *   ---
 
 macro Mem@$nit {
 
