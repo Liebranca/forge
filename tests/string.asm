@@ -25,7 +25,7 @@ import
 ; ---   *   ---   *   ---
 
 segment readable
-  msg db '$$$$$$',$0A,$00
+  msg db '$$$$$$$$$$$$$$$$$$$$$$',$0A,$00
 
 segment readable executable
 
@@ -33,17 +33,20 @@ proc _start
 
   qword s0
 
-  call string.alloc,8,*[%s0]
+;  call string.alloc,8,*[%s0]
+;
+;  mov rbx,[%s0]
+;  mov rcx,qword [msg]
+;
+;  mov [rbx],rcx
 
-  mov rbx,[%s0]
-  mov rcx,qword [msg]
+  mov rdi,msg
+  call string.length
 
-  mov [rbx],rcx
+  write 1,msg,rax
 
-  write 1,rbx,8
-
-  wed Mem
-  xmac del
+;  wed Mem
+;  xmac del
 
   exit
 

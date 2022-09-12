@@ -82,8 +82,10 @@ macro Proc@$grow_list cur,name,size {
 macro clan name {
   Proc@current equ name
   Proc@current_depth equ 0
+
   Proc@name_stack equ
-  Proc@name_stack_top equ 0
+  List@$push Proc@name_stack,name
+  Proc@name_stack_top equ 1
 
 }
 

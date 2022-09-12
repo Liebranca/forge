@@ -155,6 +155,7 @@ macro List@$flatten list,len,out {
   local elem
 
   cpy equ list
+  elem equ
 
   rept len \{
     List@$shift cpy,elem

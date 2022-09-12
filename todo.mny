@@ -6,8 +6,8 @@
 ~ free
 
 *>Strings
-~ length
-~ alloc
+x length
+x alloc
 ~ cat
 
 *>Misc
