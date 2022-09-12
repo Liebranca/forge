@@ -22,7 +22,7 @@ end if
 
   TITLE     Style
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Style 1
@@ -31,6 +31,52 @@ end if
 ; pastes comma separated as lines
 
 macro npaste [line] {forward line}
+
+macro npaste2 [line] {
+
+  forward
+
+    local status
+    local elem
+    status equ 0
+    elem equ line
+
+    rept 16 \{
+
+      if status < 2
+        status equ 0
+
+        match item =, next,elem \\{
+
+          item
+
+          elem equ next
+          status equ 1
+
+        \\}
+
+        match =0,status \\{
+
+          match =include fpath,elem \\\{
+            include fpath
+            status equ 1
+
+          \\\}
+
+          match =0,status \\\{
+            line
+
+          \\\}
+
+          status equ 2
+
+        \\}
+
+      end if
+
+    \}
+
+}
 
 ; ---   *   ---   *   ---
 ; space cats at end

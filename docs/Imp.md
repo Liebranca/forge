@@ -9,11 +9,11 @@ end if
 
 ; ---   *   ---   *   ---
 
-imp
+library ENV_ROOT '/subdir/'
 
   use '.ext' path::to::file
 
-end_imp ENV_ROOT '/subdir/'
+import
 
 ```
 
@@ -29,11 +29,11 @@ The following snippet:
 
 ```asm
 
-imp
+library ARPATH '/forge/'
   use '.inc' OS
   use '.inc' Arstd::IO
 
-end_imp ARPATH '/forge/'
+import
 
 ```
 
@@ -81,6 +81,12 @@ The only requirement is that all your fields are defined *after* `TITLE`.
 Right from the very start Imp was complete enough for what I needed it for. However, improvements can always be made. For any oddities or annoyances you might encounter, please open an issue or contact me directly.
 
 # CHANGELOG
+
+### v0.01.1a
+
+- Syntax change: replaced `imp` and `end_imp` with `library` and `import`, respectively.
+
+- Fixed recursive `use`. Imp will now paste the `include` directive in-place of the new `import` keyword rather than inside a macro.
 
 ### v0.01.0a
 

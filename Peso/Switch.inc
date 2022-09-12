@@ -17,10 +17,10 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+library ARPATH '/forge/'
   use '.inc' Peso::Logic
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 ; info

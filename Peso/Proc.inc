@@ -17,13 +17,13 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+library ARPATH '/forge/'
   use '.inc' Peso::Reg
   use '.inc' Peso::Switch
 
   use '.inc' Arstd::IO
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 ; info

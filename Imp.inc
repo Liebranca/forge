@@ -27,7 +27,7 @@ end if
 
   TITLE     Imp
 
-  VERSION   v0.01.0a
+  VERSION   v0.01.1a
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Imp 1
@@ -36,6 +36,27 @@ end if
 ; GBL
 
   define interp@default '/lib64/ld-linux-x86-64.so.2'
+
+  define Imp@library
+  define Imp@module
+
+  define Imp@includes
+
+; ---   *   ---   *   ---
+
+macro Imp@$append elem {
+
+  match any,Imp@includes \{
+    Imp@includes equ Imp@includes,elem
+
+  \}
+
+  match ,Imp@includes \{
+    Imp@includes equ elem
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; pops first elem from path:to:file
@@ -66,45 +87,26 @@ macro Imp@$break_path list,elem {
 ; ---   *   ---   *   ---
 ; ensures file is included only once
 
-macro Imp@$load {
+macro Imp@$load name,fpath {
 
-  local fcnt
-  local list
+  if ~ defined loaded?#name
 
-  list equ Imp@pending_list
-  fcnt equ Imp@pending_cnt
+    define loaded?#name 1
+    display $1B,$5B,'37;1m',\
+      ':: ',$1B,$5B,'0m',\
+      fpath,' included',$0A
 
-  rept fcnt \{
-
-  define elem
-  List@$shift list,elem
+    Imp@$append include fpath
 
 ; ---   *   ---   *   ---
-; get next item in list
 
-  match name fpath,elem \\{
+  else
 
-    if ~ defined loaded?#name
+    display $1B,$5B,'37;1m',\
+      ':: ',$1B,$5B,'0m',\
+      fpath,' already included',$0A
 
-      define loaded?#name 1
-      include fpath
-
-      display $1B,$5B,'37;1m',\
-        ':: ',$1B,$5B,'0m',\
-        fpath,' included',$0A
-
-    else
-
-      display $1B,$5B,'37;1m',\
-        ':: ',$1B,$5B,'0m',\
-        fpath,' already included',$0A
-
-    end if
-
-  \\}
-  restore elem
-
-  \}
+  end if
 
 }
 
@@ -119,7 +121,7 @@ macro Imp@$mkpath env,md,sd,sd_alt,fname,ext {
 
   ; blank env
   match =_,env \{
-    List@$push Imp@pending_list,sd_alt#.#fname \
+    Imp@$load sd_alt#.#fname,\
       md#`sd#`/#`fname#ext
 
     status equ 1
@@ -129,7 +131,7 @@ macro Imp@$mkpath env,md,sd,sd_alt,fname,ext {
   ; use env
   match =0,status \{
 
-    List@$push Imp@pending_list,sd_alt#.#fname \
+    Imp@$load sd_alt#.#fname,\
       '%'#`env#'%'#md#`sd#`/#`fname#ext
 
   \}
@@ -139,196 +141,147 @@ macro Imp@$mkpath env,md,sd,sd_alt,fname,ext {
 ; ---   *   ---   *   ---
 ; walks collected file list
 
-macro Imp@$get_files header {
+macro Imp@$get_file ext,_path {
 
-  local cnt
-  local fcnt
   local status
+  local path
 
-  cnt equ Imp@file_count
+  local elem
+
+  local fname
+  local subdir
+  local subdir_alt
+
+  fname equ
+  subdir equ
+  subdir_alt equ
+
+  path equ _path
   status equ 0
-
-  define tmp 0
-
-  rept cnt \{
-
-    match env module,header \\{
-
-      define elem
-      define Imp@module module
-
-      define Imp@path
-      define Imp@fname
-      define Imp@subdir
-      define Imp@subdir_alt
-
-      List@$shift Imp@file_list,elem
-      symcnt tmp
-
-; ---   *   ---   *   ---
-; break down the path for this module
-
-      match ext path,elem \\\{
-
-        Imp@path equ path
-        status equ 0
 
 ; ---   *   ---   *   ---
 ; handle dir/subdir/.../file
 ; up to 7 levels deep
 
-        rept 7 \\\\{
+  match env module,Imp@library Imp@module \{
 
-          if status<2
-          status equ 0
+    rept 7 \\{
 
-          match any next,Imp@path \\\\\{
+      if status<2
+      status equ 0
+
+      match any next,path \\\{
 
 ; ---   *   ---   *   ---
 ; cat 'dir' to 'subdir'
 ; this makes 'dir/subdir' ;>
 
-            match prev,Imp@subdir \\\\\\{
+        match prev,subdir \\\\{
 
-              define tmp prev
+          ; are you going mad yet?
+          match pprev,prev \\\\\{
 
-              ; are you going mad yet?
-              match pprev,tmp \\\\\\\{
+            stirr7 pprev,.,any
+            subdir_alt equ pprev
 
-                stirr7 pprev,.,any
-                Imp@subdir_alt equ pprev
+          \\\\\}
 
-              \\\\\\\}
+          strfcat prev,'/',any
+          subdir equ prev
 
-              strfcat prev,'/',any
-              Imp@subdir equ prev
-
-              restore tmp
-
-            \\\\\\}
+        \\\\}
 
 ; ---   *   ---   *   ---
 ; only filename pending!
 
-            match ,Imp@subdir \\\\\\{
-              Imp@subdir equ any
-              Imp@subdir_alt equ any
+        match ,subdir \\\\{
+          subdir equ any
+          subdir_alt equ any
 
-            \\\\\\}
+        \\\\}
 
-            Imp@path equ next
-            status equ 1
+        path equ next
+        status equ 1
 
 
 ; ---   *   ---   *   ---
 ; path fully solved
 
-          \\\\\}
+      \\\}
 
-          match =0 any,status Imp@path \\\\\{
-            Imp@fname equ any
-            Imp@path equ
+      match =0 any,status path \\\{
+        fname equ any
+        path equ
 
-            status equ 2
+        status equ 2
 
-          \\\\\}
+      \\\}
 
-          end if
+      end if
 
-        \\\\}
+    \\}
 
 ; ---   *   ---   *   ---
 ; cat resulting vars together and load module
 
-        match ,Imp@subdir_alt \\\\{
-          Imp@subdir_alt equ _
-          Imp@subdir equ ''
-
-        \\\\}
-
-        match md sd sd_alt fname ,\
-          Imp@module Imp@subdir \
-          Imp@subdir_alt Imp@fname  \\\\{
-
-          Imp@$mkpath env,md,sd,sd_alt,fname,ext
-
-        \\\\}
-
-; ---   *   ---   *   ---
-
-      \\\}
-
-      restore Imp@subdir_alt
-      restore Imp@subdir
-      restore Imp@fname
-      restore Imp@path
-
-      restore Imp@module
-      restore elem
+    match ,subdir_alt \\{
+      subdir_alt equ _
+      subdir equ ''
 
     \\}
 
+    match md sd sd_alt _fname ,\
+      module subdir \
+      subdir_alt fname \\{
+
+      Imp@$mkpath env,md,sd,sd_alt,_fname,ext
+
+    \\}
+
+; ---   *   ---   *   ---
+
   \}
-
-  restore Imp@file_list
-  restore Imp@file_count
-
-  Imp@pending_cnt equ tmp
-
-  Imp@$load
-
-  restore Imp@pending_cnt
-  restore Imp@pending_list
 
 }
 
 ; ---   *   ---   *   ---
-; creates the 'use' keyword
 
-macro Imp@$enable_use {
+macro use value {
 
-  macro use value \{
+  local nested
+  local remain
 
-    define nested
-    define remain
+  nested equ
+  remain equ
 
 ; ---   *   ---   *   ---
 ; break down value (use '.ext' path:to:file)
 
-    match ext path,value \\{
+  match ext path,value \{
 
-      ; again, paths go 7 subdirs deep at most
-      remain equ path
-      rept 7 \\\{
+    ; again, paths go 7 subdirs deep at most
+    remain equ path
+    rept 7 \\{
 
-        ; iter until path is empty
-        match any,remain \\\\{
+      ; iter until path is empty
+      match any,remain \\\{
 
-          define elem
+        local elem
 
-          Imp@$break_path remain,elem
-          spacecat nested,elem
+        Imp@$break_path remain,elem
+        spacecat nested,elem
 
-          ; ^then push to list
-          match ,remain \\\\\{
-
-            List@$push Imp@file_list,ext nested
-            symcnt Imp@file_count
-
-          \\\\\}
-
-          restore elem
+        ; ^then push to list
+        match ,remain \\\\{
+          Imp@$get_file ext,nested
 
         \\\\}
 
       \\\}
 
-; ---   *   ---   *   ---
-
     \\}
 
-    restore remain
-    restore nested
+; ---   *   ---   *   ---
 
   \}
 
@@ -338,15 +291,23 @@ macro Imp@$enable_use {
 macro Imp@$disable_use {purge use}
 
 ; ---   *   ---   *   ---
-; generator header/tail
 
-imp fix npaste Imp@$enable_use,\
-  define Imp@file_count 0,\
-  define Imp@file_list,\
-  define Imp@pending_list,\
-  define Imp@pending_cnt 0
+macro library em {
 
-end_imp fix npaste Imp@$disable_use,\
-  Imp@$get_files
+  local status
+  status equ 0
+
+  match env module,em \{
+    Imp@library equ env
+    Imp@module equ module
+
+  \}
+
+}
+
+import fix npaste2 Imp@includes,\
+  restore Imp@library,restore Imp@module,\
+  Imp@includes equ
 
 ; ---   *   ---   *   ---
+

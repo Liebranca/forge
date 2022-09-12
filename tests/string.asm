@@ -8,10 +8,14 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
-  use '.asm' Arstd::Str
+; ---   *   ---   *   ---
 
-end_imp ARPATH '/forge/'
+library ARPATH '/forge/'
+
+  use '.asm' Arstd::Str
+  use '.inc' OS
+
+import
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -23,7 +27,7 @@ end_imp ARPATH '/forge/'
 segment readable
   msg db '$$$$$$',$0A,$00
 
-segment executable
+segment readable executable
 
 proc _start
 

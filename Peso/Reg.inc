@@ -17,10 +17,10 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+library ARPATH '/forge/'
   use '.inc' Arstd::IO
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 

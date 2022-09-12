@@ -4,6 +4,10 @@ A variety of convenience utils and wrappers for making requests to the Linux ker
 
 # LOG
 
+### v0.00.3b
+
+- Moved `brk` related code to OS::Mem
+
 ### v0.00.2b
 
 - Term added for termios input ioctls

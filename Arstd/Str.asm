@@ -17,11 +17,11 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
-  use '.inc' OS
+library ARPATH '/forge/'
   use '.inc' Peso::Proc
+  use '.asm' OS::Mem
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 ; info
@@ -33,27 +33,23 @@ end_imp ARPATH '/forge/'
 
 ; ---   *   ---   *   ---
 
-segment readable writeable
-  mem Mem
-
-; ---   *   ---   *   ---
-
-segment executable
+segment readable executable
 
 clan string
 
 proc alloc
 
-  push rbx
+  push  rbx
 
-  mov rbx,rdi
-  mov rdx,rsi
+  mov   rbx,rdi
+  mov   rdx,rsi
 
-  wed Mem
-  xmac nit
-  xmac alloc,rbx,rdx
+  wed   Mem
 
-  pop rbx
+  xmac  nit
+  xmac  alloc,rbx,rdx
+
+  pop   rbx
 
 end_proc ret
 

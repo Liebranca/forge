@@ -43,24 +43,33 @@ proc _start
 
 .top:
 
-  xor rax,rax
+  ; sprite frame
   mov byte [%cnt],cl
   and byte [%cnt],$07
 
+  ; go to next
   push rcx
   call clock.tick,clk
 
+  ; fetch sprite
+  xor rax,rax
   mov ah,$A9
   add ah,[%cnt]
   or  al,$C6
 
+  ; draw
   mov [clkchr],ax
   write STDOUT,msg,msg_len
 
   pop rcx
+
+  ; up the counter
   inc rcx
   cmp rcx,8*8
   jne .top
+
+; ---   *   ---   *   ---
+; slap a newline at end
 
   mov byte [msg+msg_len-1],$0A
   write STDOUT,msg,msg_len

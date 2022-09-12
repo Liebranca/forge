@@ -14,8 +14,8 @@
 ~ Proc pointers
 x kbdmode ioctls
 x tc set/get attr
-~ Subdivide OS
-~ ^ Mem
+x Subdivide OS
+x ^ Mem
 x ^ Clock
 x ^ Term
 
