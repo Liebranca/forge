@@ -25,7 +25,7 @@ import
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     Peso.File
+  TITLE     peso.file
 
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
@@ -38,7 +38,8 @@ align $10
 
 buffio:
 
-  define BUFFIO_SZ   $40
+  define BUFFIO_SZ   $1000
+  define BUFFIO_REPT $0200
 
   .fto   dw $01
   .avail dw BUFFIO_SZ
@@ -48,10 +49,35 @@ buffio:
 
 
 ; ---   *   ---   *   ---
-; ^issue write
+; set fhandle
 
 segment readable executable
 align $10
+
+fto:
+
+  push rbx
+
+
+  ; get current fh eq passed
+  xor rbx,rbx
+  mov bx,word [buffio.fto]
+
+  cmp rbx,rdi
+  je .skip
+
+
+  call reap
+  mov word [buffio.fto],di
+
+
+  ; cleanup
+  .skip:
+    pop rbx
+    ret
+
+; ---   *   ---   *   ---
+; ^issue write
 
 sow:
 
@@ -112,7 +138,7 @@ sow:
   .post_walk:
 
     sub word [buffio.avail],cx
-    add word [buffio.ptr],cx
+    mov word [buffio.ptr],cx
 
     sub rsi,rcx
 
@@ -151,18 +177,12 @@ reap:
   syscall
 
 
-  ; ^walk in qword-sized chunks
-  .walk:
-
-    ; wipe
+  ; ^wipe N chunks
+  repeat BUFFIO_REPT
     mov qword [rsi],$00
-
-    ; go next
     add rsi,$08
-    sub rdx,$08
 
-    or  rdx,$00
-    jnz .walk
+  end repeat
 
 
   ; ^reset meta

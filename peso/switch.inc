@@ -18,14 +18,14 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.inc' Peso::Logic
+  use '.inc' peso::logic
 
 import
 
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     Peso.Switch
+  TITLE     peso.switch
 
   VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
@@ -33,9 +33,9 @@ import
 ; ---   *   ---   *   ---
 ; GBL
 
-  define Switch@name_stack
-  define Switch@cnt 0
-  define Switch@cnt_fwd 0
+  define switch@name_stack
+  define switch@cnt 0
+  define switch@cnt_fwd 0
 
 ; ---   *   ---   *   ---
 ; generates .char<N> tags
@@ -67,14 +67,14 @@ macro genlabel dst,proto,list,scnt,do_inc {
 macro switch@$get_end_label dst,do_inc=0 {
 
   genlabel dst,.ES,\
-    Switch@name_stack,Switch@cnt_fwd,do_inc
+    switch@name_stack,switch@cnt_fwd,do_inc
 
 }
 
 macro switch@$get_next_label dst,do_inc=0 {
 
   genlabel dst,.S,\
-    Switch@name_stack,Switch@cnt,do_inc
+    switch@name_stack,switch@cnt,do_inc
 
 }
 
@@ -88,7 +88,7 @@ macro on ev {
   local c
 
   ; send previous to end
-  match any,Switch@name_stack \{
+  match any,switch@name_stack \{
 
     local endt
     switch@$get_end_label endt,0

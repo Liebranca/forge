@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; Reg
+; REG
 ; struct-making macros
 ;
 ; LIBRE SOFTWARE
@@ -24,7 +24,7 @@ import
 
 ; ---   *   ---   *   ---
 
-  TITLE     Reg
+  TITLE     peso.reg
 
   VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
@@ -32,12 +32,12 @@ import
 ; ---   *   ---   *   ---
 ; GBL
 
-  define Reg@curkls
+  define reg@curkls
 
-  define Reg@t_sz_db $01
-  define Reg@t_sz_dw $02
-  define Reg@t_sz_dd $04
-  define Reg@t_sz_dq $08
+  define reg@t_sz_db $01
+  define reg@t_sz_dw $02
+  define reg@t_sz_dd $04
+  define reg@t_sz_dq $08
 
   define sizeof.byte  $01
   define sizeof.word  $02
@@ -49,16 +49,16 @@ import
 
 ; ---   *   ---   *   ---
 
-macro Reg@$align_to type {
+macro reg@$align_to type {
 
   local size
-  size equ Reg@t_sz_#type
+  size equ reg@t_sz_#type
 
   local status
   local off
 
   status equ 0
-  off equ Reg@offset
+  off equ reg@offset
 
   ; dont align on zero
   match =0,off \{
@@ -94,13 +94,13 @@ macro Reg@$align_to type {
 
   \}
 
-  Reg@offset equ (off)+size
+  reg@offset equ (off)+size
 
 }
 
 ; ---   *   ---   *   ---
 
-macro Reg@$tail_pad type {
+macro reg@$tail_pad type {
 
   local size
   size equ sizeof.#type
@@ -108,7 +108,7 @@ macro Reg@$tail_pad type {
   local status
   local off
 
-  off equ Reg@offset
+  off equ reg@offset
 
   local old
   local diff
@@ -156,13 +156,13 @@ macro __fields_beg base {
       ; ^(decl) label value
       match name value,x \\\{
 
-        Reg@$align_to type
+        reg@$align_to type
 
         ; increment
-        symcnt Reg@elem_cnt
+        symcnt reg@elem_cnt
 
         ; capture
-        List@$push Reg@list,name type value
+        List@$push reg@list,name type value
 
         ; paste in virtual decl
         local catted
@@ -177,14 +177,14 @@ macro __fields_beg base {
 
       ; anon
       match =0 value,status x \\\{
-        symcnt Reg@elem_cnt
-        List@$push Reg@list,type value
+        symcnt reg@elem_cnt
+        List@$push reg@list,type value
 
         type value
         local off
-        off equ Reg@offset+1
+        off equ reg@offset+1
 
-        Reg@offset equ off
+        reg@offset equ off
 
       \\\}
 
@@ -199,7 +199,7 @@ macro __fields_beg base {
 
 macro __fields_end {
 
-  Reg@$tail_pad xword
+  reg@$tail_pad xword
 
   irp type, db,dw,dd,dq \{
     purge type
@@ -210,7 +210,7 @@ macro __fields_end {
 
 ; ---   *   ---   *   ---
 
-macro Reg@$elem_paste inst,list,cnt {
+macro reg@$elem_paste inst,list,cnt {
 
   rept cnt \{
 
@@ -246,27 +246,27 @@ macro Reg@$elem_paste inst,list,cnt {
 ; ---   *   ---   *   ---
 ; entry point
 
-macro Reg@$make name {
+macro reg@$make name {
 
   ; accumulate to
-  define Reg@list
-  define Reg@elem_cnt 0
-  define Reg@offset 0
-  define Reg@name_of name
+  define reg@list
+  define reg@elem_cnt 0
+  define reg@offset 0
+  define reg@name_of name
 
   ; runtime access
   define name#@self
   define name#@other
 
   ; generate virtual instance
-  Reg@$nit name
+  reg@$nit name
   name name
 
-  define Reg#@#name#@#elem_list
-  Reg#@#name#@#elem_list equ Reg@list
+  define reg#@#name#@#elem_list
+  reg#@#name#@#elem_list equ reg@list
 
-  define Reg#@#name#@#elem_cnt
-  Reg#@#name#@#elem_cnt equ Reg@elem_cnt
+  define reg#@#name#@#elem_cnt
+  reg#@#name#@#elem_cnt equ reg@elem_cnt
 
 ; ---   *   ---   *   ---
 ; setters (!!)
@@ -289,16 +289,16 @@ macro Reg@$make name {
   struc name \{
 
     local list
-    list equ Reg#@#name#@#elem_list
+    list equ reg#@#name#@#elem_list
 
     local cnt
-    cnt equ Reg#@#name#@#elem_cnt
+    cnt equ reg#@#name#@#elem_cnt
 
     ; start of instance
     . = $
 
     ; walk the elems
-    Reg@$elem_paste .,list,cnt
+    reg@$elem_paste .,list,cnt
 
     ; refsym to new instance
     name#@$self .
@@ -309,17 +309,17 @@ macro Reg@$make name {
   struc virtual_#name addr \{
 
     local list
-    list equ Reg#@#name#@#elem_list
+    list equ reg#@#name#@#elem_list
 
     local cnt
-    cnt equ Reg#@#name#@#elem_cnt
+    cnt equ reg#@#name#@#elem_cnt
 
     ; start of instance
     virtual at addr
     . = addr
 
     ; walk the elems
-    Reg@$elem_paste .,list,cnt
+    reg@$elem_paste .,list,cnt
 
     ; refsym to new instance
     name#@$self .
@@ -333,14 +333,14 @@ macro Reg@$make name {
 ; ---   *   ---   *   ---
 ; generator header/tail
 
-reg fix macro Reg@$nit name {\
+reg fix macro reg@$nit name {\
   npaste struc name \{virtual at 0,\
     first=$,__fields_beg name
 
 end_reg fix npaste __fields_end,\
   sizeof.#name=$-first,\
   end virtual,\}}\
-  Reg@$make
+  reg@$make
 
 ; ---   *   ---   *   ---
 
@@ -350,8 +350,8 @@ macro wed ni {
   status equ 0
 
   match name ins,ni \{
-    Reg@curkls equ name
-    match any,Reg@curkls \\{
+    reg@curkls equ name
+    match any,reg@curkls \\{
       any\#@$self ins
 
     \\}
@@ -361,7 +361,7 @@ macro wed ni {
   \}
 
   match =0,status \{
-    Reg@curkls equ ni
+    reg@curkls equ ni
 
   \}
 
@@ -371,7 +371,7 @@ macro wed ni {
 
 macro xmac name,args& {
 
-  match any,Reg@curkls \{
+  match any,reg@curkls \{
     any\#@$#name args
 
   \}

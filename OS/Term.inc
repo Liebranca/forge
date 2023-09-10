@@ -18,7 +18,7 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.inc' Peso::Reg
+  use '.inc' peso::reg
 
 import
 

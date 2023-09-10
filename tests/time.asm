@@ -1,26 +1,29 @@
 format ELF64 executable 3
 entry _start
 
+; ---   *   ---   *   ---
+; deps
+
 if ~ defined loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-imp
-  use '.inc' OS::Clock
+library ARPATH '/forge/'
+
+  use '.asm' OS::Clock
   use '.inc' OS
 
   use '.inc' Arstd::Lycon
-  use '.inc' Peso::Proc
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 
 segment readable writeable
+align $10
 
 msg:
-
   db $1B,$5B,'999H'
 
 clkchr:
@@ -30,11 +33,13 @@ clkchr:
   msg_len=$-msg
   flen=400000000
 
-clk Clock
+
+clk CLK
 
 ; ---   *   ---   *   ---
 
 segment readable executable
+align $10
 
 proc _start
 
@@ -49,7 +54,7 @@ proc _start
 
   ; go to next
   push rcx
-  call clock.tick,clk
+  call Clock.tick,clk
 
   ; fetch sprite
   xor rax,rax
@@ -74,6 +79,7 @@ proc _start
   mov byte [msg+msg_len-1],$0A
   write STDOUT,msg,msg_len
   exit
+
 
 end_proc leave
 

@@ -18,7 +18,7 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.inc' Peso::Proc
+  use '.inc' peso::proc
   use '.asm' OS::Mem
 
 import

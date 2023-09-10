@@ -5,20 +5,23 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+lib ARPATH '/forge/'
   use '.inc' OS
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 
 segment readable writeable
-  tc Termios
+align $10
+
+  tc     Termios
   tc_old Termios
 
 ; ---   *   ---   *   ---
 
 segment readable executable
+align $10
 
 entry _start
 _start:

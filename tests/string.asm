@@ -15,7 +15,7 @@ library ARPATH '/forge/'
   use '.asm' Arstd::String
   use '.inc' OS
 
-  use '.asm' Peso::File
+  use '.asm' peso::file
 
 import
 
@@ -121,11 +121,13 @@ end_proc ret
 _start:
 
   ; print
+
   mov rdi,strme
   mov rsi,strme.len
 
   call sow
   call reap
+
 
 ;  call set_fg,RED,BOLD
 ;  call set_bg,BLACK,BOLD

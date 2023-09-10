@@ -18,7 +18,7 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.inc' Peso::Proc
+  use '.inc' peso::proc
 
 import
 
@@ -29,6 +29,8 @@ import
 
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
+
+  CLAN      Clock
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -46,7 +48,7 @@ reg
 
   dq prev  $00
 
-end_reg Clock
+end_reg CLK
 
 ; ---   *   ---   *   ---
 ; *in nanoseconds
@@ -62,21 +64,23 @@ macro get_time dst* {
 
   syscall
 
-  mov rax,[rsi+Clock.sec]
+  mov rax,[rsi+CLK.sec]
   mov rbx,1000000000
   mul rbx
-  add rax,[rsi+Clock.nan]
+  add rax,[rsi+CLK.nan]
 
   pop rbx
 
 }
 
 ; ---   *   ---   *   ---
+; stop what you're doing
+; for a lil while
 
 macro nsleep src*,delta* {
 
-  local redundat
-  redunddant equ 0
+  local redundant
+  redundant equ 0
 
   match =rdi,src \{
 
@@ -87,8 +91,8 @@ macro nsleep src*,delta* {
 
   \}
 
-  mov qword [rdi+Clock.sec],$00
-  mov qword [rdi+Clock.nan],delta
+  mov qword [rdi+CLK.sec],$00
+  mov qword [rdi+CLK.nan],delta
   xor rsi,rsi
 
   mov rax,SYS_SLEEP
@@ -97,10 +101,11 @@ macro nsleep src*,delta* {
 }
 
 ; ---   *   ---   *   ---
+; get frame delta
+; sleep if it's small
 
 segment readable executable
-
-clan clock
+align $10
 
 proc tick
 
@@ -109,13 +114,13 @@ proc tick
 
   push rbx
 
-  mov rax,qword [rdi+Clock.prev]
+  mov rax,qword [rdi+CLK.prev]
   push rax
 
   get_time rdi
 
   mov rdi,[%clk]
-  mov qword [rdi+Clock.prev],rax
+  mov qword [rdi+CLK.prev],rax
 
   pop rbx
 
@@ -137,6 +142,5 @@ proc tick
 
 end_proc ret
 
-end_clan
-
 ; ---   *   ---   *   ---
+END_CLAN

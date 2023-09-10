@@ -25,7 +25,7 @@ import
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     Peso.Logic
+  TITLE     peso.logic
 
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
@@ -33,12 +33,12 @@ import
 ; ---   *   ---   *   ---
 ; GBL
 
-  define Logic@stack
-  define Logic@stack_ptr 0
+  define logic@stack
+  define logic@stack_ptr 0
 
 ; ---   *   ---   *   ---
 
-macro Logic@$oppy c,a,b {
+macro logic@$oppy c,a,b {
 
   local lhand
   local rhand
@@ -53,8 +53,8 @@ macro Logic@$oppy c,a,b {
     bmath lhand,a
     bmath rhand,b
 
-    List@$push Logic@stack,cmp lhand,rhand
-    symcnt Logic@stack_ptr
+    List@$push logic@stack,cmp lhand,rhand
+    symcnt logic@stack_ptr
 
     status equ 1
 
@@ -142,7 +142,7 @@ macro equality ev,c {
 ; ---   *   ---   *   ---
 
   match =1,status \{
-    Logic@$oppy c,lhand,rhand
+    logic@$oppy c,lhand,rhand
 
   \}
 
@@ -212,12 +212,12 @@ macro leorge ev,c {
 ; ---   *   ---   *   ---
 
   match =1,status \{
-    Logic@$oppy c,lhand,rhand
+    logic@$oppy c,lhand,rhand
 
   \}
 
   match =0,status \{
-    Logic@$oppy c,ev
+    logic@$oppy c,ev
 
   \}
 
@@ -234,8 +234,8 @@ macro umath ev,c {
   ; is zero
   match =0 =! a,status ev \{
 
-    List@$push Logic@stack,or a,0
-    symcnt Logic@stack_ptr
+    List@$push logic@stack,or a,0
+    symcnt logic@stack_ptr
 
     c equ jnz
 
@@ -246,8 +246,8 @@ macro umath ev,c {
   ; is non-zero
   match =0 =? a,status ev \{
 
-    List@$push Logic@stack,or a,0
-    symcnt Logic@stack_ptr
+    List@$push logic@stack,or a,0
+    symcnt logic@stack_ptr
 
     c equ jz
 
@@ -258,8 +258,8 @@ macro umath ev,c {
   ; negated
   match =0 =~ a,status ev \{
 
-    List@$push Logic@stack,not a
-    symcnt Logic@stack_ptr
+    List@$push logic@stack,not a
+    symcnt logic@stack_ptr
 
     status equ 1
 
@@ -278,8 +278,8 @@ macro bmath l,ev {
   ; addition
 ;  match =0 a =+ b,status ev \{
 ;
-;    List@$push Logic@stack,add a,b
-;    symcnt Logic@stack_ptr
+;    List@$push logic@stack,add a,b
+;    symcnt logic@stack_ptr
 ;
 ;    l equ a
 ;
@@ -289,8 +289,8 @@ macro bmath l,ev {
 
   match =0 a =& b,status ev \{
 
-    List@$push Logic@stack,and a,b
-    symcnt Logic@stack_ptr
+    List@$push logic@stack,and a,b
+    symcnt logic@stack_ptr
 
     l equ a
 
@@ -321,10 +321,10 @@ macro EVAL ev,c {
 
   equality exp,c
 
-  rept Logic@stack_ptr \{
+  rept logic@stack_ptr \{
 
     local elem
-    List@$shift Logic@stack,elem
+    List@$shift logic@stack,elem
 
     elem
 
