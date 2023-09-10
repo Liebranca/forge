@@ -92,9 +92,9 @@ macro Imp@$load name,fpath {
   if ~ defined loaded?#name
 
     define loaded?#name 1
-    display $1B,$5B,'37;1m',\
-      ':: ',$1B,$5B,'0m',\
-      fpath,' included',$0A
+;    display $1B,$5B,'37;1m',\
+;      ':: ',$1B,$5B,'0m',\
+;      fpath,' included',$0A
 
     Imp@$append include fpath
 
@@ -102,9 +102,9 @@ macro Imp@$load name,fpath {
 
   else
 
-    display $1B,$5B,'37;1m',\
-      ':: ',$1B,$5B,'0m',\
-      fpath,' already included',$0A
+;    display $1B,$5B,'37;1m',\
+;      ':: ',$1B,$5B,'0m',\
+;      fpath,' already included',$0A
 
   end if
 

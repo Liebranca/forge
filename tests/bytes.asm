@@ -8,13 +8,13 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+library ARPATH '/forge/'
 
   use '.inc' OS
   use '.inc' Arstd::IO
   use '.inc' Peso::Proc
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 ; info

@@ -79,7 +79,7 @@ macro Proc@$grow_list cur,name,size {
 ; quick namespace open/close
 ; might make a more refined system later
 
-macro clan name {
+macro CLAN name {
   Proc@current equ name
   Proc@current_depth equ 0
 
@@ -87,9 +87,11 @@ macro clan name {
   List@$push Proc@name_stack,name
   Proc@name_stack_top equ 1
 
+  name#:
+
 }
 
-macro end_clan {
+macro END_CLAN {
   Proc@current equ
   Proc@current_depth equ 0
   Proc@name_stack equ

@@ -44,7 +44,7 @@ errout(
 # ---   *   ---   *   ---
 
 my $out;
-if($m->{output}!=$NULL) {
+if($m->{output} eq $NULL) {
   $out=$m->{output};
 
 } else {

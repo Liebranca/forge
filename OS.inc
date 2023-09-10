@@ -26,7 +26,7 @@ end if
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; globs
+; GBL
 
   define SYS_WRITE  $01
   define SYS_EXIT   $3C
