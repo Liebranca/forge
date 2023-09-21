@@ -27,7 +27,7 @@ import
 
   TITLE     peso.file
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -68,10 +68,11 @@ fto:
   xor rbx,rbx
   mov bx,word [buffio.fto]
 
+  ; ^skip if so
   cmp rbx,rdi
   je .skip
 
-
+  ; ^else flush, then swap
   call reap
   mov word [buffio.fto],di
 
@@ -100,30 +101,37 @@ sow:
   ; flush on full buff
   .top:
 
-    mov   rdx,$00
-    mov   dx,word [buffio.avail]
+    ; get avail
+    xor rdx,$00
+    mov dx,word [buffio.avail]
 
-    cmp   dx,$10
-    jge   .pre_walk
-    call  reap
+    ; ^clear on below chunk
+    cmp  dx,$10
+    jge  .pre_walk
+    call reap
 
-    mov   dx,BUFFIO_SZ
+    ; ^refresh avail
+    mov dx,BUFFIO_SZ
 
 
   ; offset into buff
   .pre_walk:
 
-    xor   rcx,rcx
+    ; clear old offset
+    xor rcx,rcx
 
+    ; use smallest length
     cmp   rsi,rdx
     cmovl rdx,rsi
 
-    lea   rbx,[buffio.ct]
-    mov   cx,word [buffio.ptr]
-    add   rbx,rcx
+    ; get buff+ptr
+    lea rbx,[buffio.ct]
+    mov cx,word [buffio.ptr]
+    add rbx,rcx
 
-    cmp   dx,$00
-    jle   .top
+    ; stop on length exhausted
+    cmp dx,$00
+    jle .top
 
 
   ; ^walk in xword-sized chunks
@@ -137,22 +145,24 @@ sow:
     add rdi,$10
     add rbx,$10
 
-    ; check end-of
+    ; ^consume current
     add cx,$10
     sub dx,$10
+    sub si,$10
 
-    cmp dx,$00
-    jg  .walk
+    ; ^check end-of
+    cmp dx,$10
+    jge .walk
 
 
   ; ^adjust buff meta
   .post_walk:
 
+    ; update ptr
     sub word [buffio.avail],cx
     mov word [buffio.ptr],cx
 
-    sub rsi,rcx
-
+    ; repeat on pending
     or  rsi,$00
     jg  .top
 
@@ -179,8 +189,8 @@ reap:
 
 
   ; clear registers
-  mov rdi,$00
-  mov rdx,$00
+  xor rdi,rdi
+  xor rdx,rdx
 
   ; ^commit buffer to file
   mov di,word [buffio.fto]
@@ -191,7 +201,7 @@ reap:
   syscall
 
 
-  ; ^wipe pool
+  ; ^zero-flood
   pxor xmm0,xmm0
 
   repeat BUFFIO_REPT

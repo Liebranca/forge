@@ -88,7 +88,9 @@ fld0:
 align $10
 strme:
 
-  db "Hello, world!",$0A
+  db "SOW-BUFFIO REPEATING HLOWRLD!",$0A
+
+align $10
   .len=$-strme
 
 ; ---   *   ---   *   ---
@@ -124,7 +126,7 @@ _start:
   mov rdi,strme
   mov rsi,strme.len
 
-  repeat 16
+  repeat 32
     call sow
 
   end repeat
