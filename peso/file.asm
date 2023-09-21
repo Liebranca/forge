@@ -27,7 +27,7 @@ import
 
   TITLE     peso.file
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,14 +38,19 @@ align $10
 
 buffio:
 
-  define BUFFIO_SZ   $1000
-  define BUFFIO_REPT $0200
+  define BUFFIO_SZ   $100
+  define BUFFIO_REPT $10
 
+
+  ; ^pool
+  .ct    db BUFFIO_SZ dup $00
+
+
+  ; ^keep
   .fto   dw $01
   .avail dw BUFFIO_SZ
 
   .ptr   dw $00
-  .ct    db BUFFIO_SZ dup $00
 
 
 ; ---   *   ---   *   ---
@@ -74,12 +79,18 @@ fto:
   ; cleanup
   .skip:
     pop rbx
-    ret
+
+
+  ret
+
 
 ; ---   *   ---   *   ---
 ; ^issue write
 
 sow:
+
+  push rdi
+  push rsi
 
   push rbx
   push rcx
@@ -92,7 +103,7 @@ sow:
     mov   rdx,$00
     mov   dx,word [buffio.avail]
 
-    cmp   dx,$08
+    cmp   dx,$10
     jge   .pre_walk
     call  reap
 
@@ -115,20 +126,20 @@ sow:
     jle   .top
 
 
-  ; ^walk in qword-sized chunks
+  ; ^walk in xword-sized chunks
   .walk:
 
     ; write to buff
-    mov rax,[rdi]
-    mov qword [rbx],rax
+    movdqa xmm0,xword [rdi]
+    movdqa xword [rbx],xmm0
 
     ; go next chunk
-    add rdi,$08
-    add rbx,$08
+    add rdi,$10
+    add rbx,$10
 
     ; check end-of
-    add cx,$08
-    sub dx,$08
+    add cx,$10
+    sub dx,$10
 
     cmp dx,$00
     jg  .walk
@@ -150,6 +161,9 @@ sow:
   pop rdx
   pop rcx
   pop rbx
+
+  pop rsi
+  pop rdi
 
   ret
 
@@ -177,10 +191,12 @@ reap:
   syscall
 
 
-  ; ^wipe N chunks
+  ; ^wipe pool
+  pxor xmm0,xmm0
+
   repeat BUFFIO_REPT
-    mov qword [rsi],$00
-    add rsi,$08
+    movdqa xword [rsi],xmm0
+    add    rsi,$10
 
   end repeat
 
@@ -194,6 +210,7 @@ reap:
   pop rdx
   pop rsi
   pop rdi
+
 
   ret
 

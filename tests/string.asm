@@ -85,10 +85,10 @@ fld0:
 ; ---   *   ---   *   ---
 ; unrelated test
 
+align $10
 strme:
 
   db "Hello, world!",$0A
-
   .len=$-strme
 
 ; ---   *   ---   *   ---
@@ -121,11 +121,13 @@ end_proc ret
 _start:
 
   ; print
-
   mov rdi,strme
   mov rsi,strme.len
 
-  call sow
+  repeat 16
+    call sow
+
+  end repeat
   call reap
 
 
