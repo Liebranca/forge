@@ -19,10 +19,10 @@ end if
 
 library ARPATH '/forge/'
 
-  use '.inc' peso::reg
-  use '.inc' peso::switch
+;  use '.inc' peso::reg
+;  use '.inc' peso::switch
 
-  use '.inc' Arstd::IO
+;  use '.inc' Arstd::IO
 
 import
 

@@ -138,33 +138,6 @@ _start:
 
 ;  write 1,fld0,fld0.len
 
-;  push rbp
-;  mov rbp,rsp
-;  sub rsp,8
-
-;  ; mmap
-;  mov rdi,$00
-;  mov rsi,$10
-;  mov rdx,$03
-;  mov r10,$22
-;  mov r8,-1
-;  mov r9,$00
-;
-;  mov rax,$09
-;
-;  syscall
-
-;  ; ^backup addr
-;  mov [rbp-8],rax
-
-;  ; ^munmap
-;  mov rdi,[rbp-8]
-;  mov rsi,$10
-;
-;  mov rax,$0B
-;
-;  syscall
-
   exit
 
 ;end_proc leave

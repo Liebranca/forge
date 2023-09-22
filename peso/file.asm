@@ -47,7 +47,7 @@ buffio:
 
 
   ; ^keep
-  .fto   dw $01
+  .fto   dw STDOUT
   .avail dw BUFFIO_SZ
 
   .ptr   dw $00

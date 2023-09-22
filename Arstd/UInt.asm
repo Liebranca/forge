@@ -17,12 +17,6 @@ if ~ defined loaded?Imp
 
 end if
 
-library ARPATH '/forge/'
-  use '.inc' peso::proc
-  use '.asm' OS::Mem
-
-import
-
 ; ---   *   ---   *   ---
 ; info
 
@@ -31,15 +25,13 @@ import
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
 
-  CLAN      UInt
-
 ; ---   *   ---   *   ---
 ; rounded-up division
 
 segment readable executable
 align $10
 
-urdiv:
+UInt.urdiv:
 
   push rcx
   push rdx
@@ -73,6 +65,36 @@ urdiv:
   ret
 
 ; ---   *   ---   *   ---
+; ^quick by-pow2 v
+
+UInt.urdivp2:
+macro UInt.urdivp2.inline {
+
+  ; [1] cx is exponent
+  ; get 2^N thru shift
+  mov rax,1
+  shl rax,cl
+
+  ; [0] rdi is X to align
+  ; ensure non-zero
+  mov   r8,$01
+  or    rdi,$00
+  cmove rdi,r8
+
+
+  ; (X + (2^N)-1) >> N
+  ; gives division rounded up
+  lea rax,[rdi+rax-1]
+  shr rax,cl
+
+}
+
+  ; ^invoke
+  UInt.urdivp2.inline
+  ret
+
+
+; ---   *   ---   *   ---
 ; ^(round n/m) times m
 ; ie nearest multiple of
 
@@ -81,9 +103,10 @@ macro UInt.align n,m {
   mov rdi,n
   mov rsi,m
 
-  call urdiv
+  call UInt.urdiv
   mul  rsi
 
 }
+
 
 ; ---   *   ---   *   ---
