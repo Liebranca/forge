@@ -77,9 +77,9 @@ macro UInt.urdivp2.inline {
 
   ; [0] rdi is X to align
   ; ensure non-zero
-  mov   r8,$01
+  mov   rdx,$01
   or    rdi,$00
-  cmove rdi,r8
+  cmove rdi,rdx
 
 
   ; (X + (2^N)-1) >> N
@@ -90,7 +90,7 @@ macro UInt.urdivp2.inline {
 }
 
   ; ^invoke
-  UInt.urdivp2.inline
+  inline UInt.urdivp2
   ret
 
 

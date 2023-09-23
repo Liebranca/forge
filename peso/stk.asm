@@ -12,22 +12,22 @@
 ; ---   *   ---   *   ---
 ; deps
 
-;if ~ defined loaded?Imp
-;  include '%ARPATH%/forge/Imp.inc'
-;
-;end if
-;
-;library ARPATH '/forge/'
-;  use '.asm' peso::pages
-;
-;import
+if ~ defined loaded?Imp
+  include '%ARPATH%/forge/Imp.inc'
+
+end if
+
+library ARPATH '/forge/'
+  use '.asm' peso::pages
+
+import
 
 ; ---   *   ---   *   ---
 ; info
 
   TITLE     peso.stk
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -52,6 +52,7 @@ segment readable executable
 align $10
 
 stk.new:
+macro stk.new.inline {
 
   ; get hed+buff mem
   add  rdi,sizeof.stk
@@ -63,6 +64,10 @@ stk.new:
   mov dword [rax+stk.size],esi
   mov dword [rax+stk.top],$00
 
+}
+
+  ; ^invoke
+  inline stk.new
 
   ret
 
@@ -71,6 +76,7 @@ stk.new:
 ; ^dstruc
 
 stk.del:
+macro stk.del.inline {
 
   ; [0] rdi is base addr
   ; so load just the size
@@ -79,6 +85,11 @@ stk.del:
 
   ; ^free
   call pages.free
+
+}
+
+  ; ^invoke
+  inline stk.del
 
 
   ret
@@ -104,13 +115,12 @@ macro stk.get_base {
 
 
   ; ^get base+hed+offset
-  ; write [1] rsi to it
   shl rbx,4
-  mov qword [rax+rbx],rsi
+  lea rax,[rax+rbx]
 
   ; ^reset top
   shr rbx,4
-  add ebx,1
+  add ebx,esi
   mov dword [rdi+stk.top],ebx
 
 
@@ -125,12 +135,12 @@ stk.pop:
   stk.get_base
 
   ; ^reset top
-  sub ebx,1
+  sub ebx,esi
   mov dword [rdi+stk.top],ebx
 
   ; ^read base+hed+offset
   shl rbx,4
-  mov rax,[rax+rbx]
+  lea rax,[rax+rbx]
 
 
   ret
@@ -140,13 +150,18 @@ stk.pop:
 ; get elem at idex
 
 stk.view:
+macro stk.view.inline {
 
   ; scale up idex to unit
   shl rsi,4
 
   ; ^get base+offset
   lea rax,[rdi+sizeof.stk]
-  mov rax,qword [rax+rsi]
+
+}
+
+  ; ^invoke
+  inline stk.view
 
 
   ret

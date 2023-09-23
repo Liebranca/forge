@@ -22,10 +22,18 @@ end if
 
   TITLE     Style
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Style 1
+
+; ---   *   ---   *   ---
+; paste [label].inline
+
+macro inline F {
+  F#.#inline
+
+}
 
 ; ---   *   ---   *   ---
 ; pastes comma separated as lines
@@ -36,45 +44,32 @@ macro npaste2 [line] {
 
   forward
 
-    local status
     local elem
+    local status
+
     status equ 0
-    elem equ line
+    elem   equ line
 
-    rept 16 \{
+  rept 2 \{
 
-      if status < 2
-        status equ 0
+    status equ 0
 
-        match item =, next,elem \\{
+    match item =, next,elem \\{
 
-          item
+      item
 
-          elem equ next
-          status equ 1
+      elem   equ next
+      status equ 1
 
-        \\}
+    \\}
 
-        match =0,status \\{
+    match =0 any args,status elem \\{
+      any  args
+      elem equ
 
-          match =include fpath,elem \\\{
-            include fpath
-            status equ 1
+    \\}
 
-          \\\}
-
-          match =0,status \\\{
-            line
-
-          \\\}
-
-          status equ 2
-
-        \\}
-
-      end if
-
-    \}
+  \}
 
 }
 
@@ -88,7 +83,9 @@ macro spacecat s,token {
 
 }
 
+; ---   *   ---   *   ---
 ; ^space cats at beg
+
 macro r_spacecat s,token {
 
   match any,s \{s equ token s\}
@@ -119,6 +116,16 @@ macro strfcat a,b,c {
 
 }
 
+macro stircat dst,a,b,c {
+  dst equ a#`b#`c
+
+}
+
+macro tcat dst,a,b,c {
+  dst equ a#b#c
+
+}
+
 ; ---   *   ---   *   ---
 ; sets a to catted a,b,c
 ; ignores b if a is blank
@@ -137,7 +144,9 @@ macro stirr7 a,b,c {
 
 }
 
+; ---   *   ---   *   ---
 ; cat b to beg of a
+
 macro prefix a,b {
   a equ b#a
 

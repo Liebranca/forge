@@ -27,20 +27,41 @@ import
 
   TITLE     peso.pages
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; cstruc
+; division by 4096 rounded up
 
 segment readable executable
 align $10
+
+pages.align:
+macro pages.align.inline {
+
+  ; scale by page size
+  mov rcx,12
+
+  ; round-up division
+  ; then apply scale
+  inline UInt.urdivp2
+  shl    rax,12
+
+}
+
+  ; ^invoke
+  inline pages.align
+
+  ret
+
+; ---   *   ---   *   ---
+; cstruc
 
 pages.new:
 
   ; [0] rdi is size in bytes
   ; get N*page from that
-  call pages.align
+  inline pages.align
 
   ; ^set page*N
   mov rsi,rax
@@ -63,6 +84,7 @@ pages.new:
 ; ^dstruc
 
 pages.free:
+macro pages.free.inline {
 
   ; N pages to N*page
   shl rsi,12
@@ -71,22 +93,11 @@ pages.free:
   mov rax,$0B
 
   syscall
-  ret
 
+}
 
-; ---   *   ---   *   ---
-; division by 4096 rounded up
-
-pages.align:
-
-  ; scale by page size
-  mov rcx,12
-
-  ; round-up division
-  ; then apply scale
-  UInt.urdivp2.inline
-  shl rax,12
-
+  ; ^invoke
+  inline pages.free
 
   ret
 

@@ -82,6 +82,12 @@ Right from the very start Imp was complete enough for what I needed it for. Howe
 
 # CHANGELOG
 
+### v0.01.2a
+
+- Fullreim of most internal macros to improve performance and massively lower memory usage.
+
+- Ditched the `module@$method` syntax for the more straightforward `module.method`.
+
 ### v0.01.1a
 
 - Syntax change: replaced `imp` and `end_imp` with `library` and `import`, respectively.
