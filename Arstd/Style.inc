@@ -54,6 +54,7 @@ macro npaste2 [line] {
 
     status equ 0
 
+    ; split m[,]
     match item =, next,elem \\{
 
       item
@@ -63,9 +64,13 @@ macro npaste2 [line] {
 
     \\}
 
+    ; ^single item
     match =0 any args,status elem \\{
-      any  args
-      elem equ
+
+      any args
+
+      elem   equ
+      status equ 1
 
     \\}
 

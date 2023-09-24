@@ -27,7 +27,7 @@ import
 
   TITLE     peso.file
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -121,8 +121,8 @@ sow:
     xor rcx,rcx
 
     ; use smallest length
-    cmp   rsi,rdx
-    cmovl rdx,rsi
+    cmp   si,dx
+    cmovl dx,si
 
     ; get buff+ptr
     lea rbx,[buffio.ct]
@@ -141,14 +141,19 @@ sow:
     movdqa xmm0,xword [rdi]
     movdqa xword [rbx],xmm0
 
+    ; clamp step
+    mov   r8w,$10
+    cmp   dx,r8w
+    cmovl r8w,dx
+
     ; go next chunk
-    add rdi,$10
-    add rbx,$10
+    add di,$10
+    add bx,$10
 
     ; ^consume current
     add cx,$10
-    sub dx,$10
-    sub si,$10
+    sub dx,r8w
+    sub si,r8w
 
     ; ^check end-of
     cmp dx,$10
