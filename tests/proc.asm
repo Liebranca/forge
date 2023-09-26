@@ -1,37 +1,30 @@
 format ELF64 executable 3
+entry _start
 
 if ~ defined loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
 
-imp
+library ARPATH '/forge/'
   use '.inc' OS
-  use '.inc' Peso::Proc
+  use '.inc' peso::proc
 
-end_imp ARPATH '/forge/'
+import
 
 ; ---   *   ---   *   ---
 
-segment executable
+unit.salign r,x
 
-proc myProc
+proc.new _start
+proc.var unit u16
 
-  dword x
-  mov [%x],dword $00000A24
+proc.enter
 
-  proc inner
-    byte y
-    word z
-    mov [%y],byte $21
+  mov word [u16],$2424
 
-    write 1,%y,1
 
-  end_proc leave
-
-  write 1,%x,4
-  exit [%x]
-
-end_proc leave
+proc.leave
+exit
 
 ; ---   *   ---   *   ---

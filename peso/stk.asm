@@ -28,30 +28,22 @@ import
 
   TITLE     peso.stk
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; decl
 
-virtual at $00
+reg.new stk
+  my .top  dq $00
+  my .size dq $00
 
-stk:
-
-  .top  dd $00
-  .size dd $00
-
-  align sizeof.unit
-  sizeof.stk=$-stk
-
-
-end virtual
+reg.end
 
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-segment readable executable
-align   sizeof.unit
+unit.salign r,x
 
 stk.new:
 macro stk.new.inline {
@@ -63,8 +55,8 @@ macro stk.new.inline {
   ; ^nit hed
   shr rsi,sizep2.page
 
-  mov dword [rax+stk.size],esi
-  mov dword [rax+stk.top],$00
+  mov qword [rax+stk.size],rsi
+  mov qword [rax+stk.top],$00
 
 }
 

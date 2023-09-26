@@ -1,6 +1,6 @@
 ; ---   *   ---   *   ---
 ; REG
-; struct-making macros
+; Struc maker
 ;
 ; LIBRE SOFTWARE
 ; Licensed under GNU GPL3
@@ -21,6 +21,7 @@ end if
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' peso::sfield
   use '.asm' peso::unit
 
 import
@@ -45,8 +46,9 @@ macro reg.new name {
 
   hier.creg equ name
 
-  define name#.fields
+  define name#.$reg.fields
 
+  ; put definition 'on hold' ;>
   virtual at $00
   name#:
 
@@ -56,44 +58,38 @@ macro reg.new name {
 ; ^add field
 
 macro my decl {
-
-  local name
-
-  match any,hier.creg \{
-
-    match prev,any\#.fields \\{
-      any\#.fields equ any\#.fields,decl
-
-    \\}
-
-    match ,any\#.fields \\{
-      any\#.fields equ decl
-
-    \\}
-
-  \}
+  sfield.push hier.creg,$reg.fields,decl
 
 }
 
 ; ---   *   ---   *   ---
-; ^end
+; ^end-of
 
 macro reg.end {
 
   match any,hier.creg \{
 
-    match lines,any\#.fields \\{
+    ; alignment wraps
+    sfield.push hier.creg,$reg.fields,\
+      unit.malign
+
+    sfield.unshift hier.creg,$reg.fields,\
+      unit.malign
+
+
+    ; ^paste accum
+    match lines,any\#.$reg.fields \\{
       npaste lines
 
     \\}
 
-    unit.malign
+    ; get size after alignment
     sizeof.\#any=$-any
 
   \}
 
+  ; terminate
   end virtual
-  hier.creg equ
 
 }
 
@@ -104,10 +100,10 @@ macro reg.ice tn {
 
   match type name,tn \{
 
-    unit.malign
+    name\#:
 
-    name:
-    match lines,type\#.fields \\{
+    ; ^re-paste accum on non-virtual
+    match lines,type\#.$reg.fields \\{
       npaste lines
 
     \\}

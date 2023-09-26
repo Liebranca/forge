@@ -49,28 +49,28 @@ macro unit.malign {
 
 macro unit.salign [type] {
 
-  local mode
-  mode equ
+  define .mode
 
   forward
 
-    match =r,type \{
-      mode equ mode readable
+    match =r , type \{
+      .mode equ .mode readable
 
     \}
 
-    match =x,type \{
-      mode equ mode executable
+    match =x ,type \{
+      .mode equ .mode executable
 
     \}
 
-    match =w,type \{
-      mode equ mode writeable
+    match =w ,type \{
+      .mode equ .mode writeable
 
     \}
 
   common
-    segment mode
+
+    segment .mode
     unit.malign
 
 }

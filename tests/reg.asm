@@ -1,23 +1,45 @@
+format ELF64 executable 3
+entry _start
+
+; ---   *   ---   *   ---
+
 if ~ defined loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
 
 library ARPATH '/forge/'
+  use '.inc' OS
   use '.inc' peso::reg
 
 import
 
 ; ---   *   ---   *   ---
+; test struc
+
+unit.salign r,w
 
 reg.new rtest
   my .top dq $00
-  my .bot dq $00
+  my .bot dw $00
 
 reg.end
 
-reg.ice rtest x
+reg.ice rtest rt0
+reg.ice rtest rt1
 
-display x.bot
+; ---   *   ---   *   ---
+; ^the bit
+
+unit.salign r,x
+_start:
+
+  lea rax,[rt0.top]
+  mov qword [rax],$2424
+
+  lea rax,[rt1.top]
+  mov qword [rax],$2525
+
+  exit
 
 ; ---   *   ---   *   ---
