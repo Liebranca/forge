@@ -22,7 +22,7 @@ end if
 
   TITLE     Style
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Style 1

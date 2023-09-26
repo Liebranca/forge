@@ -18,7 +18,8 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.asm' peso::pages
+  use '.asm' peso::unit
+  use '.asm' peso::page
 
 import
 
@@ -27,7 +28,7 @@ import
 
   TITLE     peso.stk
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -40,6 +41,7 @@ stk:
   .top  dd $00
   .size dd $00
 
+  align sizeof.unit
   sizeof.stk=$-stk
 
 
@@ -49,17 +51,17 @@ end virtual
 ; ^cstruc
 
 segment readable executable
-align $10
+align   sizeof.unit
 
 stk.new:
 macro stk.new.inline {
 
   ; get hed+buff mem
   add  rdi,sizeof.stk
-  call pages.new
+  call page.new
 
   ; ^nit hed
-  shr rsi,12
+  shr rsi,sizep2.page
 
   mov dword [rax+stk.size],esi
   mov dword [rax+stk.top],$00
@@ -84,7 +86,7 @@ macro stk.del.inline {
   mov esi,dword [rdi+stk.size]
 
   ; ^free
-  call pages.free
+  call page.free
 
 }
 

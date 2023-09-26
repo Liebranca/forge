@@ -3,23 +3,21 @@ if ~ defined loaded?Imp
 
 end if
 
-imp
+library ARPATH '/forge/'
+  use '.inc' peso::reg
 
-  use '.inc' Peso::Reg
-
-end_imp ARPATH '/forge/'
-
-; ---   *   ---   *   ---
-
-reg
-
-  dq x ?
-  dq y ?
-
-end_reg myReg
+import
 
 ; ---   *   ---   *   ---
 
-ldkls myReg2
+reg.new rtest
+  my .top dq $00
+  my .bot dq $00
+
+reg.end
+
+reg.ice rtest x
+
+display x.bot
 
 ; ---   *   ---   *   ---

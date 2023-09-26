@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; PESO PAGES
+; PESO PAGE
 ; Hands you BIG mem ;>
 ;
 ; LIBRE SOFTWARE
@@ -25,10 +25,16 @@ import
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     peso.pages
+  TITLE     peso.page
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; ROM
+
+  define sizeof.page $1000
+  define sizep2.page $0C
 
 ; ---   *   ---   *   ---
 ; division by 4096 rounded up
@@ -36,32 +42,32 @@ import
 segment readable executable
 align $10
 
-pages.align:
-macro pages.align.inline {
+page.align:
+macro page.align.inline {
 
   ; scale by page size
-  mov rcx,12
+  mov rcx,sizep2.page
 
   ; round-up division
   ; then apply scale
   inline UInt.urdivp2
-  shl    rax,12
+  shl    rax,sizep2.page
 
 }
 
   ; ^invoke
-  inline pages.align
+  inline page.align
 
   ret
 
 ; ---   *   ---   *   ---
 ; cstruc
 
-pages.new:
+page.new:
 
   ; [0] rdi is size in bytes
   ; get N*page from that
-  inline pages.align
+  inline page.align
 
   ; ^set page*N
   mov rsi,rax
@@ -83,11 +89,11 @@ pages.new:
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-pages.free:
-macro pages.free.inline {
+page.free:
+macro page.free.inline {
 
   ; N pages to N*page
-  shl rsi,12
+  shl rsi,sizep2.page
 
   ; ^call munmap
   mov rax,$0B
@@ -97,7 +103,7 @@ macro pages.free.inline {
 }
 
   ; ^invoke
-  inline pages.free
+  inline page.free
 
   ret
 
