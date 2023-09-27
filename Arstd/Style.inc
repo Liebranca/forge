@@ -31,7 +31,14 @@ end if
 ; paste [label].inline
 
 macro inline F {
+
+  ; swap current
+  hier.cproc equ F
+
   F#.#inline
+
+  ; ^reset
+  restore hier.cproc
 
 }
 

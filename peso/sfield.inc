@@ -83,7 +83,7 @@ macro sfield.unshift base,field,src {
 macro sfield.get dst,base,field {
 
   match name,base \{
-    dst=name\#.#field
+    dst equ name\#.#field
 
   \}
 

@@ -10,7 +10,7 @@
 ; lyeb
 
 ; ---   *   ---   *   ---
-; deps
+; get importer
 
 if ~ defined loaded?Imp
   include '%ARPATH%/forge/Imp.inc'

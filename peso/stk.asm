@@ -18,8 +18,8 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.asm' peso::unit
   use '.asm' peso::page
+  use '.inc' peso::proc
 
 import
 
@@ -45,8 +45,7 @@ reg.end
 
 unit.salign r,x
 
-stk.new:
-macro stk.new.inline {
+proc.new inline stk.new
 
   ; get hed+buff mem
   add  rdi,sizeof.stk
@@ -58,19 +57,14 @@ macro stk.new.inline {
   mov qword [rax+stk.size],rsi
   mov qword [rax+stk.top],$00
 
-}
 
-  ; ^invoke
-  inline stk.new
-
-  ret
+proc.end
 
 
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-stk.del:
-macro stk.del.inline {
+proc.new inline stk.del
 
   ; [0] rdi is base addr
   ; so load just the size
@@ -80,33 +74,26 @@ macro stk.del.inline {
   ; ^free
   call page.free
 
-}
 
-  ; ^invoke
-  inline stk.del
-
-
-  ret
-
+proc.end
 
 ; ---   *   ---   *   ---
-; grow stack
-
-stk.push:
+; get buff at base+hed
+; then get offset
 
 macro stk.get_base {
-
-  ; get buff at base+hed
-  ; then get offset
   xor rbx,rbx
   lea rax,[rdi+sizeof.stk]
   mov ebx,dword [rdi+stk.top]
 
 }
 
-  ; ^invoke
-  stk.get_base
+; ---   *   ---   *   ---
+; grow stack
 
+proc.new stk.push
+
+  stk.get_base
 
   ; ^get base+hed+offset
   shl rbx,4
@@ -118,14 +105,13 @@ macro stk.get_base {
   mov dword [rdi+stk.top],ebx
 
 
-  ret
+proc.end
 
 ; ---   *   ---   *   ---
 ; ^undo
 
-stk.pop:
+proc.new stk.pop
 
-  ; same as previous F
   stk.get_base
 
   ; ^reset top
@@ -137,14 +123,13 @@ stk.pop:
   lea rax,[rax+rbx]
 
 
-  ret
+proc.end
 
 
 ; ---   *   ---   *   ---
 ; get elem at idex
 
-stk.view:
-macro stk.view.inline {
+proc.new inline stk.view
 
   ; scale up idex to unit
   shl rsi,4
@@ -152,13 +137,8 @@ macro stk.view.inline {
   ; ^get base+offset
   lea rax,[rdi+sizeof.stk]
 
-}
 
-  ; ^invoke
-  inline stk.view
-
-
-  ret
+proc.end
 
 
 ; ---   *   ---   *   ---

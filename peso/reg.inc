@@ -21,6 +21,9 @@ end if
 ; deps
 
 library ARPATH '/forge/'
+
+  use '.inc' Arstd::List
+
   use '.inc' peso::sfield
   use '.asm' peso::unit
 
@@ -31,7 +34,7 @@ import
 
   TITLE     peso.reg
 
-  VERSION   v0.01.1a
+  VERSION   v0.01.2a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -46,6 +49,7 @@ macro reg.new name {
 
   hier.creg equ name
 
+  define name#.$reg 1
   define name#.$reg.fields
 
   ; put definition 'on hold' ;>
@@ -109,6 +113,106 @@ macro reg.ice tn {
     \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^tad more effed, gets name
+; of each field and makes
+; defines for each base+offset
+
+macro reg.vice base,tn {
+
+  macro inner dst,type,[line] \{
+
+    local ok
+
+    forward
+
+      ok equ 1
+      match =unit.malign,line \\{
+        ok equ 0
+
+      \\}
+
+      match =1 name any,ok line \\{
+        reg.vice_cat dst,name,base,type
+
+      \\}
+
+  \}
+
+  match type name,tn \{
+
+    ; ^re-paste accum on non-virtual
+    match lines,type\#.$reg.fields \\{
+      inner name,type,lines
+
+    \\}
+
+    define name base
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^join tokens
+
+macro reg.vice_cat dst,name,base,type {
+  define dst#name base+type#name
+
+}
+
+; ---   *   ---   *   ---
+; highly effed
+;
+; do the same as vice, but
+; add lines to queues
+
+macro reg.qvice Q0,Q1,len,base,tn {
+
+  macro inner dst,type,[line] \{
+
+    local ok
+
+    forward
+
+      ok equ 1
+      match =unit.malign,line \\{
+        ok equ 0
+
+      \\}
+
+      match =1 name any,ok line \\{
+        reg.qvice_cat Q0,Q1,dst,name,base,type
+        len equ len+1
+
+      \\}
+
+  \}
+
+  match type name,tn \{
+
+    ; ^re-paste accum on non-virtual
+    match lines,type\#.$reg.fields \\{
+      inner name,type,lines
+
+    \\}
+
+    List.push Q0,define  name base
+    List.push Q1,restore name
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^Q'd join tokens
+
+macro reg.qvice_cat Q0,Q1,dst,name,base,type {
+  List.push Q0,define  dst#name base+type#name
+  List.push Q1,restore dst#name
 
 }
 

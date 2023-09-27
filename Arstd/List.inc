@@ -18,7 +18,7 @@ if ~ defined loaded?Arstd.INCFILE
 end if
 
 ; ---   *   ---   *   ---
-; an example of usage:
+; info
 
   TITLE     List
 
@@ -28,8 +28,9 @@ end if
   define    loaded?List 1
 
 ; ---   *   ---   *   ---
+; add to end of list
 
-macro List@$push list,elem& {
+macro List.push list,elem& {
 
   match any,list \{
 
@@ -57,8 +58,9 @@ macro List@$push list,elem& {
 }
 
 ; ---   *   ---   *   ---
+; add to beggining
 
-macro List@$unshift list,elem& {
+macro List.unshift list,elem& {
 
   match any,list \{
 
@@ -86,8 +88,9 @@ macro List@$unshift list,elem& {
 }
 
 ; ---   *   ---   *   ---
+; remove last element
 
-macro List@$pop list,elem {
+macro List.pop list,elem {
 
   local status
   status equ 0
@@ -117,8 +120,9 @@ macro List@$pop list,elem {
 }
 
 ; ---   *   ---   *   ---
+; remove first element
 
-macro List@$shift list,elem {
+macro List.shift list,elem {
 
   local status
   status equ 0
@@ -148,20 +152,51 @@ macro List@$shift list,elem {
 }
 
 ; ---   *   ---   *   ---
+; converts [elem : elem] to [elem elem]
 
-macro List@$flatten list,len,out {
+macro List.flatten list,len,out {
 
   local cpy
   local elem
 
-  cpy equ list
+  cpy  equ list
   elem equ
 
   rept len \{
-    List@$shift cpy,elem
+
+    List.shift cpy,elem
 
     match any,out \\{
       out equ any elem
+
+    \\}
+
+    match ,out \\{
+      out equ elem
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^comma-separated
+
+macro List.cflatten list,len,out {
+
+  local cpy
+  local elem
+
+  cpy  equ list
+  elem equ
+
+  rept len \{
+
+    List.shift cpy,elem
+
+    match any,out \\{
+      out equ any,elem
 
     \\}
 

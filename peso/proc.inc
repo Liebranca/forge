@@ -27,7 +27,7 @@ import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -40,12 +40,22 @@ import
 
 macro proc.new name {
 
+  ; reset current
   hier.cproc equ name
 
+  ; symbol declare/restore queues
+  define name#.$proc.nsmk
+  define name#.$proc.nsrm
+  define name#.$proc.nslen 0
+
+  ; ^not-so-effed stuff
   define name#.$proc.vars
-  define name#.$proc.rpres
+  define name#.$proc.rpres_a
+  define name#.$proc.rpres_b
   define name#.$proc.stksize 0
 
+
+  ; add unit aligned label
   unit.malign
   name#:
 
@@ -55,83 +65,219 @@ macro proc.new name {
 ; push register list, then
 ; reserve N bytes in stack
 
-macro proc.enter [rX] {
+macro proc.enter {
 
-  forward
+  proc.preserve hier.cproc
 
-    match name,rX \{
-      proc.preserve rX
+  ; get declared stack size
+  local n
+  sfield.get n,hier.cproc,$proc.stksize
 
-    \}
+  ; ^convert size to units
+  n equ n+(sizeof.unit-1)
+  n equ n shr sizep2.unit
+  n equ n shl sizep2.unit
 
-  common
+  ; ^paste prologue
+  if n > 0
+    push rbp
+    mov  rbp,rsp
+    sub  rsp,n
 
-    sfield.get n,hier.cproc,$proc.stksize
+  end if
 
-    ; get size in units
-    n=n+(sizeof.unit-1)
-    n=n shr sizep2.unit
-    n=n shl sizep2.unit
-
-    ; ^paste prologue
-    if n > 0
-      push rbp
-      mov  rbp,rsp
-      sub  rsp,n
-
-    end if
+  proc.open_scope hier.cproc
 
 }
 
 ; ---   *   ---   *   ---
 ; ^adds to preserved register list
 
-macro proc.preserve rX {
-  sfield.unshift hier.cproc,$proc.rpres,rX
-  push rX
+macro proc.cpr [rX] {
+
+  forward
+    sfield.push hier.cproc,$proc.rpres_a,rX
+    sfield.unshift hier.cproc,$proc.rpres_b,rX
+
+}
+
+; ---   *   ---   *   ---
+; exec symbol definitions
+; for this scope
+
+macro proc.open_scope base {
+
+  local Q
+
+  proc.scope_queue Q,nsmk
+  proc.scope_paste Q
+
+}
+
+; ---   *   ---   *   ---
+; ^undo
+
+macro proc.close_scope base {
+
+  local Q
+
+  proc.scope_queue Q,nsrm
+  proc.scope_paste Q
+
+}
+
+; ---   *   ---   *   ---
+; ^it's the same for both
+
+macro proc.scope_queue Q,base {
+
+  local QD
+  local len
+
+  sfield.get QD,hier.cproc,$proc.#base
+  sfield.get len,hier.cproc,$proc.nslen
+
+  Q equ
+  List.cflatten QD,len,Q
+
+}
+
+; ---   *   ---   *   ---
+; ^idem, handles pasting
+; of Q'd lines
+
+macro proc.scope_paste Q {
+
+  macro mkdef lis,value \{
+    define %\#lis value
+
+  \}
+
+  macro rmdef lis \{
+    restore %\#lis
+
+  \}
+
+  macro inner [line] \{
+
+    forward
+
+      match =define lis value,line \\{
+        mkdef lis,value
+
+      \\}
+
+      match =restore lis,line \\{
+        rmdef lis
+
+      \\}
+
+  \}
+
+  match lines,Q \{inner lines\}
 
 }
 
 ; ---   *   ---   *   ---
 ; add stack space
 
-macro proc.var sn {
+macro proc.stk sn {
 
-  match size name,sn \{
+  local Q0
+  local Q1
 
-    ; get current top
-    size equ sizeof.\#size
+  local top
+  local len
+  local offset
+
+  top    equ 0
+  offset equ 0
+
+
+  ; get namespace queues
+  sfield.get Q0,hier.cproc,$proc.nsmk
+  sfield.get Q1,hier.cproc,$proc.nsrm
+  sfield.get len,hier.cproc,$proc.nslen
+
+
+  ; ^Q definitions and undos
+  match type name,sn \{
 
     ; calc new size && var offset
     sfield.get offset,hier.cproc,$proc.stksize
+    top equ offset-sizeof.\#type
 
-    top=offset+size
+    ; make name -> rbp-offset
+    match x,top \\{
 
-    ; set name -> rbp-offset
-    proc.var_decl name,top
+      if defined type\#.$reg
+        reg.qvice Q0,Q1,len,rbp-x,type name
 
-    ; reset stack top
-    sfield.set  hier.cproc,$proc.stksize,top
+      else
+        List.push Q0,define  name rbp-x
+        List.push Q1,restore name
+
+        len equ len+1
+
+      end if
+
+      ; reset stack top
+      sfield.set hier.cproc,$proc.stksize,\
+        offset+sizeof.\#type
+
+    \\}
 
   \}
 
-}
-
-; ---   *   ---   *   ---
-; ^make define for varname
-
-macro proc.var_decl name,offset {
-  define name rbp-offset
+  ; ^reset queues
+  sfield.set hier.cproc,$proc.nsmk,Q0
+  sfield.set hier.cproc,$proc.nsrm,Q1
+  sfield.set hier.cproc,$proc.nslen,len
 
 }
 
 ; ---   *   ---   *   ---
-; ^pops
+; ^detail args
+
+macro proc.arg snr {
+
+  local Q0
+  local Q1
+  local len
+
+  ; get namespace queues
+  sfield.get Q0,hier.cproc,$proc.nsmk
+  sfield.get Q1,hier.cproc,$proc.nsrm
+  sfield.get len,hier.cproc,$proc.nslen
+
+
+  ; ^Q definitions and undos
+  match type name rX,snr \{
+
+    if defined type\#.$reg
+      reg.qvice Q0,Q1,len,rX,type name
+
+    else
+      List.push Q0,define  name rX
+      List.push Q1,restore name
+
+      len equ len+1
+
+    end if
+
+  \}
+
+  ; ^reset queues
+  sfield.set hier.cproc,$proc.nsmk,Q0
+  sfield.set hier.cproc,$proc.nsrm,Q1
+  sfield.set hier.cproc,$proc.nslen,len
+
+}
+
+; ---   *   ---   *   ---
+; end-of
 
 macro proc.leave {
-
-  ; restore registers
-  proc.restore hier.cproc
 
   ; get stack was used
   sfield.get n,hier.cproc,$proc.stksize
@@ -141,6 +287,39 @@ macro proc.leave {
     pop rbp
 
   end if
+
+
+  ; pop rX
+  proc.restore hier.cproc
+  proc.close_scope hier.cproc
+
+}
+
+; ---   *   ---   *   ---
+; preserve registers
+
+macro proc.preserve base {
+
+  local list
+
+  ; get list of registers
+  match name,base \{
+    list equ name\#.$proc.rpres_a
+
+  \}
+
+  ; ^iter thru
+  macro inner [rX] \{
+    forward
+      push rX
+
+  \}
+
+  ; ^invoke
+  match rX,list \{
+    inner rX
+
+  \}
 
 }
 
@@ -153,7 +332,7 @@ macro proc.restore base {
 
   ; get list of registers
   match name,base \{
-    list equ name\#.$proc.rpres
+    list equ name\#.$proc.rpres_b
 
   \}
 

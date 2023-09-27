@@ -13,18 +13,43 @@ library ARPATH '/forge/'
 import
 
 ; ---   *   ---   *   ---
+; struc
+
+reg.new rtest
+
+  my .a dw $2424
+  my .b dw $2525
+
+  my .c dd $26262727
+
+reg.end
+
+; ---   *   ---   *   ---
 
 unit.salign r,x
 
+proc.new proc_test
+proc.arg rtest self rdi
+
+  proc.enter
+  mov dword [%self.a],$24242424
+
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+
 proc.new _start
-proc.var unit u16
+proc.stk rtest self
 
-proc.enter
+  proc.enter
 
-  mov word [u16],$2424
+  lea rdi,[%self]
+  call proc_test
 
 
-proc.leave
-exit
+  proc.leave
+  exit
 
 ; ---   *   ---   *   ---

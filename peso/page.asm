@@ -18,7 +18,7 @@ if ~ defined loaded?Imp
 end if
 
 library ARPATH '/forge/'
-  use '.asm' Arstd::UInt
+  use '.asm' peso::unit
 
 import
 
@@ -39,10 +39,9 @@ import
 ; ---   *   ---   *   ---
 ; division by 4096 rounded up
 
-segment readable executable
-align $10
+unit.salign r,x
 
-page.align:
+proc.new page.align
 macro page.align.inline {
 
   ; scale by page size
@@ -63,7 +62,7 @@ macro page.align.inline {
 ; ---   *   ---   *   ---
 ; cstruc
 
-page.new:
+proc.new page.new
 
   ; [0] rdi is size in bytes
   ; get N*page from that
@@ -89,7 +88,7 @@ page.new:
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-page.free:
+proc.new page.free
 macro page.free.inline {
 
   ; N pages to N*page
