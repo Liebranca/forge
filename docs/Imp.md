@@ -7,10 +7,7 @@ if ~ defined loaded?Imp
 
 end if
 
-; ---   *   ---   *   ---
-
 library ENV_ROOT '/subdir/'
-
   use '.ext' path::to::file
 
 import
@@ -81,6 +78,14 @@ The only requirement is that all your fields are defined *after* `TITLE`.
 Right from the very start Imp was complete enough for what I needed it for. However, improvements can always be made. For any oddities or annoyances you might encounter, please open an issue or contact me directly.
 
 # CHANGELOG
+
+### v0.01.3a
+
+- Added `Imp.debug` var to turn logging on and off
+- `Imp.load` can now properly handle recursive include queues.
+- `loaded?[name]` changes: `0` eq not loaded, `1` eq *queued* for loading and `2` eq loaded.
+
+- `import` is now `macro` rather than `fix` ;>
 
 ### v0.01.2a
 

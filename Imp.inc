@@ -12,13 +12,18 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Arstd.Style
+if ~ loaded?Arstd.Style
   include '%ARPATH%/forge/Arstd/Style.inc'
 
 end if
 
-if ~ defined loaded?Arstd.List
+if ~ loaded?Arstd.List
   include '%ARPATH%/forge/Arstd/List.inc'
+
+end if
+
+if ~ loaded?Arstd.IO
+  include '%ARPATH%/forge/Arstd/IO.inc'
 
 end if
 
@@ -27,10 +32,11 @@ end if
 
   TITLE     Imp
 
-  VERSION   v0.01.2a
+  VERSION   v0.01.3a
   AUTHOR    'IBN-3DILA'
 
-  define    loaded?Imp 1
+  loaded?Imp = 2
+  Imp.debug  = 0
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -41,6 +47,10 @@ end if
   define Imp.module
 
   define Imp.includes
+  define Imp.includes_len 0
+
+  define Imp.prev.includes
+  define Imp.prev.includes_len 0
 
 ; ---   *   ---   *   ---
 ; split m[::],src
@@ -126,7 +136,7 @@ macro Imp.get_file env,md,ext,fpath,fname {
 
     \\}
 
-    Imp.load fname,full
+    Imp.qload fname,full
     status equ 1
 
   \}
@@ -139,53 +149,97 @@ macro Imp.get_file env,md,ext,fpath,fname {
 
     \\}
 
-    Imp.load fname,full
+    Imp.qload fname,full
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; adds include to final list
+; ensures file is queued for
+; inclusion only once
 
-macro Imp.append elem {
+macro Imp.qload name,fpath {
 
-  match any,Imp.includes \{
-    Imp.includes equ elem,Imp.includes
+  match any ff,name fpath \{
 
-  \}
+    ; dbout
+    if Imp.debug
 
-  match ,Imp.includes \{
-    Imp.includes equ elem
+      if ~ loaded\#any
+        out@chd ff,' queued'
+
+      else
+        out@chd ff,' already queued'
+
+      end if
+
+    end if
+
+
+    ; push fpath to Q if not already added
+    if ~ loaded\#any
+
+      loaded\#any=1
+
+      List.push Imp.includes,fpath any
+      Imp.includes_len equ Imp.includes_len+1
+
+    end if
+
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ensures file is included only once
+; ^walks the Q
 
-macro Imp.load name,fpath {
+macro Imp.load {
 
-  if ~ defined loaded#name
+  local Q
 
-    define loaded#name 1
-    Imp.append include fpath
+  ; ^walks Q
+  macro outer [fn] \{
 
-; old dbout
-;
-;    display $1B,$5B,'37;1m',\
-;      ':: ',$1B,$5B,'0m',\
-;      fpath,' included',$0A
-;
-;  else
-;
-;    display $1B,$5B,'37;1m',\
-;      ':: ',$1B,$5B,'0m',\
-;      fpath,' already included',$0A
+    forward
+
+      match fpath name,fn \\{
+        inner fpath,name
+
+      \\}
+
+  \}
+
+  ; ^procs each item from Q
+  macro inner fpath,name \{
+
+    if loaded?\#name < 1
+
+      ; this stops recursive queues from
+      ; accidentally pushing a file twice
+      loaded?\#name=2
+      include fpath
+
+      ; dbout
+      if Imp.debug
+        out@chd 'loaded',fpath
+
+      end if
+
+    end if
+
+  \}
 
 
-  end if
+  ; get queue as comma-separated
+  Q equ
+  List.cflatten Imp.includes,Imp.includes_len,Q
+
+  match list,Q \{
+    outer list
+
+  \}
 
 }
 
@@ -211,28 +265,48 @@ macro use expr {
 }
 
 ; ---   *   ---   *   ---
-; ^destroys the use keyword
-
-macro Imp.disable_use {purge use}
-
-; ---   *   ---   *   ---
+; define imports src
 
 macro library em {
 
   local status
-  status equ 0
 
+  ; dbout
+  if Imp.debug
+    out@sys `Included,`__FILE__
+
+  end if
+
+  Imp.prev.includes     equ Imp.includes
+  Imp.prev.includes_len equ Imp.includes_len
+
+
+  ; reset current
   match env module,em \{
     Imp.library equ env
-    Imp.module equ module
+    Imp.module  equ module
 
   \}
 
 }
 
-import fix npaste2 Imp.includes,\
-  restore Imp.library,restore Imp.module,\
-  Imp.includes equ
+; ---   *   ---   *   ---
+; ^pull use from library
+
+macro import {
+
+  Imp.load
+
+  restore Imp.library
+  restore Imp.module
+
+  restore Imp.prev.includes
+  restore Imp.prev.includes_len
+
+  Imp.includes     equ Imp.prev.includes
+  Imp.includes_len equ Imp.prev.includes_len
+
+}
 
 ; ---   *   ---   *   ---
 

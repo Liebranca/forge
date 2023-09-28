@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Arstd.INCFILE
+if ~ loaded?Arstd.INCFILE
   include '%ARPATH%/forge/Arstd/INCFILE.inc'
 
 end if
@@ -25,7 +25,7 @@ end if
   VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
-  define    loaded?Style 1
+  loaded?Style=2
 
 ; ---   *   ---   *   ---
 ; paste [label].inline

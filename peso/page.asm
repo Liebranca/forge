@@ -12,12 +12,13 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Imp
+if ~ loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
 
 library ARPATH '/forge/'
+  use '.inc' peso::proc
   use '.asm' peso::unit
 
 import

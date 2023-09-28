@@ -10,20 +10,14 @@
 ; lyeb
 
 ; ---   *   ---   *   ---
-; deps
-
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     Arstd.IO
 
-  VERSION   v0.00.1a
+  VERSION   v0.00.2a
   AUTHOR    'IBN-3DILA'
+
+  loaded?Arstd.IO=2
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -44,6 +38,8 @@ end if
     $1B,$5B,'37;1m>',     \
     $1B,$5B,'0m'
 
+  define BLANK $20
+
 ; ---   *   ---   *   ---
 
 macro d'oh! src,[args] {
@@ -58,6 +54,15 @@ macro d'oh! src,[args] {
 
     match '__FILE__',args \{
       display $20,__FILE__
+      status equ 1
+
+    \}
+
+    match =0 x y,status args \{
+
+      display ','
+
+      d'oh! BLANK,x,y
       status equ 1
 
     \}
@@ -86,7 +91,7 @@ macro out@err args& {d'oh! ERRTAG,args}
 macro module_info [name] {
 
 forward
-  if ~ defined loaded?#name
+  if ~ loaded?#name
     out@err name,'not loaded'
 
   else

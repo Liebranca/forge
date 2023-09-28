@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Imp
+if ~ loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
@@ -27,7 +27,7 @@ import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -35,10 +35,17 @@ import
 
   define hier.cproc
 
+  proc.debug=1
+
 ; ---   *   ---   *   ---
 ; start new block
 
 macro proc.new name {
+
+  if proc.debug
+    out@sys name
+
+  end if
 
   ; reset current
   hier.cproc equ name
@@ -149,12 +156,18 @@ macro proc.scope_queue Q,base {
 macro proc.scope_paste Q {
 
   macro mkdef lis,value \{
-    define %\#lis value
+
+    if proc.debug
+      out@chd lis,value
+
+    end if
+
+    define @\#lis value
 
   \}
 
   macro rmdef lis \{
-    restore %\#lis
+    restore @\#lis
 
   \}
 
@@ -273,6 +286,16 @@ macro proc.arg snr {
   sfield.set hier.cproc,$proc.nslen,len
 
 }
+
+; ---   *   ---   *   ---
+; ^proc.arg can be used for
+; aliasing values, but that
+; is a bit confusing!
+;
+; so, this wrap is just to
+; fix that semantical issue
+
+macro proc.lis snr {proc.arg snr}
 
 ; ---   *   ---   *   ---
 ; end-of

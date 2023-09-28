@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Arstd.INCFILE
+if ~ loaded?Arstd.INCFILE
   include '%ARPATH%/forge/Arstd/INCFILE.inc'
 
 end if
@@ -22,10 +22,10 @@ end if
 
   TITLE     List
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
-  define    loaded?List 1
+  loaded?List=2
 
 ; ---   *   ---   *   ---
 ; add to end of list

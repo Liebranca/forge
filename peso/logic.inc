@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Imp
+if ~ loaded?Imp
   include '%ARPATH%/forge/Imp.inc'
 
 end if
