@@ -49,6 +49,6 @@ macro AUTHOR name {
   VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
 
-  loaded?INCFILE=1
+  define    loaded?Arstd.INCFILE 2
 
 ; ---   *   ---   *   ---

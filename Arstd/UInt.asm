@@ -10,14 +10,6 @@
 ; lyeb
 
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     Arstd.UInt
@@ -90,7 +82,7 @@ macro UInt.urdivp2.inline {
 }
 
   ; ^invoke
-  inline UInt.urdivp2
+  UInt.urdivp2.inline
   ret
 
 

@@ -12,17 +12,22 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Arstd.Style
+if ~ defined loaded?Arstd.INCFILE
+  include '%ARPATH%/forge/Arstd/INCFILE.inc'
+
+end if
+
+if ~  defined loaded?Arstd.Style
   include '%ARPATH%/forge/Arstd/Style.inc'
 
 end if
 
-if ~ loaded?Arstd.List
+if ~  defined loaded?Arstd.List
   include '%ARPATH%/forge/Arstd/List.inc'
 
 end if
 
-if ~ loaded?Arstd.IO
+if ~  defined loaded?Arstd.IO
   include '%ARPATH%/forge/Arstd/IO.inc'
 
 end if
@@ -32,11 +37,13 @@ end if
 
   TITLE     Imp
 
-  VERSION   v0.01.3a
+  VERSION   v0.01.4a
   AUTHOR    'IBN-3DILA'
 
-  loaded?Imp = 2
-  Imp.debug  = 0
+  define    loaded?Imp 2
+
+
+  Imp.debug=0
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -51,6 +58,8 @@ end if
 
   define Imp.prev.includes
   define Imp.prev.includes_len 0
+
+  define Imp.final
 
 ; ---   *   ---   *   ---
 ; split m[::],src
@@ -74,6 +83,11 @@ macro Imp.get_path_elem fpath,fname,next,ja,jb {
 
     \\}
 
+    match ,fname \\{
+      fname equ s0
+
+    \\}
+
     next   equ s1
     status equ 1
 
@@ -89,6 +103,11 @@ macro Imp.get_path_elem fpath,fname,next,ja,jb {
 
     match any,fname \\{
       tcat fname,any,jb,s0
+
+    \\}
+
+    match ,fname \\{
+      fname equ s0
 
     \\}
 
@@ -166,7 +185,7 @@ macro Imp.qload name,fpath {
     ; dbout
     if Imp.debug
 
-      if ~ loaded\#any
+      if ~ defined loaded?\#any
         out@chd ff,' queued'
 
       else
@@ -178,11 +197,11 @@ macro Imp.qload name,fpath {
 
 
     ; push fpath to Q if not already added
-    if ~ loaded\#any
+    if ~ defined loaded?\#any
 
-      loaded\#any=1
+      loaded?\#any=1
 
-      List.push Imp.includes,fpath any
+      List.unshift Imp.includes,fpath any
       Imp.includes_len equ Imp.includes_len+1
 
     end if
@@ -195,7 +214,7 @@ macro Imp.qload name,fpath {
 ; ---   *   ---   *   ---
 ; ^walks the Q
 
-macro Imp.load {
+macro Imp.load out,len {
 
   local Q
 
@@ -214,20 +233,23 @@ macro Imp.load {
   ; ^procs each item from Q
   macro inner fpath,name \{
 
-    if loaded?\#name < 1
+    if loaded?\#name < 2
 
-      ; this stops recursive queues from
-      ; accidentally pushing a file twice
-      loaded?\#name=2
-      include fpath
+      ; and this is what nonsense looks like
+      List.push out,fpath
+      len equ len+1
 
       ; dbout
       if Imp.debug
-        out@chd 'loaded',fpath
+        out@chd 'loaded',name
 
       end if
 
     end if
+
+    ; this stops recursive queues from
+    ; accidentally pushing a file twice
+    loaded?\#name=loaded?\#name+1
 
   \}
 
@@ -251,7 +273,7 @@ macro use expr {
   match ext src,expr \{
 
     fpath equ ''
-    fname equ ?
+    fname equ
 
     Imp.get_path fpath,fname,src
 
@@ -273,7 +295,7 @@ macro library em {
 
   ; dbout
   if Imp.debug
-    out@sys `Included,`__FILE__
+    out@sys 'IMP:',`__FILE__
 
   end if
 
@@ -293,9 +315,20 @@ macro library em {
 ; ---   *   ---   *   ---
 ; ^pull use from library
 
-macro import {
+macro import.prologue {
 
-  Imp.load
+  local out
+  local list
+
+  local len
+
+  out  equ
+  list equ
+  len  equ 0
+
+  Imp.load out,len
+  List.cflatten out,len,list
+
 
   restore Imp.library
   restore Imp.module
@@ -306,7 +339,49 @@ macro import {
   Imp.includes     equ Imp.prev.includes
   Imp.includes_len equ Imp.prev.includes_len
 
+  Imp.final        equ
+
+
+  macro inner [fpath] \{
+
+    forward
+
+      match prev,Imp.final \\{
+        Imp.final equ fpath,prev
+
+      \\}
+
+      match ,Imp.final \\{
+        Imp.final equ fpath
+
+      \\}
+
+  \}
+
+  match item,list \{
+    inner item
+
+  \}
+
 }
 
 ; ---   *   ---   *   ---
+; ^a hack
 
+import fix \
+\
+macro you_made_me_do_this {\
+\
+  macro srsly_you_made_me list \{\
+    macro inner [item] \\{forward include item\\}\
+    match any,list \\{\inner any\\}\
+\
+  \}\
+\
+  rept 1 \{import.prologue\}\
+  rept 1 \{srsly_you_made_me Imp.final\}\
+\
+}\
+you_made_me_do_this
+
+; ---   *   ---   *   ---

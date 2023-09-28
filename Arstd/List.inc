@@ -10,14 +10,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-if ~ loaded?Arstd.INCFILE
-  include '%ARPATH%/forge/Arstd/INCFILE.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     List
@@ -25,7 +17,7 @@ end if
   VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
-  loaded?List=2
+  define    loaded?Arstd.List 2
 
 ; ---   *   ---   *   ---
 ; add to end of list

@@ -2,15 +2,31 @@
 
 ```asm
 
+; ---   *   ---   *   ---
+; get importer
+
 if ~ defined loaded?Imp
   include 'path/to/Imp.inc'
 
 end if
 
-library ENV_ROOT '/subdir/'
+; ---   *   ---   *   ---
+; with environ as base path
+
+library ENV '/subdir/'
   use '.ext' path::to::file
 
 import
+
+; ---   *   ---   *   ---
+; ^or with no environs
+
+library _ '/abs/path/subdir/'
+  use '.ext' path::to::file
+
+import
+
+; ---   *   ---   *   ---
 
 ```
 
@@ -20,7 +36,7 @@ A recurring question in fasm boards: how do I ensure a file is included only onc
 
 # WAY IT WORKS
 
-Imp checks for a `define`d symbol by the name of `loaded?<ID>` to identify if a file has already been imported by another dependency somewhere else in the program; `ID` always corresponds to the name of the file without extensions.
+Imp checks for a `define`'d symbol by the name of `loaded?<ID>` to identify if a file has already been imported by another dependency somewhere else in the program; `ID` always corresponds to the name of the file without extensions.
 
 The following snippet:
 
@@ -28,13 +44,13 @@ The following snippet:
 
 library ARPATH '/forge/'
   use '.inc' OS
-  use '.inc' Arstd::IO
+  use '.asm' peso::file
 
 import
 
 ```
 
-Looks for the files `OS.inc` and `Arstd/IO.inc` in the `/forge/` subdirectory of the environment variable `$ARPATH`. This invocation will define the symbols `loaded?OS` and `loaded?Arstd.IO` if they are not defined already, such that:
+Looks for the files `OS.inc` and `peso/file.asm` in the `/forge/` subdirectory of the environment variable `$ARPATH`. This invocation will define the symbols `loaded?OS` and `loaded?Arstd.IO` if they are not defined already, such that:
 
 ```asm
 if ~ defined loaded?OS
@@ -50,7 +66,7 @@ In addition to file imports, Imp provides the macros `TITLE`, `VERSION` and `AUT
 
 ```asm
 
-TITLE     module
+TITLE     ID
 
 VERSION   version_string
 AUTHOR    'your_name'
@@ -58,7 +74,7 @@ AUTHOR    'your_name'
 
 ```
 
-Which defines the symbols `<module>?version` and `<module>?author` which are used by the `module_info` macro from `Arstd::IO`; the `INFO_FIELD` macro can also be used to declare your own module data.
+Which defines the symbols `<ID>?version` and `<ID>?author` which are used by the `module_info` macro from `Arstd::IO`; the `INFO_FIELD` macro can also be used to declare your own module data.
 
 Usage of `INFO_FIELD` is fairly straight-forward:
 
@@ -79,11 +95,17 @@ Right from the very start Imp was complete enough for what I needed it for. Howe
 
 # CHANGELOG
 
+### v0.01.4a
+
+- `import` is now `fix` again, sadface, due to yet another recursion issue being unsolvable with a fixed macro; and so what we do is dynamically make a new macro for each invocation ;>
+
+- Further minor fixes for assorted effery caused by recursive imports; in the end, knowing a project's structure to avoid needing to import something twice in the first place winds up being the better approach.
+
 ### v0.01.3a
 
 - Added `Imp.debug` var to turn logging on and off
 - `Imp.load` can now properly handle recursive include queues.
-- `loaded?[name]` changes: `0` eq not loaded, `1` eq *queued* for loading and `2` eq loaded.
+- `loaded?<ID>` changes: `0` eq not loaded, `1` eq *queued* for loading and `2` eq loaded.
 
 - `import` is now `macro` rather than `fix` ;>
 

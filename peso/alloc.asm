@@ -12,11 +12,6 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.asm' peso::stk
 

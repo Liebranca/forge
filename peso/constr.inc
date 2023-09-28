@@ -10,14 +10,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'

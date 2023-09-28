@@ -17,7 +17,7 @@
   VERSION   v0.00.2a
   AUTHOR    'IBN-3DILA'
 
-  loaded?Arstd.IO=2
+  define    loaded?Arstd.IO 2
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -59,9 +59,6 @@ macro d'oh! src,[args] {
     \}
 
     match =0 x y,status args \{
-
-      display ','
-
       d'oh! BLANK,x,y
       status equ 1
 
@@ -73,18 +70,24 @@ macro d'oh! src,[args] {
     \}
 
   common
-    display $0A
 
-  if src eq ERRTAG
-    err
+    if src eq ERRTAG
+      err
 
-  end if
+    else if src eq BLANK
+
+    else
+      display $0A
+
+    end if
 
 }
 
 macro out@sys args& {d'oh! SYSTAG,args}
 macro out@chd args& {d'oh! CHDTAG,args}
 macro out@err args& {d'oh! ERRTAG,args}
+
+macro out@nl        {display $0A}
 
 ; ---   *   ---   *   ---
 

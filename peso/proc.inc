@@ -12,11 +12,6 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.inc' peso::reg
 
@@ -35,7 +30,7 @@ import
 
   define hier.cproc
 
-  proc.debug=1
+  proc.debug=0
 
 ; ---   *   ---   *   ---
 ; start new block
@@ -73,6 +68,16 @@ macro proc.new name {
 ; reserve N bytes in stack
 
 macro proc.enter {
+
+  if proc.debug
+
+    match any,hier.cproc \{
+      out@sys 'entering',any
+
+    \}
+
+  end if
+
 
   proc.preserve hier.cproc
 
@@ -267,6 +272,12 @@ macro proc.arg snr {
   ; ^Q definitions and undos
   match type name rX,snr \{
 
+    if proc.debug
+      out@chd snr
+
+    end if
+
+
     if defined type\#.$reg
       reg.qvice Q0,Q1,len,rX,type name
 
@@ -371,6 +382,21 @@ macro proc.restore base {
     inner rX
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; paste [label].inline
+
+macro inline F {
+
+  ; swap current
+  hier.cproc equ F
+
+  F#.#inline
+
+  ; ^reset
+  restore hier.cproc
 
 }
 

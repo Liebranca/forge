@@ -10,20 +10,9 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
-
-  use '.inc' Arstd::List
-
   use '.inc' peso::sfield
   use '.asm' peso::unit
 
@@ -34,7 +23,7 @@ import
 
   TITLE     peso.reg
 
-  VERSION   v0.01.2a
+  VERSION   v0.01.3a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -200,8 +189,11 @@ macro reg.qvice Q0,Q1,len,base,tn {
 
     \\}
 
-    List.push Q0,define  name base
-    List.push Q1,restore name
+; bit already done somewhere else
+;
+;    len equ len+1
+;    List.push Q0,define  name base
+;    List.push Q1,restore name
 
   \}
 

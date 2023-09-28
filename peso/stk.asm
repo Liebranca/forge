@@ -12,14 +12,8 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.asm' peso::page
-  use '.inc' peso::proc
 
 import
 
@@ -104,7 +98,6 @@ macro stk.del.inline {
 ; then get offset
 
 macro stk.get_base {
-  xor rbx,rbx
   lea rax,[rdi+sizeof.stk]
   mov rbx,qword [rdi+stk.top]
 
@@ -132,8 +125,6 @@ stk.sigt.push
   proc.enter
   stk.get_base
 
-@out
-
   ; ^get base+hed+offset
   shl @top,sizep2.unit
   lea @out,[@out+@top]
@@ -159,7 +150,7 @@ stk.sigt.push
 
   ; ^reset top
   sub @top,@step
-  mov qword [@self.top],@step
+  mov qword [@self.top],@top
 
   ; ^read base+hed+offset
   shl @step,sizep2.unit

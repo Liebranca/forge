@@ -10,14 +10,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     OS

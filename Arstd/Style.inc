@@ -10,14 +10,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-if ~ loaded?Arstd.INCFILE
-  include '%ARPATH%/forge/Arstd/INCFILE.inc'
-
-end if
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     Style
@@ -25,22 +17,7 @@ end if
   VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
-  loaded?Style=2
-
-; ---   *   ---   *   ---
-; paste [label].inline
-
-macro inline F {
-
-  ; swap current
-  hier.cproc equ F
-
-  F#.#inline
-
-  ; ^reset
-  restore hier.cproc
-
-}
+  define    loaded?Style 2
 
 ; ---   *   ---   *   ---
 ; pastes comma separated as lines
@@ -82,6 +59,21 @@ macro npaste2 [line] {
     \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; please end my suffering
+
+macro fnpaste list {
+  macro inner [item] \{forward item\}
+  match any,list \{inner any\}
+
+}
+
+macro fnpaste2 pro,list {
+  pro
+  fnpaste list
 
 }
 

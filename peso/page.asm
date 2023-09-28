@@ -12,14 +12,8 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.inc' peso::proc
-  use '.asm' peso::unit
 
 import
 
@@ -50,8 +44,8 @@ macro page.align.inline {
 
   ; round-up division
   ; then apply scale
-  inline UInt.urdivp2
-  shl    rax,sizep2.page
+  UInt.urdivp2.inline
+  shl rax,sizep2.page
 
 }
 

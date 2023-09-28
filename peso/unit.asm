@@ -12,11 +12,6 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.asm' Arstd::UInt
 
@@ -88,13 +83,13 @@ macro unit.align.inline {
 
   ; round-up division
   ; then apply scale
-  inline UInt.urdivp2
-  shl    rax,sizep2.unit
+  UInt.urdivp2.inline
+  shl rax,sizep2.unit
 
 }
 
   ; ^invoke
-  inline unit.align
+  unit.align.inline
 
   ret
 
