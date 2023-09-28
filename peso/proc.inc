@@ -22,7 +22,7 @@ import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -386,18 +386,25 @@ macro proc.restore base {
 }
 
 ; ---   *   ---   *   ---
-; paste [label].inline
+; recursive [label].inline
 
-macro inline F {
+inline fix macro inline.inner F {\
+  rept 1 \{hier.cproc equ F\}\
+  rept 1 \{F#.#inline\}\
+  rept 1 \{restore hier.cproc\}\
+\
+}\
+inline.inner 
 
-  ; swap current
-  hier.cproc equ F
+; ---   *   ---   *   ---
+; ^for use within inlines themselves
 
-  F#.#inline
-
-  ; ^reset
-  restore hier.cproc
-
-}
+dpline fix macro dpline.inner F \{\
+  rept 1 \\{hier.cproc equ F\\}\
+  rept 1 \\{F\#.#inline\\}\
+  rept 1 \\{restore hier.cproc\\}\
+\
+\}\
+dpline.inner 
 
 ; ---   *   ---   *   ---
