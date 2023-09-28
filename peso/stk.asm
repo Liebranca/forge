@@ -13,6 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' peso::proc
   use '.asm' peso::page
 
 import

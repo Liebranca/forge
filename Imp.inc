@@ -37,13 +37,13 @@ end if
 
   TITLE     Imp
 
-  VERSION   v0.01.4a
+  VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Imp 2
 
 
-  Imp.debug=0
+  Imp.debug=1
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -55,9 +55,6 @@ end if
 
   define Imp.includes
   define Imp.includes_len 0
-
-  define Imp.prev.includes
-  define Imp.prev.includes_len 0
 
   define Imp.final
 
@@ -168,17 +165,16 @@ macro Imp.get_file env,md,ext,fpath,fname {
 
     \\}
 
-    Imp.qload fname,full
+    Imp.load fname,full
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ensures file is queued for
-; inclusion only once
+; queue files for inclusion
 
-macro Imp.qload name,fpath {
+macro Imp.load name,fpath {
 
   match any ff,name fpath \{
 
@@ -197,69 +193,8 @@ macro Imp.qload name,fpath {
 
 
     ; push fpath to Q if not already added
-    if ~ defined loaded?\#any
-
-      loaded?\#any=1
-
-      List.unshift Imp.includes,fpath any
-      Imp.includes_len equ Imp.includes_len+1
-
-    end if
-
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^walks the Q
-
-macro Imp.load out,len {
-
-  local Q
-
-  ; ^walks Q
-  macro outer [fn] \{
-
-    forward
-
-      match fpath name,fn \\{
-        inner fpath,name
-
-      \\}
-
-  \}
-
-  ; ^procs each item from Q
-  macro inner fpath,name \{
-
-    if loaded?\#name < 2
-
-      ; and this is what nonsense looks like
-      List.push out,fpath
-      len equ len+1
-
-      ; dbout
-      if Imp.debug
-        out@chd 'loaded',name
-
-      end if
-
-    end if
-
-    ; this stops recursive queues from
-    ; accidentally pushing a file twice
-    loaded?\#name=loaded?\#name+1
-
-  \}
-
-
-  ; get queue as comma-separated
-  Q equ
-  List.cflatten Imp.includes,Imp.includes_len,Q
-
-  match list,Q \{
-    outer list
+    List.unshift Imp.includes,fpath any
+    Imp.includes_len equ Imp.includes_len+1
 
   \}
 
@@ -299,9 +234,6 @@ macro library em {
 
   end if
 
-  Imp.prev.includes     equ Imp.includes
-  Imp.prev.includes_len equ Imp.includes_len
-
 
   ; reset current
   match env module,em \{
@@ -317,30 +249,18 @@ macro library em {
 
 macro import.prologue {
 
-  local out
   local list
-
-  local len
-
-  out  equ
   list equ
-  len  equ 0
 
-  Imp.load out,len
-  List.cflatten out,len,list
-
+  List.cflatten Imp.includes,Imp.includes_len,list
 
   restore Imp.library
   restore Imp.module
 
-  restore Imp.prev.includes
-  restore Imp.prev.includes_len
-
-  Imp.includes     equ Imp.prev.includes
-  Imp.includes_len equ Imp.prev.includes_len
+  Imp.includes     equ
+  Imp.includes_len equ
 
   Imp.final        equ
-
 
   macro inner [fpath] \{
 
@@ -366,22 +286,39 @@ macro import.prologue {
 }
 
 ; ---   *   ---   *   ---
-; ^a hack
+; ^recursive include hack
 
 import fix \
 \
-macro you_made_me_do_this {\
+rept 1 {\
 \
-  macro srsly_you_made_me list \{\
-    macro inner [item] \\{forward include item\\}\
+  macro paste [line] \{forward line\}\
+  macro discombobulate fpath,name \{\
+    paste \
+      if ~ defined loaded?\#name,\
+        include fpath,\
+        define loaded?\#name 1,\
+\
+      end if\
+  \}\
+\
+  macro recurse [item] \{\
+    match fpath name,item \\{\
+      discombobulate fpath,name\
+\
+    \\}\
+\
+  \}\
+\
+  macro convolute list \{\
+    macro inner [item] \\{forward recurse item\\}\
     match any,list \\{\inner any\\}\
 \
   \}\
 \
   rept 1 \{import.prologue\}\
-  rept 1 \{srsly_you_made_me Imp.final\}\
+  rept 1 \{convolute Imp.final\}\
 \
-}\
-you_made_me_do_this
+}
 
 ; ---   *   ---   *   ---

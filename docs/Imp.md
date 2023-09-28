@@ -95,6 +95,12 @@ Right from the very start Imp was complete enough for what I needed it for. Howe
 
 # CHANGELOG
 
+### v0.01.5a
+
+- `import` now defines a `rept` block rather than a macro and uses it's own `paste` method to overcome the recursive include problem.
+
+- Got rid of additional queues and extra statuses; it's much easier this way -- `loaded?<ID>` is either defined, or it isn't.
+
 ### v0.01.4a
 
 - `import` is now `fix` again, sadface, due to yet another recursion issue being unsolvable with a fixed macro; and so what we do is dynamically make a new macro for each invocation ;>
