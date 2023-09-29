@@ -40,10 +40,8 @@ end if
   VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
-  define    loaded?Imp 2
 
-
-  Imp.debug=1
+  Imp.debug=0
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -297,7 +295,7 @@ rept 1 {\
     paste \
       if ~ defined loaded?\#name,\
         include fpath,\
-        define loaded?\#name 1,\
+\;        define loaded?\#name 1,\
 \
       end if\
   \}\

@@ -14,7 +14,6 @@
 
 library ARPATH '/forge/'
   use '.inc' peso::proc
-  use '.asm' peso::page
 
 import
 
@@ -36,15 +35,28 @@ reg.new stk
 reg.end
 
 ; ---   *   ---   *   ---
+; std siggy for new block
+
+macro alloc.sigt.new type& {
+
+  proc.arg qword bsize  rdi
+  proc.lis qword p2size rsi
+
+  ; conditionally alias rax
+  match any,type \{
+    proc.lis type  self   rax
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; ^cstruc
 
 unit.salign r,x
 
-
 proc.new stk.new
-proc.arg qword bsize  rdi
-proc.lis qword p2size rsi
-proc.lis stk   self   rax
+alloc.sigt.new stk
 
 macro stk.new.inline {
 
@@ -52,11 +64,9 @@ macro stk.new.inline {
 
   ; get hed+buff mem
   add  @bsize,sizeof.stk
-  call page.new
+  call alloc
 
   ; ^nit hed
-  shr @p2size,sizep2.page
-
   mov qword [@self.size],@p2size
   mov qword [@self.top],$00
 
@@ -81,7 +91,6 @@ macro stk.del.inline {
 
   ; [0] rdi is base addr
   ; so load just the size
-  xor rsi,rsi
   mov rsi,qword [@self.size]
 
   ; ^free

@@ -90,7 +90,6 @@ macro unit.align.inline {
 
   ; ^invoke
   unit.align.inline
-
   ret
 
 ; ---   *   ---   *   ---

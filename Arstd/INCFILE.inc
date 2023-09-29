@@ -27,7 +27,8 @@ macro INFO_FIELD line {
 ; ^please only aggregate to it this way
 
 macro TITLE name {
-  define this?module name
+  define this?module  name
+  define loaded?#name 1
 
 }
 
@@ -44,11 +45,9 @@ macro AUTHOR name {
 ; ---   *   ---   *   ---
 ; an example of usage:
 
-  TITLE     INCFILE
+  TITLE     Arstd.INCFILE
 
-  VERSION   v0.01.0a
+  VERSION   v0.01.1a
   AUTHOR    'IBN-3DILA'
-
-  define    loaded?Arstd.INCFILE 2
 
 ; ---   *   ---   *   ---

@@ -12,12 +12,10 @@
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     Style
+  TITLE     Arstd.Style
 
   VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
-
-  define    loaded?Style 2
 
 ; ---   *   ---   *   ---
 ; pastes comma separated as lines

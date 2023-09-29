@@ -17,8 +17,6 @@
   VERSION   v0.00.2a
   AUTHOR    'IBN-3DILA'
 
-  define    loaded?Arstd.IO 2
-
 ; ---   *   ---   *   ---
 ; GBL
 
