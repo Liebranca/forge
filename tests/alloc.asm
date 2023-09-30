@@ -25,6 +25,12 @@ proc.new _start
 
   proc.enter
   call alloc.new
+
+  mov  rdi,$80
+  call alloc.new_seg
+
+  mov  qword [rax],$0A242424
+
   call alloc.del
   proc.leave
   exit
