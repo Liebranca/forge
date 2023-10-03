@@ -112,13 +112,13 @@ macro alloc.req.align dst {
   ok equ 1
 
   ; get value not already in rdi
-  match =rdi,@req \{
+  match =rdi,dst \{
     ok equ 0
 
   \}
 
   match =1,ok \{
-    mov rdi,@req
+    mov rdi,dst
 
   \}
 
@@ -261,61 +261,68 @@ proc.arg qword req rdi
 ; look for N sized block
 
 proc.new alloc.fit_seg
+proc.lis alloc.tab self alloc.main
 
-proc.arg qword     req   rdi
-proc.arg qword     idex  rsi
+  proc.enter
+  alloc.req.align rdi
 
-proc.lis qword     tab  r8
-proc.lis qword     Q    r9
+  ; get tab and free slots in r8,r9
+  push rdi
+  call alloc.rd_tab
 
-proc.lis alloc.tab self  alloc.main
+  ; map size to bitmask
+  pop  rdi
+
+  call alloc.qmask
+  mov  rdi,rax
+
+  ; ^find free slot
+  mov  rsi,qword [r9]
+  call alloc.qmask_fit
+
+  ; ^throw fail
+  mov rcx,rax
+  cmp rcx,$3F
+  jle .found
+
+  mov rax,$00
+  jmp .skip
+
+  ; ^else overwrite
+  .found:
+    shl rdi,cl
+    add qword [r9],rdi
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; idex into table
+
+proc.new alloc.rd_tab
+proc.lis alloc.tab self alloc.main
 
   proc.enter
 
-  alloc.req.align @req
-
-  ; idex into table
-  push   @req
-  shl    @idex,$01
-
+  ; get Nth entry in table
+  shl    rsi,$01
   mov    rdi,qword [@self.list]
+
   inline stk.view
 
-  mov    @tab,rax
+  mov    r8,rax
 
-  ; ^get Q idex and avail
-  mov @idex,qword [r8+$10]
-  mov rdx,qword [@tab+$18]
-
-  ; ^read into Q
+  ; ^get free slots for entry
+  mov    rsi,qword [r8+$10]
   mov    rdi,qword [@self.free]
+
   inline stk.view
 
-  mov    @Q,rax
-
-
-  ; get next chunk of alloc mask
-  pop @req
-  xor @idex,@idex
-
-  .scan_next:
-
-    push @idex
-
-    ; map size to bitmask
-    call alloc.qmask
-    mov  rdi,rax
-
-    ; ^find free slot
-    mov  rsi,qword [@Q+@idex]
-    call alloc.qmask_fit
-
-    ; ^overwrite
-    mov rcx,rax
-    shl rdi,cl
-
-    pop @idex
-    add qword [@Q+@idex],rdi
+  mov    r9,rax
 
 
   ; cleanup and give
@@ -326,23 +333,41 @@ proc.lis alloc.tab self  alloc.main
 ; get N free bits
 
 proc.new alloc.qmask_fit
+proc.cpr r8
 
   proc.enter
 
   ; reset mask
+  xor rcx,rcx
   xor rdx,rdx
   .top:
 
+    ; find first free bit
+    not    rsi
+    bsf    r8,rsi
+
+    cmovnz rcx,r8
+
+    ; ^shift to start of free space
+    not rsi
+    shr rsi,cl
+    add rdx,rcx
+
+    ; ^compare free to requested
     mov rax,rdi
     and rax,rsi
     jz  .skip
 
 
-  ; ^get bits to shift
-  .loop:
+  ; ^get bits to shift if no fit
+  .body:
 
-    lea rcx,[rax-1]
+    ; find last occupied bit
+    bsr r8,rax
+    inc r8
+    mov rcx,r8
 
+    ; ^shift it out
     shr rsi,cl
     add rdx,rcx
 

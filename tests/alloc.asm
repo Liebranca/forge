@@ -24,6 +24,7 @@ unit.salign r,x
 proc.new _start
 
   proc.enter
+
   call alloc.new
 
   mov  rdi,$80
@@ -33,6 +34,10 @@ proc.new _start
 
 
   mov  rdi,$80
+  mov  rsi,$00
+  call alloc.fit_seg
+
+  mov  rdi,$C0
   mov  rsi,$00
   call alloc.fit_seg
 
