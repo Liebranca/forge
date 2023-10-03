@@ -22,7 +22,7 @@ import
 
   TITLE     peso.unit
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,6 +30,12 @@ import
 
   define sizeof.unit $10
   define sizep2.unit $04
+
+  define sizeof.line $40
+  define sizep2.line $06
+
+  define sizeof.page $1000
+  define sizep2.page $0C
 
 ; ---   *   ---   *   ---
 ; memory align to unit
@@ -71,25 +77,43 @@ macro unit.salign [type] {
 }
 
 ; ---   *   ---   *   ---
-; division by 16 rounded up
+; division templates
 
-unit.salign r,x
+macro unit.div.proto name {
 
-unit.align:
-macro unit.align.inline {
 
-  ; scale by unit size
-  mov rcx,sizep2.unit
+  align $10
+  name#.urdiv:
 
-  ; round-up division
-  ; then apply scale
-  UInt.urdivp2.inline
-  shl rax,sizep2.unit
+  macro name#.urdiv.inline \{
+    UInt.urdivp2.proto sizep2.#name
+
+  \}
+
+  name#.urdiv.inline
+  ret
+
+
+  align $10
+  name#.align:
+
+  macro name#.align.inline \{
+    UInt.align.proto sizep2.#name
+
+  \}
+
+  name#.align.inline
+  ret
 
 }
 
-  ; ^invoke
-  unit.align.inline
-  ret
+; ---   *   ---   *   ---
+; ^ice
+
+unit.salign r,x
+
+unit.div.proto unit
+unit.div.proto line
+unit.div.proto page
 
 ; ---   *   ---   *   ---

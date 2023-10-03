@@ -197,5 +197,32 @@ macro stk.view.inline {
   inline stk.view
   ret
 
+; ---   *   ---   *   ---
+; ^get top of stack
+
+proc.new stk.view_top
+
+proc.arg stk   self rdi
+proc.lis qword idex rsi
+
+macro stk.view_top.inline {
+
+  proc.enter
+
+  ; scale up idex to unit
+  mov @idex,[@self.top]
+  shl @idex,sizep2.unit
+
+  ; ^get base+offset
+  lea rax,[@self+sizeof.stk+@idex]
+
+  proc.leave
+
+}
+
+  ; ^invoke
+  inline stk.view_top
+  ret
+
 
 ; ---   *   ---   *   ---

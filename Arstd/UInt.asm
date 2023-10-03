@@ -14,7 +14,7 @@
 
   TITLE     Arstd.UInt
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -85,6 +85,24 @@ macro UInt.urdivp2.inline {
   UInt.urdivp2.inline
   ret
 
+; ---   *   ---   *   ---
+; ^as a paste-in
+
+macro UInt.urdivp2.proto size {
+
+  mov rcx,size
+  UInt.urdivp2.inline
+
+}
+
+; ---   *   ---   *   ---
+; ^with scaling up
+
+macro UInt.align.proto size {
+  UInt.urdivp2.proto size
+  shl rax,size
+
+}
 
 ; ---   *   ---   *   ---
 ; ^(round n/m) times m

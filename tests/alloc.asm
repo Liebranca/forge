@@ -31,6 +31,12 @@ proc.new _start
 
   mov  qword [rax],$0A242424
 
+
+  mov  rdi,$80
+  mov  rsi,$00
+  call alloc.fit_seg
+
+
   call alloc.del
   proc.leave
   exit

@@ -26,35 +26,6 @@ import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; ROM
-
-  define sizeof.page $1000
-  define sizep2.page $0C
-
-; ---   *   ---   *   ---
-; division by 4096 rounded up
-
-unit.salign r,x
-
-proc.new page.align
-macro page.align.inline {
-
-  ; scale by page size
-  mov rcx,sizep2.page
-
-  ; round-up division
-  ; then apply scale
-  UInt.urdivp2.inline
-  shl rax,sizep2.page
-
-}
-
-  ; ^invoke
-  inline page.align
-
-  ret
-
-; ---   *   ---   *   ---
 ; cstruc
 
 proc.new page.new
