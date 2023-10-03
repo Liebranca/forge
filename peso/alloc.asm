@@ -45,65 +45,6 @@ reg.end
 reg.ice alloc.tab alloc.main
 
 ; ---   *   ---   *   ---
-; base cstruc
-
-unit.salign r,x
-
-proc.new alloc
-
-alloc.sigt.new
-
-proc.lis alloc.tab self  alloc.main
-proc.lis qword     req   rbx
-proc.lis qword     total rcx
-
-  proc.enter
-
-
-
-;  ; ^calculate unused and store
-;  mov @total,@p2size
-;  sub @total,@req
-;
-;  mov qword [@self.avail],@total
-;
-;  ; get size in units and give
-;  shr @p2size,sizep2.page
-
-
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; ^make new tab entry if needed
-
-proc.new alloc.chktab
-
-proc.lis qword     req  rdi
-proc.lis alloc.tab self alloc.main
-
-macro alloc.chktab.inline {
-
-  proc.enter
-
-;  ; check current block
-;  mov rbx,qword [@self.avail]
-;  cmp rbx,@req
-;  jge .skip
-;
-;  ; ^make new
-;
-;  ; cleanup and give
-;  .skip:
-  proc.leave
-
-}
-
-  ; ^invoke
-  inline alloc.chktab
-  ret
-
-; ---   *   ---   *   ---
 ; pad size to cache line
 
 macro alloc.req.align dst {
@@ -130,94 +71,181 @@ macro alloc.req.align dst {
 }
 
 ; ---   *   ---   *   ---
-; make new seg
+; base cstruc
 
-proc.new alloc.new_seg
+unit.salign r,x
 
-proc.arg qword     bsize rdi
-proc.lis qword     req   r8
-proc.lis qword     mask  r9
-proc.lis alloc.tab self  alloc.main
+proc.new alloc
+proc.lis alloc.tab self alloc.main
 
   proc.enter
 
-  ; get at least N bytes
-  push @bsize
+  ; get N lines taken
+  alloc.req.align rdi
+
+  ; ^look for fit
+  mov rax,qword [@self.avail]
+
+  or  rax,$00
+  jz  ._make_new
+
+
+  ; ^found, allocate
+  mov  rsi,qword [@self.bidex]
+
+  call alloc.fit_seg
+  mov rax,qword [@self.avail]
+  jmp  ._skip
+
+
+  ; ^no fit, get mem
+  ._make_new:
+    call alloc.new_seg
+
+
+  ; cleanup and give
+  ._skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; make new seg
+
+proc.new alloc.new_seg
+proc.lis alloc.tab self alloc.main
+
+  proc.enter
+
+  ; get new table entry
+  call alloc.tab_push
+
+  ; ^check new entry is larger
+  ; than current
+  push rcx
+  mov  rdi,rax
+  mov  rsi,rbx
+
+  call alloc.tab_set_avail
+
+  ; ^make free slot bitmask
+  mov  rdi,r10
+  call alloc.page_mask
+
+  pop rax
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; get at least N bytes
+
+proc.new alloc.tab_push
+proc.lis alloc.tab self alloc.main
+
+  proc.enter
+
+  ; get mem
+  push rdi
   call page.new
 
-  pop  @req
+  pop  r10
   push rsi
   push rax
 
-  ; get N lines taken
-  alloc.req.align @req
-
-
-  ; grow table
+  ; ^grow table
   mov  rdi,qword [@self.list]
-  mov  rdx,qword [rdi+stk.top]
   mov  rsi,$02
 
   call stk.push
 
   ; ^save base addr and size
-  pop  rbx
-  pop  @bsize
-  mov  qword [rax+$00],rbx
-  mov  qword [rax+$08],@bsize
+  pop rbx
+  pop rdi
 
-  sub  @bsize,@req
+  mov qword [rax+$00],rbx
+  mov qword [rax+$08],rdi
 
-  ; ^save Q loc and avail
-  mov rdi,qword [@self.free]
-  mov rdx,qword [rdi+stk.top]
+  sub rdi,r10
+  mov rcx,rbx
+  mov rbx,rdi
 
-  mov qword [rax+$10],rdx
-  mov qword [rax+$18],@bsize
 
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; rewrite largest block
+
+proc.new alloc.tab_set_avail
+proc.lis alloc.tab self alloc.main
+
+  proc.enter
+
+  ; save Q loc and avail
+  mov rbx,qword [@self.free]
+  mov rcx,qword [rbx+stk.top]
+
+  mov qword [rdi+$10],rcx
+  mov qword [rdi+$18],rbx
 
   ; ^compare new avail to old
-  mov  rax,qword [@self.avail]
-  cmp  @bsize,rax
-  jle  .skip
+  mov rax,qword [@self.avail]
+
+  cmp rsi,rax
+  jle .skip
 
   ; ^reset
-  mov qword [@self.avail],@bsize
-  mov qword [@self.bidex],rdx
+  mov qword [@self.avail],rsi
+  mov qword [@self.bidex],rcx
 
 
+  ; cleanup and give
   .skip:
-  push rbx
 
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; map occupied lines in
+; page to a bitmask
+
+proc.new alloc.page_mask
+proc.lis alloc.tab self alloc.main
+
+  proc.enter
 
   ; get top of Q
+  push   rdi
   mov    rdi,qword [@self.free]
+
   inline stk.view_top
 
+  mov    r9,rax
 
-  ; ^save alloc mask
+  ; ^fill out
   xor rdx,rdx
-  .bitmask:
+  .top:
 
     ; map size to bitmask
-    push rax
-
-    mov  rdi,@req
-
+    pop  rdi
     call alloc.qmask
-    mov  @mask,rax
-
-    pop  rax
-
+    mov  rbx,rax
 
     ; ^write to Q
-    mov qword [rax+rdx],@mask
+    mov qword [r9+rdx],rax
     add rdx,$08
 
     ; ^rept
-    sub @req,sizeof.page
-    cmp @req,$00
-    jg  .bitmask
+    sub  rdi,sizeof.page
+    push rdi
+    cmp  rdi,$00
+
+    jg   .top
+    pop  rdi
 
 
   ; ^adjust top of Q
@@ -227,24 +255,33 @@ proc.lis alloc.tab self  alloc.main
   mov    rdi,qword [@self.free]
   add    qword [rdi+stk.top],rax
 
-  ; give addr
-  pop rax
-
 
   ; cleanup and give
   proc.leave
   ret
 
 ; ---   *   ---   *   ---
+; recycles block
+
+;proc.new alloc.reuse_seg
+;proc.lis alloc.tab self alloc.main
+;
+;  proc.enter
+;
+;
+;
+;  proc.leave
+;  ret
+
+; ---   *   ---   *   ---
 ; maps requested size to bitmask
 
 proc.new alloc.qmask
-proc.arg qword req rdi
 
   proc.enter
 
   ; get occupied blocks
-  mov rax,@req
+  mov rax,rdi
   shr rax,sizep2.line
 
   ; ^make bitmask
@@ -264,15 +301,15 @@ proc.new alloc.fit_seg
 proc.lis alloc.tab self alloc.main
 
   proc.enter
-  alloc.req.align rdi
 
   ; get tab and free slots in r8,r9
   push rdi
+  mov  rdi,rsi
+
   call alloc.rd_tab
 
   ; map size to bitmask
   pop  rdi
-
   call alloc.qmask
   mov  rdi,rax
 
@@ -309,6 +346,7 @@ proc.lis alloc.tab self alloc.main
   proc.enter
 
   ; get Nth entry in table
+  mov    rsi,rdi
   shl    rsi,$01
   mov    rdi,qword [@self.list]
 
@@ -333,7 +371,6 @@ proc.lis alloc.tab self alloc.main
 ; get N free bits
 
 proc.new alloc.qmask_fit
-proc.cpr r8
 
   proc.enter
 
@@ -450,7 +487,7 @@ proc.lis alloc.tab self alloc.main
     jz  .free
 
     ; ^pop from table
-    mov  rsi,$01
+    mov  rsi,$02
     call stk.pop
 
     ; ^free seg
@@ -458,6 +495,7 @@ proc.lis alloc.tab self alloc.main
 
     mov  rdi,qword [rax+$00]
     mov  rsi,qword [rax+$08]
+    shr  rdi,sizep2.page
 
     call page.free
 

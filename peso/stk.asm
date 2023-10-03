@@ -162,9 +162,9 @@ stk.sigt.push
   sub @top,@step
   mov qword [@self.top],@top
 
-  ; ^read base+hed+offset
-  shl @step,sizep2.unit
-  lea @out,[@out+@step]
+  ; ^get base+hed+offset
+  shl @top,sizep2.unit
+  lea @out,[@out+@top]
 
 
   proc.leave

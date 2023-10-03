@@ -28,18 +28,18 @@ proc.new _start
   call alloc.new
 
   mov  rdi,$80
-  call alloc.new_seg
+  call alloc
 
   mov  qword [rax],$0A242424
 
 
-  mov  rdi,$80
-  mov  rsi,$00
-  call alloc.fit_seg
-
-  mov  rdi,$C0
-  mov  rsi,$00
-  call alloc.fit_seg
+;  mov  rdi,$80
+;  mov  rsi,$00
+;  call alloc.fit_seg
+;
+;  mov  rdi,$C0
+;  mov  rsi,$00
+;  call alloc.fit_seg
 
 
   call alloc.del
