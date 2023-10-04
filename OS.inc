@@ -25,6 +25,7 @@
 
   define STDIN      $00
   define STDOUT     $01
+  define STDERR     $02
 
 ; ---   *   ---   *   ---
 

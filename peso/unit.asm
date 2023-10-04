@@ -22,20 +22,38 @@ import
 
   TITLE     peso.unit
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
-  define sizeof.unit $10
-  define sizep2.unit $04
+  sizeof.unit  = $0010
+  sizep2.unit  = $0004
 
-  define sizeof.line $40
-  define sizep2.line $06
+  sizeof.line  = $0040
+  sizep2.line  = $0006
 
-  define sizeof.page $1000
-  define sizep2.page $0C
+  sizeof.dline = $0080
+  sizep2.dline = $0007
+
+  sizeof.qline = $0100
+  sizep2.qline = $0008
+
+  sizeof.xline = $0200
+  sizep2.xline = $0009
+
+  sizeof.yline = $0400
+  sizep2.yline = $000A
+
+  sizeof.zline = $0800
+  sizep2.zline = $000B
+
+  sizeof.page  = $1000
+  sizep2.page  = $000C
+
+  sizeof.dpage = $2000
+  sizep2.dpage = $000D
 
 ; ---   *   ---   *   ---
 ; memory align to unit
@@ -113,7 +131,15 @@ macro unit.div.proto name {
 unit.salign r,x
 
 unit.div.proto unit
+
 unit.div.proto line
+unit.div.proto dline
+unit.div.proto qline
+unit.div.proto xline
+unit.div.proto yline
+unit.div.proto zline
+
 unit.div.proto page
+unit.div.proto dpage
 
 ; ---   *   ---   *   ---

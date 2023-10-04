@@ -13,7 +13,10 @@ end if
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::alloc
+
+;  use '.asm' peso::alloc
+
+  use '.asm' peso::mpart
 
 import
 
@@ -25,30 +28,12 @@ proc.new _start
 
   proc.enter
 
-  call alloc.new
+  mov  rdi,$03
+  mov  rsi,$0F
 
-  mov  rdi,$80
-  call alloc
+  call mpart.fit
 
-  mov  qword [rax],$0A242424
-
-
-;  mov  rdi,$80
-;  mov  rsi,$00
-;  call alloc.fit_seg
-;
-;  mov  rdi,$C0
-;  mov  rsi,$00
-;  call alloc.fit_seg
-
-
-  call alloc.del
   proc.leave
   exit
-
-; ---   *   ---   *   ---
-; ROM II
-
-constr.seg
 
 ; ---   *   ---   *   ---

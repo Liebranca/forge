@@ -22,7 +22,7 @@ import
 
   TITLE     peso.constr
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 
@@ -54,7 +54,7 @@ macro constr._ins line {
 macro constr.new name,[ct] {
 
   common
-    constr._ins  align $10
+    constr._ins align $10
     constr._ins name#:
 
   forward
@@ -83,6 +83,8 @@ macro constr.seg {
 
   \}
 
+  constr.data equ
+
 }
 
 ; ---   *   ---   *   ---
@@ -96,5 +98,37 @@ macro constr.sow name {
   call sow
 
 }
+
+; ---   *   ---   *   ---
+; ^errout
+
+macro constr.errout name,code {
+
+  ; switch file
+  mov  rdi,STDERR
+  call fto
+
+  ; ^write
+  constr.sow tag.#code
+  constr.sow name
+
+  match =FATAL,code \{
+    call reap
+    exit -1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ROM II
+
+constr.new tag.FATAL, \
+  $1B,$5B,'37;1m<',\
+  $1B,$5B,'31;1mFATAL',\
+  $1B,$5B,'37;1m> ',\
+  $1B,$5B,'0m'
+
+constr.seg
 
 ; ---   *   ---   *   ---

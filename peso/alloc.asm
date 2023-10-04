@@ -13,9 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::constr
-  use '.asm' peso::page
-  use '.asm' peso::stk
+  use '.asm' peso::mpart
 
 import
 
@@ -24,7 +22,7 @@ import
 
   TITLE     peso.alloc
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,15 +32,31 @@ unit.salign r,w
 
 reg.new alloc.tab
 
-  my .list  dq $00
-  my .free  dq $00
+  my .l0 dq $00
+  my .l1 dq $00
+  my .l2 dq $00
+  my .l3 dq $00
 
-  my .bidex dq $00
-  my .avail dq $00
+  my .l4 dq $00
+  my .l5 dq $00
+  my .l6 dq $00
+  my .l7 dq $00
 
 reg.end
 
 reg.ice alloc.tab alloc.main
+
+; ---   *   ---   *   ---
+; ^element for each sub-table
+
+reg.new alloc.chain
+
+  my .addr  dq $00
+  my .mask  dq $00
+  my .avail dq $00
+  my .max   dq $00
+
+reg.end
 
 ; ---   *   ---   *   ---
 ; pad size to cache line
@@ -132,7 +146,7 @@ proc.lis alloc.tab self alloc.main
   mov  rdi,r10
   call alloc.page_mask
 
-  pop rax
+  pop  rax
 
 
   ; cleanup and give
@@ -368,59 +382,6 @@ proc.lis alloc.tab self alloc.main
   ret
 
 ; ---   *   ---   *   ---
-; get N free bits
-
-proc.new alloc.qmask_fit
-
-  proc.enter
-
-  ; reset mask
-  xor rcx,rcx
-  xor rdx,rdx
-  .top:
-
-    ; find first free bit
-    not    rsi
-    bsf    r8,rsi
-
-    cmovnz rcx,r8
-
-    ; ^shift to start of free space
-    not rsi
-    shr rsi,cl
-    add rdx,rcx
-
-    ; ^compare free to requested
-    mov rax,rdi
-    and rax,rsi
-    jz  .skip
-
-
-  ; ^get bits to shift if no fit
-  .body:
-
-    ; find last occupied bit
-    bsr r8,rax
-    inc r8
-    mov rcx,r8
-
-    ; ^shift it out
-    shr rsi,cl
-    add rdx,rcx
-
-    jmp .top
-
-
-  ; ^set out
-  .skip:
-    mov rax,rdx
-
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
 ; allocator cstruc
 
 proc.new alloc.new
@@ -454,9 +415,11 @@ proc.lis alloc.tab self alloc.main
   .throw:
 
     constr.new alloc.throw_renit,\
-      "FATAL: allocator renit"
+      "FATAL: allocator renit",$0A
 
     constr.sow alloc.throw_renit
+    call reap
+
     exit -1
 
 
