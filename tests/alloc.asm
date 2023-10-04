@@ -16,7 +16,7 @@ library ARPATH '/forge/'
 
 ;  use '.asm' peso::alloc
 
-  use '.asm' peso::mpart
+  use '.asm' peso::alloc
 
 import
 
@@ -28,10 +28,9 @@ proc.new _start
 
   proc.enter
 
-  mov  rdi,$03
-  mov  rsi,$0F
-
-  call mpart.fit
+  mov  rdi,$200
+  call alloc
+  call alloc.del
 
   proc.leave
   exit

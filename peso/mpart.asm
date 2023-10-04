@@ -23,7 +23,7 @@ import
 
   TITLE     peso.mpart
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -138,11 +138,13 @@ proc.new mpart.fit
     call mpart.shr_free
 
     mov  rsi,rax
-    pop  rax
+    pop  rdi
 
     ; ^compare to requested
     ; repeat if free chunk is too small
+    mov rax,rdi
     and rax,rsi
+
     jz  .skip
 
 
@@ -172,6 +174,29 @@ proc.new mpart.fit
   ret
 
 ; ---   *   ---   *   ---
+; maps req,lvl to bitmask
+
+proc.new mpart.qmask
+
+  proc.enter
+
+  ; get occupied blocks
+  mov rax,rdi
+  lea rcx,[rsi+6]
+  shr rax,cl
+
+  ; ^make bitmask
+  lea rcx,[rax-$01]
+  mov rbx,$01
+  shl rbx,cl
+  lea rax,[rbx+rbx-$01]
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
 ; shorthand in
 
 macro mpart.get_level.brend sz {
@@ -193,7 +218,7 @@ proc.new mpart.get_level
 
     ; block too small
     cmp rdi,sizeof.xline
-    jl  .sz_qline
+    jle .sz_qline
 
     ; ^too big
     cmp rdi,sizeof.xline * $04
@@ -206,7 +231,7 @@ proc.new mpart.get_level
   ; from here downwards
   .sz_qline:
     cmp rdi,sizeof.qline
-    jl  .sz_dline
+    jle .sz_dline
 
     mpart.get_level.brend qline
 

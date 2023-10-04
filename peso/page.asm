@@ -22,13 +22,15 @@ import
 
   TITLE     peso.page
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; cstruc
 
 proc.new page.new
+
+  push r11
 
   ; [0] rdi is size in bytes
   ; get N*page from that
@@ -48,6 +50,8 @@ proc.new page.new
   mov rax,$09
 
   syscall
+  pop r11
+
   ret
 
 

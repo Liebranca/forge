@@ -28,8 +28,23 @@ import
 ; ---   *   ---   *   ---
 ; ROM
 
+  sizeof.byte  = $0001
+  sizep2.byte  = $0000
+
+  sizeof.word  = $0002
+  sizep2.word  = $0001
+
+  sizeof.dword = $0004
+  sizep2.dword = $0002
+
+  sizeof.qword = $0008
+  sizep2.qword = $0003
+
   sizeof.unit  = $0010
   sizep2.unit  = $0004
+
+  sizeof.half  = $0020
+  sizep2.half  = $0005
 
   sizeof.line  = $0040
   sizep2.line  = $0006
