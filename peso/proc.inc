@@ -318,7 +318,7 @@ macro proc.leave {
 
   ; ^paste epilogue
   if n > 0
-    pop rbp
+    leave
 
   end if
 

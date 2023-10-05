@@ -71,7 +71,9 @@ macro constr.new name,[ct] {
 
 macro constr.seg {
 
-  segment readable
+  ; NOTE: made it readable to debug something
+  ;       i'll make it ROM again later
+  segment readable writeable
 
   macro _inner [line] \{
     npaste line

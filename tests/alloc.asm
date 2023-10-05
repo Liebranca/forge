@@ -13,9 +13,6 @@ end if
 ; deps
 
 library ARPATH '/forge/'
-
-;  use '.asm' peso::alloc
-
   use '.asm' peso::alloc
 
 import
@@ -24,12 +21,28 @@ import
 ; crux
 
 unit.salign r,x
+
 proc.new _start
+proc.stk qword it
 
   proc.enter
 
-  mov  rdi,$200
-  call alloc
+  call alloc.new
+
+  xor rax,rax
+  .top:
+
+    mov  qword [@it],rax
+
+    mov  rdi,$30
+    call alloc
+
+    mov  rax,qword [@it]
+    inc  rax
+
+    cmp  rax,$100
+    jl   .top
+
   call alloc.del
 
   proc.leave

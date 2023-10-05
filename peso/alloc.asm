@@ -14,6 +14,7 @@
 
 library ARPATH '/forge/'
   use '.asm' peso::mpart
+  use '.asm' peso::crypt
   use '.asm' peso::stk
 
 import
@@ -23,7 +24,7 @@ import
 
   TITLE     peso.alloc
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -42,6 +43,8 @@ reg.new alloc.tab
   my .l5 dq $00
   my .l6 dq $00
   my .l7 dq $00
+
+  my .lX dq $00
 
 reg.end
 
@@ -63,7 +66,7 @@ reg.new alloc.chain
 reg.end
 
 ; ---   *   ---   *   ---
-; ^ctx for alloc request
+; ^ctx for alloc requests
 
 reg.new alloc.req
 
@@ -73,6 +76,20 @@ reg.new alloc.req
 
   my .req  dq $00
   my .lvl  dq $00
+
+reg.end
+
+; ---   *   ---   *   ---
+; how free knows a block
+
+reg.new alloc.head
+
+  my .addr dq $00
+
+  my .lvl  dw $00
+  my .stab dw $00
+  my .pos  dw $00
+  my .size dw $00
 
 reg.end
 
@@ -93,12 +110,44 @@ proc.stk alloc.req ctx
 
 
   ; get N lines taken
-  call line.align
-  mov  word [@ctx.req],ax
+  add  rdi,sizeof.alloc.head
+  mov  qword [@ctx.req],rdi
 
   ; fetch block
   call alloc.get_stab
   call alloc.get_blk
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^dstruc
+
+proc.new free
+
+  proc.enter
+
+  call alloc.hash_blk
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; map blk addr to idex
+
+proc.new alloc.hash_blk
+
+  proc.enter
+
+  mov  rsi,$10
+  mov  rdx,$08
+  mov  cl,$04
+
+  call hash
 
 
   ; cleanup and give
@@ -122,11 +171,21 @@ proc.arg alloc.req ctx  r11
 
   ; ^save tmp
   mov qword [@ctx.lvl],rax
+  lea rcx,[rax+6]
   lea rax,[@self.l0+rax*8]
+
+  ; align block size
+  push rax
+  mov  rdi,qword [@ctx.req]
+
+  call UInt.urdivp2
+  shl  rax,cl
+
+  mov  qword [@ctx.req],rax
 
 
   ; fetch subtable
-  mov  rdi,rax
+  pop  rdi
   call alloc.get_stk
 
   mov  qword [@ctx.stab],rax
@@ -149,7 +208,7 @@ proc.arg alloc.req ctx  r11
   ; get elem
   mov   rdi,qword [@ctx.stab]
   mov   rsi,qword [rdi+stk.top]
-  shl   rsi,1
+  shr   rsi,1
   dec   rsi
 
   ; ^cap idex at 0
@@ -157,11 +216,13 @@ proc.arg alloc.req ctx  r11
   cmp   rsi,$00
   cmovl rsi,rdx
 
+  ; ^scale up and pass
+  shl  rsi,1
   call stk.view
 
   ; ^zero chk
   mov qword [@ctx.elem],rax
-  mov rax,qword [rax+stk.top]
+  mov rax,qword [rdi+stk.top]
   or  rax,$00
 
   jnz .fit_mem
@@ -190,21 +251,100 @@ proc.arg alloc.req ctx  r11
     call mpart.fit
 
     ; ^update block
-    pop rbx
-    mov rcx,rax
-    shl rdi,cl
+    pop  rbx
+    mov  rcx,rax
 
-    ; get size, scaled down
+    push rdi
+    shl  rdi,cl
+
+    mov  rdx,rcx
+    shl  rdx,sizep2.line
+
+    ; get offset scaled up
+    ; then size scaled down
     mov rsi,qword [@ctx.req]
     mov rcx,qword [@ctx.lvl]
+
+    shl rdx,cl
+
     add rcx,6
     shr rsi,cl
 
     ; update mask and sizes
-    add qword [rbx+alloc.chain.mask],rdi
+    or  qword [rbx+alloc.chain.mask],rdi
     sub qword [rbx+alloc.chain.avail],rsi
 
     ; TODO: calc max alloc for block
+
+
+    ; set out
+    pop  rdi
+    mov  rax,qword [@ctx.buff]
+    lea  rax,[rax+rdx]
+
+    push rax
+
+
+    ; ^(test) set header
+    mov  rdi,rax
+    call alloc.hash_blk
+
+    mov  rbx,qword [@self.lX]
+    mov  rdx,rax
+    shl  rdx,$04
+
+    mov  rcx,qword [rbx+rdx]
+    cmp  rcx,$2424
+    je   .throw
+
+    mov  qword [rbx+rdx],$2424
+    jmp  .tail
+
+  ; ^errme
+  .throw:
+
+
+    mov   rdi,qword [@ctx.elem]
+    mov   r15,qword [rdi+alloc.chain.mask]
+    shr   r15,1
+
+    constr.new alloc.throw_hashcol,\
+      "address collision at 0000000000000000",$0A
+
+    lea rax,[alloc.throw_hashcol]
+    lea rax,[rax+alloc.throw_hashcol.length-2]
+
+; SCRATCH
+
+  .top2:
+    mov rbx,r15
+    xor dl,dl
+
+    and bl,$0F
+    cmp bl,$0A
+    jl  .skip2
+
+    mov dl,$07
+
+    .skip2:
+    add bl,$30
+    add bl,dl
+
+    mov byte [rax],bl
+    shr r15,$04
+
+    dec rax
+    cmp r15,$00
+    jg  .top2
+
+
+; END SCRATCH
+
+    constr.errout alloc.throw_hashcol,FATAL
+
+
+  .tail:
+    pop rax
 
 
   ; cleanup and give
@@ -241,7 +381,6 @@ proc.arg alloc.req ctx  r11
   ; ^nit elem
   mov rbx,qword [@ctx.buff]
   mov rcx,qword [@ctx.lvl]
-  mov rdx,qword [@ctx.req]
 
   ; addr && free slots
   mov qword [rax+alloc.chain.buff],rbx
@@ -250,181 +389,9 @@ proc.arg alloc.req ctx  r11
   ; ^partition order
   mov word [rax+alloc.chain.lvl],cx
 
-  ; ^size, scaled down
-  add rcx,6
-  shr rdx,cl
-
-  mov word [rax+alloc.chain.avail],dx
-  mov word [rax+alloc.chain.max],dx
-
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; rewrite largest block
-
-proc.new alloc.tab_set_avail
-proc.lis alloc.tab self alloc.main
-
-  proc.enter
-
-;  ; save Q loc and avail
-;  mov rbx,qword [@self.free]
-;  mov rcx,qword [rbx+stk.top]
-;
-;  mov qword [rdi+$10],rcx
-;  mov qword [rdi+$18],rbx
-;
-;  ; ^compare new avail to old
-;  mov rax,qword [@self.avail]
-;
-;  cmp rsi,rax
-;  jle .skip
-;
-;  ; ^reset
-;  mov qword [@self.avail],rsi
-;  mov qword [@self.bidex],rcx
-;
-;
-;  ; cleanup and give
-;  .skip:
-
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; map occupied lines in
-; page to a bitmask
-
-proc.new alloc.page_mask
-proc.lis alloc.tab self alloc.main
-
-  proc.enter
-
-;  ; get top of Q
-;  push   rdi
-;  mov    rdi,qword [@self.free]
-;
-;  inline stk.view_top
-;
-;  mov    r9,rax
-;
-;  ; ^fill out
-;  xor rdx,rdx
-;  .top:
-;
-;    ; map size to bitmask
-;    pop  rdi
-;    call alloc.qmask
-;    mov  rbx,rax
-;
-;    ; ^write to Q
-;    mov qword [r9+rdx],rax
-;    add rdx,$08
-;
-;    ; ^rept
-;    sub  rdi,sizeof.page
-;    push rdi
-;    cmp  rdi,$00
-;
-;    jg   .top
-;    pop  rdi
-;
-;
-;  ; ^adjust top of Q
-;  mov    rdi,rdx
-;  inline unit.urdiv
-;
-;  mov    rdi,qword [@self.free]
-;  add    qword [rdi+stk.top],rax
-
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; recycles block
-
-;proc.new alloc.reuse_seg
-;proc.lis alloc.tab self alloc.main
-;
-;  proc.enter
-;
-;
-;
-;  proc.leave
-;  ret
-
-; ---   *   ---   *   ---
-; look for N sized block
-
-proc.new alloc.fit_seg
-proc.lis alloc.tab self alloc.main
-
-  proc.enter
-
-;  ; get tab and free slots in r8,r9
-;  push rdi
-;  mov  rdi,rsi
-;
-;  call alloc.rd_tab
-;
-;  ; map size to bitmask
-;  pop  rdi
-;  call alloc.qmask
-;  mov  rdi,rax
-;
-;  ; ^find free slot
-;  mov  rsi,qword [r9]
-;  call alloc.qmask_fit
-;
-;  ; ^throw fail
-;  mov rcx,rax
-;  cmp rcx,$3F
-;  jle .found
-;
-;  mov rax,$00
-;  jmp .skip
-;
-;  ; ^else overwrite
-;  .found:
-;    shl rdi,cl
-;    add qword [r9],rdi
-;
-;
-;  ; cleanup and give
-;  .skip:
-
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; idex into table
-
-proc.new alloc.rd_tab
-proc.lis alloc.tab self alloc.main
-
-  proc.enter
-
-;  ; get Nth entry in table
-;  mov    rsi,rdi
-;  shl    rsi,$01
-;  mov    rdi,qword [@self.list]
-;
-;  inline stk.view
-;
-;  mov    r8,rax
-;
-;  ; ^get free slots for entry
-;  mov    rsi,qword [r8+$10]
-;  mov    rdi,qword [@self.free]
-;
-;  inline stk.view
-;
-;  mov    r9,rax
+  ; ^total size, scaled down
+  mov word [rax+alloc.chain.avail],sizeof.line
+  mov word [rax+alloc.chain.max],sizeof.line
 
 
   ; cleanup and give
@@ -466,6 +433,44 @@ proc.lis alloc.tab self alloc.main
   proc.leave
   ret
 
+; ---   *   ---   *   ---
+; cstruc
+
+proc.new alloc.new
+proc.lis alloc.tab self alloc.main
+
+  proc.enter
+
+  ; renit chk
+  mov rax,qword [@self.lX]
+
+  or  rax,$00
+  jnz .throw
+
+
+  ; get one page for starters
+  mov  rdi,sizeof.page
+  call page.new
+
+  ; ^store
+  mov qword [@self.lX],rax
+
+
+  ; errme
+  jmp .skip
+  .throw:
+
+    constr.new alloc.throw_renit,\
+      "allocator renit",$0A
+
+    constr.errout alloc.throw_renit,FATAL
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; ^dstruc
@@ -512,6 +517,12 @@ proc.lis alloc.tab self alloc.main
 
   ; cleanup and give
   .skip:
+
+    mov  rdi,qword [@self.lX]
+    mov  rsi,1
+
+    call page.free
+
 
   proc.leave
   ret
@@ -561,5 +572,10 @@ proc.new alloc.del_stk
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; ROM II
+
+constr.seg
 
 ; ---   *   ---   *   ---
