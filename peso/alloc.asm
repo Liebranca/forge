@@ -24,7 +24,7 @@ import
 
   TITLE     peso.alloc
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -45,6 +45,7 @@ reg.new alloc.tab
   my .l7 dq $00
 
   my .lX dq $00
+  my .dbout dq $00
 
 reg.end
 
@@ -73,9 +74,12 @@ reg.new alloc.req
   my .stab dq $00
   my .buff dq $00
   my .elem dq $00
-
   my .req  dq $00
+
   my .lvl  dq $00
+  my .ptr  dq $00
+  my .mask dq $00
+  my .pos  dq $00
 
 reg.end
 
@@ -108,9 +112,11 @@ proc.stk alloc.req ctx
   ; load struc addr
   lea r11,[@ctx]
 
+  ; ^clear search
+  mov qword [@ctx.ptr],$00
+
 
   ; get N lines taken
-  add  rdi,sizeof.alloc.head
   mov  qword [@ctx.req],rdi
 
   ; fetch block
@@ -140,14 +146,66 @@ proc.new free
 ; map blk addr to idex
 
 proc.new alloc.hash_blk
+proc.arg alloc.req ctx r11
 
   proc.enter
 
-  mov  rsi,$10
-  mov  rdx,$08
-  mov  cl,$04
+  push  rdi
+
+HASH_BITS=3
+
+  mov   rsi,$08+HASH_BITS
+  mov   rdx,$08+HASH_BITS+1
+  mov   cl,$04-HASH_BITS
 
   call hash
+
+
+  pop  r15
+  push rax
+
+  ; SCRATCH
+
+    constr.new alloc.dbout_00,\
+      "0000000000000000",$20
+
+    constr.new alloc.dbout_01,\
+      "0000000000000000",$0A
+
+    lea  rdi,[alloc.dbout_00]
+    lea  rdi,[rdi+alloc.dbout_00.length-2]
+
+    mov  rsi,rax
+
+    call alloc._dbout
+    constr.sow alloc.dbout_00
+
+
+    lea  rdi,[alloc.dbout_00]
+    lea  rdi,[rdi+alloc.dbout_00.length-2]
+
+    mov  rsi,r15
+    call alloc._dbout
+
+
+    constr.sow alloc.dbout_00
+
+
+    lea  rdi,[alloc.dbout_01]
+    lea  rdi,[rdi+alloc.dbout_01.length-2]
+
+    mov  rax,qword [@ctx.elem]
+    mov  rsi,qword [rax+alloc.chain.mask]
+
+    call alloc._dbout
+
+
+    constr.sow alloc.dbout_01
+    call reap
+
+  ; END SCRATCH
+
+  pop  rax
 
 
   ; cleanup and give
@@ -196,7 +254,57 @@ proc.arg alloc.req ctx  r11
   ret
 
 ; ---   *   ---   *   ---
-; make new seg
+; get next element in table
+
+proc.new alloc.get_stab_top
+proc.arg alloc.req ctx r11
+
+  proc.enter
+
+  ; load O
+  mov rdi,qword [@ctx.stab]
+
+  ; get elem at top-offset
+  mov   rsi,qword [rdi+stk.top]
+  shr   rsi,1
+  dec   rsi
+
+  mov   rdx,qword [@ctx.ptr]
+  inc   qword [@ctx.ptr]
+
+
+  ; end search on X < offset
+  cmp   rdx,rsi
+  jg    .exhaust
+
+  sub   rsi,rdx
+  jmp   .found
+
+
+  ; inviable, reset to top
+  .exhaust:
+    inc rsi
+    jmp .fetch
+
+  ; viable idex, cap at 0
+  .found:
+    xor   rdx,rdx
+    cmp   rsi,$00
+    cmovl rsi,rdx
+
+
+  ; ^get elem at idex
+  .fetch:
+    shl  rsi,1
+    call stk.view
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; give N bytes
 
 proc.new alloc.get_blk
 
@@ -205,98 +313,76 @@ proc.arg alloc.req ctx  r11
 
   proc.enter
 
-  ; get elem
-  mov   rdi,qword [@ctx.stab]
-  mov   rsi,qword [rdi+stk.top]
-  shr   rsi,1
-  dec   rsi
+  ; search stab for elem
+  .get_next:
 
-  ; ^cap idex at 0
-  xor   rdx,rdx
-  cmp   rsi,$00
-  cmovl rsi,rdx
+    call alloc.get_stab_top
 
-  ; ^scale up and pass
-  shl  rsi,1
-  call stk.view
+    ; ^zero chk
+    mov qword [@ctx.elem],rax
+    mov rax,qword [rax+alloc.chain.buff]
+    or  rax,$00
 
-  ; ^zero chk
-  mov qword [@ctx.elem],rax
-  mov rax,qword [rdi+stk.top]
-  or  rax,$00
-
-  jnz .fit_mem
+    jnz .fit_mem
 
 
-  ; make new entry
+  ; ^make new entry
   .get_mem:
+
+    constr.new alloc.new_blkme,\
+      "____________",$0A,$0A,"NEW BLK",$0A
+
+    constr.sow alloc.new_blkme
+    call reap
+
+
     call alloc.new_blk
     mov  qword [@ctx.elem],rax
 
   ; ^reuse existing
   .fit_mem:
 
-    ; map block size to bitmask
-    mov rdi,qword [@ctx.req]
-    mov rsi,qword [@ctx.lvl]
+    ; get requested will fit
+    call alloc.blk_fit
 
-    call mpart.qmask
+    or   rax,$00
+    jz   .get_next
 
-    ; ^fit mask in block
-    mov  rdi,rax
-    mov  rax,qword [@ctx.elem]
-    mov  rsi,qword [rax+alloc.chain.mask]
+    ; ^update on success
+    call alloc.blk_update
 
-    push rax
-    call mpart.fit
-
-    ; ^update block
-    pop  rbx
-    mov  rcx,rax
-
-    push rdi
-    shl  rdi,cl
-
-    mov  rdx,rcx
-    shl  rdx,sizep2.line
-
-    ; get offset scaled up
-    ; then size scaled down
-    mov rsi,qword [@ctx.req]
-    mov rcx,qword [@ctx.lvl]
-
-    shl rdx,cl
-
-    add rcx,6
-    shr rsi,cl
-
-    ; update mask and sizes
-    or  qword [rbx+alloc.chain.mask],rdi
-    sub qword [rbx+alloc.chain.avail],rsi
-
-    ; TODO: calc max alloc for block
-
-
-    ; set out
-    pop  rdi
-    mov  rax,qword [@ctx.buff]
-    lea  rax,[rax+rdx]
-
-    push rax
-
-
-    ; ^(test) set header
+    ; ^set header
     mov  rdi,rax
     call alloc.hash_blk
 
+
+  ; (test) see how well hash does
+  mov r8,$00
+  .hash_retry:
+
     mov  rbx,qword [@self.lX]
-    mov  rdx,rax
+    lea  rdx,[rax+r8]
+
+    mov  rcx,$08+HASH_BITS
+    mov  rdi,$01
+    shl  rdi,cl
+    dec  rdi
+
+    and  rdx,rdi
     shl  rdx,$04
 
     mov  rcx,qword [rbx+rdx]
     cmp  rcx,$2424
-    je   .throw
+    jne  .hash_ok
 
+  .hash_col:
+    inc  r8
+    cmp  r8,$10
+    jl   .hash_retry
+    jmp  .throw
+
+  .hash_ok:
+    add  qword [@self.dbout],1
     mov  qword [rbx+rdx],$2424
     jmp  .tail
 
@@ -304,50 +390,67 @@ proc.arg alloc.req ctx  r11
   .throw:
 
 
-    mov   rdi,qword [@ctx.elem]
-    mov   r15,qword [rdi+alloc.chain.mask]
-    shr   r15,1
-
     constr.new alloc.throw_hashcol,\
-      "address collision at 0000000000000000",$0A
+      "Unsolvable collision. Total blocks: ",\
+      " 0000000000000000",$0A
 
-    lea rax,[alloc.throw_hashcol]
-    lea rax,[rax+alloc.throw_hashcol.length-2]
+    lea  rdi,[alloc.throw_hashcol]
+    lea  rdi,[rdi+alloc.throw_hashcol.length-2]
 
-; SCRATCH
-
-  .top2:
-    mov rbx,r15
-    xor dl,dl
-
-    and bl,$0F
-    cmp bl,$0A
-    jl  .skip2
-
-    mov dl,$07
-
-    .skip2:
-    add bl,$30
-    add bl,dl
-
-    mov byte [rax],bl
-    shr r15,$04
-
-    dec rax
-    cmp r15,$00
-    jg  .top2
-
-
-; END SCRATCH
+    mov  rsi,qword [@self.dbout]
+    call alloc._dbout
 
     constr.errout alloc.throw_hashcol,FATAL
 
 
   .tail:
-    pop rax
+
+
+    ; set out
+    mov rax,qword [@ctx.buff]
+    mov rdx,qword [@ctx.pos]
+    lea rax,[rax+rdx]
 
 
   ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; debug method, nevermind this
+
+proc.new alloc._dbout
+
+  proc.enter
+
+  mov rcx,$00
+
+  .top:
+
+    mov rbx,rsi
+    xor dl,dl
+
+    and bl,$0F
+    cmp bl,$0A
+    jl  .skip
+
+    mov dl,$07
+
+
+  .skip:
+
+    add bl,$30
+    add bl,dl
+
+    mov byte [rdi],bl
+    shr rsi,$04
+
+    dec rdi
+    inc rcx
+    cmp rcx,$10
+    jl  .top
+
+
   proc.leave
   ret
 
@@ -358,7 +461,6 @@ proc.new alloc.new_blk
 
 proc.lis alloc.tab self alloc.main
 proc.arg alloc.req ctx  r11
-
 
   proc.enter
 
@@ -392,6 +494,94 @@ proc.arg alloc.req ctx  r11
   ; ^total size, scaled down
   mov word [rax+alloc.chain.avail],sizeof.line
   mov word [rax+alloc.chain.max],sizeof.line
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; get [pos,mask] for putting
+; requested block in stab elem
+
+proc.new alloc.blk_fit
+proc.arg alloc.req ctx r11
+
+  proc.enter
+
+  ; map block size to bitmask
+  mov  rdi,qword [@ctx.req]
+  mov  rsi,qword [@ctx.lvl]
+
+  call mpart.qmask
+
+  ; ^save tmp
+  mov qword [@ctx.mask],rax
+
+
+  ; fit mask in block
+  mov  rdi,rax
+  mov  rax,qword [@ctx.elem]
+  mov  rsi,qword [rax+alloc.chain.mask]
+
+  call mpart.fit
+
+  ; ^fail on X > 63
+  xor    rbx,rbx
+  cmp    rax,$3F
+
+  cmovge rdi,rbx
+
+
+  ; ^adjust mask
+  mov rcx,rax
+  shl rdi,cl
+
+  ; save tmp and give updated mask
+  mov qword [@ctx.pos],rax
+  mov rax,rdi
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; modify entry
+
+proc.new alloc.blk_update
+proc.arg alloc.req ctx r11
+
+  proc.enter
+
+  ; set block offset
+  mov rcx,qword [@ctx.pos]
+
+  ; ^get offset scaled up
+  mov rbx,qword [@ctx.req]
+
+  mov rdx,rcx
+  shl rdx,sizep2.line
+;  shl rdx,cl
+
+  ; ^get size scaled down
+  mov rsi,qword [@ctx.lvl]
+  add rcx,6
+  shr rsi,cl
+
+
+  ; ^overwrite old values
+  mov rax,qword [@ctx.elem]
+  or  qword [rax+alloc.chain.mask],rdi
+  sub qword [rax+alloc.chain.avail],rsi
+
+  ; TODO: calc max alloc for block
+
+  mov qword [@ctx.pos],rdx
+
+  ; set out
+  mov rax,qword [rax+alloc.chain.buff]
+  add rax,rdx
 
 
   ; cleanup and give
@@ -450,6 +640,8 @@ proc.lis alloc.tab self alloc.main
 
   ; get one page for starters
   mov  rdi,sizeof.page
+  shl  rdi,HASH_BITS
+
   call page.new
 
   ; ^store
@@ -461,7 +653,7 @@ proc.lis alloc.tab self alloc.main
   .throw:
 
     constr.new alloc.throw_renit,\
-      "allocator renit",$0A
+      "Allocator renit",$0A
 
     constr.errout alloc.throw_renit,FATAL
 
@@ -519,7 +711,7 @@ proc.lis alloc.tab self alloc.main
   .skip:
 
     mov  rdi,qword [@self.lX]
-    mov  rsi,1
+    mov  rsi,$10
 
     call page.free
 

@@ -186,6 +186,7 @@ reap:
   push rdi
   push rsi
   push rdx
+  push r11
 
 
   ; clear registers
@@ -217,6 +218,7 @@ reap:
 
 
   ; cleanup
+  pop r11
   pop rdx
   pop rsi
   pop rdi

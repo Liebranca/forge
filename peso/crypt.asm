@@ -22,7 +22,7 @@ import
 
   TITLE     peso.crypt
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -95,7 +95,7 @@ proc.new crypt.rotcap
     shr rbx,cl
 
     ; add diff
-    add rax,rbx
+    xor rax,rbx
 
     ; rept on X > limit
     cmp rax,rdx

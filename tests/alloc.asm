@@ -34,13 +34,15 @@ proc.stk qword it
 
     mov  qword [@it],rax
 
-    mov  rdi,$30
+    mov  rdi,$100
     call alloc
+
+;    mov  qword [rax],$2525
 
     mov  rax,qword [@it]
     inc  rax
 
-    cmp  rax,$100
+    cmp  rax,$1000
     jl   .top
 
   call alloc.del

@@ -23,11 +23,8 @@ import
 
   TITLE     peso.mpart
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; GBL
 
 ; ---   *   ---   *   ---
 ; find first free bit
@@ -66,6 +63,14 @@ proc.new mpart.shr_free
 
   add rdx,rax
   mov rax,rdi
+
+  ; ^add shift-sized stop
+  mov rdi,$01
+  shl rdi,cl
+  dec rdi
+  ror rdi,cl
+
+  or  rax,rdi
 
 
   ; cleanup and give
@@ -124,51 +129,73 @@ proc.new mpart.shr_occu
 ; get N free bits
 
 proc.new mpart.fit
+proc.stk qword reqm
+proc.stk qword mask
 
   proc.enter
 
+  ; save tmp
+  mov qword [@reqm],rdi
+
   ; reset counters
   xor rdx,rdx
+
+
+  ; get next free section
   .top:
 
+    ; save tmp
+    mov qword [@mask],rsi
+
     ; get next free chunk
-    push rdi
     mov  rdi,rsi
 
     call mpart.shr_free
-
     mov  rsi,rax
-    pop  rdi
 
     ; ^compare to requested
     ; repeat if free chunk is too small
-    mov rax,rdi
+    mov rax,qword [@reqm]
     and rax,rsi
 
     jz  .skip
+
+    ; skip on X < 64
+    cmp rdx,$3F
+    jge .skip
 
 
   ; ^get bits to shift if no fit
   .body:
 
     ; skip occupied portion
-    push rsi
     mov  rdi,rax
-
     call mpart.get_occu
 
-    pop  rsi
-
     ; ^shift it out
-    shr  rsi,cl
-    add  rdx,rax
+    mov rsi,qword [@mask]
+    shr rsi,cl
+    add rdx,rax
 
+    ; ^add shift-sized stop
+    mov rax,$01
+    shl rax,cl
+    dec rax
+    ror rax,cl
+
+    or  rsi,rax
+
+
+    ; rept on X < 64
+    cmp rdx,$3F
+    jge .skip
     jmp .top
 
 
   ; cleanup and give
   .skip:
     mov rax,rdx
+    mov rdi,qword [@reqm]
 
   proc.leave
   ret
@@ -283,7 +310,7 @@ proc.new mpart.get_level
   .throw:
 
     constr.new mpart.throw_bpart,\
-      "request exceeds maximum ",\
+      "Request exceeds maximum ",\
       "partition size",$0A
 
     constr.errout mpart.throw_bpart,FATAL
