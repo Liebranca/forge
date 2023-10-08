@@ -29,21 +29,21 @@ proc.stk qword it
 
   call alloc.new
 
-  xor rax,rax
-  .top:
-
-    mov  qword [@it],rax
+;  xor rax,rax
+;  .top:
+;    mov  qword [@it],rax
 
     mov  rdi,$100
     call alloc
 
-;    mov  qword [rax],$2525
+    mov  rdi,rax
+    call free
 
-    mov  rax,qword [@it]
-    inc  rax
-
-    cmp  rax,$1000
-    jl   .top
+;    mov  rax,qword [@it]
+;    inc  rax
+;
+;    cmp  rax,$090
+;    jl   .top
 
   call alloc.del
 

@@ -94,7 +94,7 @@ proc.new crypt.rotcap
     and rbx,rsi
     shr rbx,cl
 
-    ; add diff
+    ; xor diff
     xor rax,rbx
 
     ; rept on X > limit
