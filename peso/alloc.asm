@@ -24,7 +24,7 @@ import
 
   TITLE     peso.alloc
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 
@@ -132,42 +132,19 @@ proc.stk alloc.req ctx
   mov qword [@ctx.out],rax
 
 
-  ; get slot in hashtable
+  ; get slot in hashtab
   mov  rdi,rax
   mov  rsi,$01
+
   call alloc.hash_entry
 
-  ; get [size,lvl,pos]
-  mov rcx,qword [@ctx.lvl]
-  add rcx,6
+  ; ^generate meta
+  push rax
+  call alloc.encode_meta
 
-  mov rbx,qword [@ctx.req]
-  shr rbx,cl
-  shl rbx,3
-
-  sub rcx,6
-  or  rbx,rcx
-  shl rbx,6
-  or  rbx,qword [@ctx.pos]
-
-  ; get idex of elem
-  push rbx
-
-  mov  rbx,qword [@ctx.stab]
-  mov  rcx,qword [@ctx.elem]
-
-  sub  rcx,rbx
-  sub  rcx,sizeof.stk
-
-  shr  rcx,5
-  pop  rbx
-
-  shl  rbx,16
-  or   rbx,rcx
-
-
-  ; ^write meta
-  mov qword [rax+$08],rbx
+  ; ^write
+  pop rbx
+  mov qword [rbx+$08],rax
 
   ; reset out
   mov rax,qword [@ctx.out]
@@ -199,61 +176,27 @@ proc.stk alloc.req ctx
   call alloc.hash_entry
 
   ; ^read meta
-  mov  rax,qword [rax+$08]
-  push rax
-
-  ; get stab
-  shr rax,$16
-  and rax,$07
-
-  lea rcx,[rax+6]
-  lea rax,[@self.l0+rax*8]
-  mov rax,qword [rax]
-
-  ; ^save tmp
-  sub rcx,6
-  mov qword [@ctx.stab],rax
-  mov qword [@ctx.lvl],rcx
-
-  ; get elem
-  mov rbx,rax
-  pop rax
-
-  mov rdx,rax
-
-  and rdx,$FFFF
-  shl rdx,1
-
-  add rdx,sizeof.stk
-  add rbx,rdx
-
-  ; ^save
-  mov qword [@ctx.elem],rbx
-
-  ; get size and pos
-  mov rbx,rax
-  mov rdx,rax
-
-  shr rdx,$10
-  shr rbx,$19
-
-  and rdx,$3F
-  and rbx,$07
-
-  mov qword [@ctx.pos],rdx
-  mov qword [@ctx.req],rbx
+  mov  rdi,rax
+  call alloc.decode_meta
 
 
-  ; map block size to bitmask
+  ; get [size,lvl]
   mov  rdi,qword [@ctx.req]
   mov  rcx,qword [@ctx.lvl]
 
+  ; ^scale up size
   add  rcx,6
   shl  rdi,cl
+
+  push rdi
+  push rcx
+
+  ; ^map block size to bitmask
   sub  rcx,6
   mov  rsi,rcx
 
   call mpart.qmask
+
 
   ; ^mark chunks as free
   mov rcx,qword [@ctx.pos]
@@ -263,6 +206,123 @@ proc.stk alloc.req ctx
   not rax
 
   and qword [rbx+alloc.chain.mask],rax
+
+  ; ^update space counters
+  pop rcx
+  pop rax
+  shr rax,cl
+
+  add qword [rbx+alloc.chain.avail],rax
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; make hashtab elem
+
+proc.new alloc.encode_meta
+
+proc.arg alloc.req ctx r11
+proc.cpr rbx
+
+  proc.enter
+
+  ; get stab N
+  mov rcx,qword [@ctx.lvl]
+  add rcx,$06
+
+  ; ^get size scaled down
+  mov rax,qword [@ctx.req]
+  shr rax,cl
+
+  ; ^size at $19
+  shl rax,$03
+
+  ; ^lvl at $16
+  sub rcx,$06
+  or  rax,rcx
+
+  ; ^pos at $10
+  shl rax,$06
+  or  rax,qword [@ctx.pos]
+
+
+  ; get idex of elem
+  mov rbx,qword [@ctx.stab]
+  mov rcx,qword [@ctx.elem]
+
+  ; ^(end-base) eq addr
+  sub rcx,rbx
+  sub rcx,sizeof.stk
+
+  ; ^addr scaled down eq idex
+  shr rcx,$05
+
+  ; ^idex at $00
+  shl rax,$10
+  or  rax,rcx
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^retrieve
+
+proc.new alloc.decode_meta
+
+proc.lis alloc.tab self alloc.main
+proc.arg alloc.req ctx  r11
+
+  proc.enter
+
+
+  ; fetch values
+  mov rax,qword [rdi+$08]
+
+  ; ^elem idex
+  mov qword [@ctx.elem],rax
+  and qword [@ctx.elem],$FFFF
+  shr rax,$10
+
+  ; ^block pos
+  mov qword [@ctx.pos],rax
+  and qword [@ctx.pos],$3F
+  shr rax,$06
+
+  ; ^block lvl
+  mov qword [@ctx.lvl],rax
+  and qword [@ctx.lvl],$07
+  shr rax,$03
+
+  ; ^block size
+  mov qword [@ctx.req],rax
+  and qword [@ctx.req],$07
+
+
+  ; get stab
+  mov rax,qword [@ctx.lvl]
+
+  lea rax,[@self.l0+rax*8]
+  mov rax,qword [rax]
+
+  ; ^save tmp
+  mov qword [@ctx.stab],rax
+
+
+  ; get elem idex
+  mov rbx,rax
+  mov rax,qword [@ctx.elem]
+
+  ; scale up + skip header
+  shl rax,$05
+  lea rax,[rbx+sizeof.stk]
+
+  ; ^save tmp
+  mov qword [@ctx.elem],rax
 
 
   ; cleanup and give
@@ -481,7 +541,7 @@ proc.arg alloc.req ctx  r11
     jz   .get_next
 
     ; ^update on success
-    call alloc.blk_update
+    call alloc.update_blk
 
 
   ; cleanup and give
@@ -756,22 +816,21 @@ proc.arg alloc.req ctx r11
 ; ---   *   ---   *   ---
 ; modify entry
 
-proc.new alloc.blk_update
+proc.new alloc.update_blk
+
 proc.arg alloc.req ctx r11
+proc.cpr rbx
 
   proc.enter
 
-  ; set block offset
-  mov rcx,qword [@ctx.pos]
+  ; get block level
+  mov rcx,qword [@ctx.lvl]
 
-  ; ^get offset scaled up
-  mov rbx,qword [@ctx.req]
-
-  mov rdx,rcx
-  shl rdx,sizep2.line
+  ; ^get block offset
+  mov rbx,qword [@ctx.pos]
 
   ; ^get size scaled down
-  mov rsi,qword [@ctx.lvl]
+  mov rsi,qword [@ctx.req]
   add rcx,6
   shr rsi,cl
 
@@ -785,8 +844,9 @@ proc.arg alloc.req ctx r11
 
   mov qword [@ctx.pos],rdx
 
-  ; set out to base+offset
+  ; set out to base+(offset*scale)
   mov rax,qword [rax+alloc.chain.buff]
+  shl rdx,cl
   add rax,rdx
 
 

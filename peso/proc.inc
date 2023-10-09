@@ -22,7 +22,7 @@ import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -84,7 +84,6 @@ macro proc.enter {
   sfield.get n,hier.cproc,$proc.stksize
 
   ; ^convert size to units
-  n equ n*-1
   n equ n+(sizeof.unit-1)
   n equ n shr sizep2.unit
   n equ n shl sizep2.unit
@@ -224,7 +223,7 @@ macro proc.stk sn {
 
     ; calc new size && var offset
     sfield.get offset,hier.cproc,$proc.stksize
-    top equ 0-(sizeof.\#type)-offset
+    top equ 0-((sizeof.\#type)+(offset))
 
     ; make name -> rbp-offset
     match x,top \\{
@@ -242,11 +241,17 @@ macro proc.stk sn {
 
       ; reset stack top
       sfield.set hier.cproc,$proc.stksize,\
-        offset-sizeof.\#type
+        offset+sizeof.\#type
 
     \\}
 
   \}
+
+  if proc.debug
+    out@chd 'stk',offset+$30
+
+  end if
+
 
   ; ^reset queues
   sfield.set hier.cproc,$proc.nsmk,Q0
@@ -321,7 +326,6 @@ macro proc.leave {
   sfield.get n,hier.cproc,$proc.stksize
 
   ; ^paste epilogue
-  n equ n*-1
   if n > 0
     leave
 
