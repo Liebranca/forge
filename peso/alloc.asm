@@ -10,25 +10,12 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-library ARPATH '/forge/'
-  use '.asm' peso::mpart
-  use '.asm' peso::crypt
-  use '.asm' peso::stk
-
-import
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     peso.alloc
 
-  VERSION   v0.01.0b
+  VERSION   v0.01.1b
   AUTHOR    'IBN-3DILA'
-
-
-  alloc.debug=1
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -103,11 +90,11 @@ reg.new alloc.head
 reg.end
 
 ; ---   *   ---   *   ---
-; base cstruc
+; cstruc
 
 unit.salign r,x
 
-proc.new alloc
+proc.new alloc.crux
 
 proc.lis alloc.tab self alloc.main
 proc.stk alloc.req ctx
@@ -157,7 +144,7 @@ proc.stk alloc.req ctx
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-proc.new free
+proc.new alloc.free
 
 proc.lis alloc.tab self alloc.main
 proc.stk alloc.req ctx
@@ -339,11 +326,10 @@ proc.arg alloc.req ctx r11
 
   push  rdi
 
-HASH_BITS=0
-
-  mov   rsi,$08+HASH_BITS
-  mov   rdx,$08+HASH_BITS+1
-  mov   cl,$4-HASH_BITS
+  mov   rsi,$08+alloc.hash_bits
+  mov   rdx,$08+alloc.hash_bits+1
+  mov   rcx,$04-alloc.hash_bits
+  and   rcx,$07
 
   call hash
 
@@ -588,7 +574,7 @@ proc.stk qword     id
     lea rdx,[rax+r8]
 
     ; ^clamp idex
-    mov  rcx,$08+HASH_BITS
+    mov  rcx,$08+alloc.hash_bits
     mov  rdi,$01
     shl  rdi,cl
     dec  rdi
@@ -906,7 +892,7 @@ proc.lis alloc.tab self alloc.main
 
   ; get one page for starters
   mov  rdi,sizeof.page
-  shl  rdi,HASH_BITS
+  shl  rdi,alloc.hash_bits
 
   call page.new
 
@@ -1032,7 +1018,7 @@ proc.new alloc.del_stk
   ret
 
 ; ---   *   ---   *   ---
-; ROM II
+; footer
 
 constr.seg
 

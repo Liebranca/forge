@@ -13,7 +13,7 @@ end if
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::alloc
+  use '.inc' peso::alloc_h
 
 import
 
@@ -23,7 +23,6 @@ import
 unit.salign r,x
 
 proc.new _start
-proc.stk qword it
 
 proc.stk qword p0
 proc.stk qword p1
@@ -33,50 +32,39 @@ proc.stk qword p2
 
   call alloc.new
 
-;  xor rax,rax
-;  .top:
-;    mov  qword [@it],rax
+  ; get block 0
+  alloc $100
+  mov   qword [@p0],rax
 
-    ; get block 0
-    mov  rdi,$100
+  mov  rdi,$100
+  call alloc.crux
 
-    call alloc
-    mov  qword [@p0],rax
-
-    ; get block 1
-    mov  rdi,$100
-
-    call alloc
-    mov  qword [@p1],rax
+  ; get block 1
+  alloc $100
+  mov   qword [@p1],rax
 
 
-    ; free block 0
-    mov  rdi,qword [@p0]
-    call free
+  ; free block 0
+  free qword [@p0]
 
-    ; ^re-use space for block 2
-    mov  rdi,$100
-
-    call alloc
-    mov  qword [@p2],rax
+  ; ^re-use space for block 2
+  alloc $100
+  mov   qword [@p2],rax
 
 
-    ; ^free all
-    mov  rdi,qword [@p2]
-    call free
+  ; ^free all
+  free qword [@p2]
+  free qword [@p1]
 
-    mov  rdi,qword [@p1]
-    call free
-
-;    mov  rax,qword [@it]
-;    inc  rax
-;
-;    cmp  rax,$002
-;    jl   .top
 
   call alloc.del
 
   proc.leave
   exit
+
+; ---   *   ---   *   ---
+; footer
+
+alloc.seg
 
 ; ---   *   ---   *   ---

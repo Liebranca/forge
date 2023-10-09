@@ -63,8 +63,8 @@ macro stk.new.inline {
   proc.enter
 
   ; get hed+buff mem
-  add  @bsize,sizeof.stk
-  call alloc
+  add   @bsize,sizeof.stk
+;  alloc @bsize
 
   ; ^nit hed
   mov qword [@self.size],@p2size
