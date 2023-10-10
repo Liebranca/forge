@@ -40,7 +40,10 @@ reg.new alloc.tab
   my .l7 dq $00
 
   my .lX dq $00
-  my .dbout dq $00
+
+
+  my .hash_bits dq $00
+  my .dbout     dq $00
 
 reg.end
 
@@ -412,15 +415,17 @@ proc.arg alloc.req ctx  r11
 ; map blk addr to idex
 
 proc.new alloc.hash_blk
-proc.arg alloc.req ctx r11
+proc.lis alloc.tab self alloc.main
 
   proc.enter
 
   push rdi
 
-  mov  rsi,$08+alloc.hash_bits
-  mov  rdx,$08+alloc.hash_bits+1
-  mov  rcx,$04-alloc.hash_bits
+  mov  rdx,qword [@self.hash_bits]
+  lea  rsi,[$08+rdx]
+  mov  rdx,[$09+rdx]
+  mov  rcx,$04
+  sub  rcx,rdx
   and  rcx,$07
 
   call hash
@@ -621,7 +626,6 @@ proc.arg alloc.req ctx  r11
 proc.new alloc.hash_entry
 
 proc.lis alloc.tab self alloc.main
-proc.arg alloc.req ctx  r11
 proc.stk qword     id
 
   proc.enter
@@ -630,9 +634,11 @@ proc.stk qword     id
   push rsi
   mov  qword [@id],rdi
 
+
   ; get idex for hash
-  call alloc.hash_blk
-  pop  rsi
+  .hash_beg:
+    call alloc.hash_blk
+    pop  rsi
 
 
   ; reset counter
@@ -646,7 +652,9 @@ proc.stk qword     id
     lea rdx,[rax+r8]
 
     ; ^clamp idex
-    mov rcx,$08+alloc.hash_bits
+    mov rcx,$08
+    add rcx,qword [@self.hash_bits]
+
     mov rdi,$01
     shl rdi,cl
     dec rdi
@@ -736,17 +744,31 @@ proc.stk qword     id
   ; ^errme
   .throw:
 
-    constr.new alloc.throw_hashcol,\
-      "Unsolvable collision. Total blocks: ",\
-      " 0000000000000000",$0A
+    ; resize table if allowed
+    if alloc.hash_dynamic
 
-    lea  rdi,[alloc.throw_hashcol]
-    lea  rdi,[rdi+alloc.throw_hashcol.length-2]
+      push rsi
+      call alloc.hashtab_resize
 
-    mov  rsi,qword [@self.dbout]
-    call alloc._dbout
+      pop  rsi
+      jmp  .hash_beg
 
-    constr.errout alloc.throw_hashcol,FATAL
+    ; ^else abort
+    else
+
+      constr.new alloc.throw_hashcol,\
+        "Unsolvable collision. Total blocks: ",\
+        " 0000000000000000",$0A
+
+      lea  rdi,[alloc.throw_hashcol]
+      lea  rdi,[rdi+alloc.throw_hashcol.length-2]
+
+      mov  rsi,qword [@self.dbout]
+      call alloc._dbout
+
+      constr.errout alloc.throw_hashcol,FATAL
+
+    end if
 
 
   ; cleanup and give
@@ -976,11 +998,12 @@ proc.lis alloc.tab self alloc.main
   jnz .throw
 
 
-  ; get one page for starters
+  ; get (1 << hash bits) pages
   mov  rdi,sizeof.page
   shl  rdi,alloc.hash_bits
 
   call page.new
+  mov  qword [@self.hash_bits],alloc.hash_bits
 
   ; ^store
   mov qword [@self.lX],rax
@@ -994,6 +1017,119 @@ proc.lis alloc.tab self alloc.main
       "Allocator renit",$0A
 
     constr.errout alloc.throw_renit,FATAL
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^resize
+
+proc.new alloc.hashtab_resize
+
+proc.lis alloc.tab self alloc.main
+proc.stk qword     old
+
+  proc.enter
+
+  ; save tmp
+  mov rax,qword [@self.lX]
+  mov qword [@old],rax
+
+  ; get bigger buff
+  inc  qword [@self.hash_bits]
+  mov  rdi,sizeof.page
+  mov  rcx,qword [@self.hash_bits]
+  shl  rdi,cl
+
+  call page.new
+  mov  qword [@self.lX],rax
+
+
+  ; rehash whole table (!!)
+  mov  rdi,rax
+  call alloc.hashtab_rehash
+
+  ; ^free previous
+  mov  rdi,qword [@old]
+  mov  rcx,qword [@self.hash_bits]
+  mov  rsi,1
+  shl  rsi,cl
+
+  call page.free
+
+
+  ; reset out
+  mov rax,qword [@self.lX]
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^reallocs block headers
+
+proc.new alloc.hashtab_rehash
+
+proc.lis alloc.tab self alloc.main
+
+proc.stk qword src
+proc.stk qword cnt
+
+  proc.enter
+
+  ; save tmp
+  mov qword [@src],rdi
+
+  ; get total size
+  mov rdx,sizeof.page
+  mov rcx,qword [@self.hash_bits]
+  dec rcx
+  shl rdx,cl
+
+  mov qword [@cnt],rdx
+
+  ; ^get remain
+  .chk_size:
+    or qword [@cnt],$00
+    jz .skip
+
+  ; ^realloc block meta
+  .cpy:
+
+    ; get addr
+    mov rax,qword [@src]
+    mov rax,qword [rax]
+
+    ; do nothing if zero or sentinel
+    cmp rax,alloc.sentinel
+
+    jl  .go_next
+    je  .go_next
+
+
+    ; else rehash
+    mov  rdi,rax
+    mov  rsi,$01
+
+    call alloc.hash_entry
+
+    ; ^copy meta
+    mov rbx,qword [@src]
+    mov rbx,qword [rbx+$08]
+
+    mov qword [rax+$08],rbx
+
+
+  ; consume
+  .go_next:
+    add qword [@src],$10
+    sub qword [@cnt],$10
+
+    jmp .chk_size
 
 
   ; cleanup and give
@@ -1045,15 +1181,18 @@ proc.lis alloc.tab self alloc.main
     jmp  .get_next
 
 
-  ; cleanup and give
   .skip:
 
+    ; free (1 << hash bits) pages
     mov  rdi,qword [@self.lX]
-    mov  rsi,$10
+    mov  rcx,qword [@self.hash_bits]
+    mov  rsi,1
+    shl  rsi,cl
 
     call page.free
 
 
+  ; cleanup and give
   proc.leave
   ret
 
