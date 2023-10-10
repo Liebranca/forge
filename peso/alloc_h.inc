@@ -24,7 +24,7 @@ import
 
   TITLE     peso.alloc_h
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 
@@ -69,6 +69,18 @@ macro alloc size {
     end if
 
   end if
+
+}
+
+; ---   *   ---   *   ---
+; ^resizes
+
+macro realloc addr,size {
+
+  mov  rdi,addr
+  mov  rsi,size
+
+  call alloc.realloc
 
 }
 

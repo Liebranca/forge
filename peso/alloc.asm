@@ -18,6 +18,11 @@
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; ROM
+
+  alloc.sentinel=$DE74
+
+; ---   *   ---   *   ---
 ; GBL
 
 unit.salign r,w
@@ -142,6 +147,51 @@ proc.stk alloc.req ctx
   ret
 
 ; ---   *   ---   *   ---
+; ^resize
+
+proc.new alloc.realloc
+
+proc.stk qword dst
+proc.stk qword addr
+proc.stk qword new_size
+proc.stk qword old_size
+
+  proc.enter
+
+  ; save tmp
+  mov qword [@addr],rdi
+  mov qword [@new_size],rsi
+
+  ; mark old block as fred
+  call alloc.free
+  mov  qword [@old_size],rax
+
+  ; ^extend/get new block
+  mov  rdi,qword [@new_size]
+
+  call alloc.crux
+  mov  qword [@dst],rax
+
+  ; ^check addr changed
+  mov rdi,rax
+  mov rsi,qword [@addr]
+
+  cmp rdi,rsi
+  je  .skip
+
+  ; ^copy contents if so
+  mov  rdx,qword [@old_size]
+  call alloc.memcpy
+
+
+  ; cleanup and give
+  .skip:
+    mov rax,qword [@dst]
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
 ; ^dstruc
 
 proc.new alloc.free
@@ -159,7 +209,7 @@ proc.stk alloc.req ctx
 
 
   ; get slot in hashtable
-  mov  rsi,$00
+  mov  rsi,alloc.sentinel
   call alloc.hash_entry
 
   ; ^read meta
@@ -200,9 +250,51 @@ proc.stk alloc.req ctx
   shr rax,cl
 
   add qword [rbx+alloc.chain.avail],rax
+  shl rax,cl
 
 
   ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; write N bytes from B to A
+
+proc.new alloc.memcpy
+
+  proc.enter
+
+  ; see if bytes left
+  .chk_size:
+    or rdx,$00
+    jz .skip
+
+  ; ^write line-sized chunks
+  .cpy:
+
+    ; read [src,src+$40]
+    movdqa xmm0,xword [rsi+$00]
+    movdqa xmm1,xword [rsi+$10]
+    movdqa xmm2,xword [rsi+$20]
+    movdqa xmm3,xword [rsi+$30]
+
+    ; ^write to [dst,dst+$40]
+    movdqa xword [rdi+$00],xmm0
+    movdqa xword [rdi+$10],xmm1
+    movdqa xword [rdi+$20],xmm2
+    movdqa xword [rdi+$30],xmm3
+
+    ; go next chunk
+    sub rdx,$40
+    add rdi,$40
+    add rsi,$40
+
+    jmp .chk_size
+
+
+  ; cleanup and give
+  .skip:
+
   proc.leave
   ret
 
@@ -324,12 +416,12 @@ proc.arg alloc.req ctx r11
 
   proc.enter
 
-  push  rdi
+  push rdi
 
-  mov   rsi,$08+alloc.hash_bits
-  mov   rdx,$08+alloc.hash_bits+1
-  mov   rcx,$04-alloc.hash_bits
-  and   rcx,$07
+  mov  rsi,$08+alloc.hash_bits
+  mov  rdx,$08+alloc.hash_bits+1
+  mov  rcx,$04-alloc.hash_bits
+  and  rcx,$07
 
   call hash
 
@@ -354,31 +446,19 @@ proc.arg alloc.req ctx r11
     constr.sow alloc.dbout_00
 
 
-    lea  rdi,[alloc.dbout_00]
-    lea  rdi,[rdi+alloc.dbout_00.length-2]
+    lea  rdi,[alloc.dbout_01]
+    lea  rdi,[rdi+alloc.dbout_01.length-2]
 
     mov  rsi,r15
     call alloc._dbout
 
-
-    constr.sow alloc.dbout_00
-
-
-    lea  rdi,[alloc.dbout_01]
-    lea  rdi,[rdi+alloc.dbout_01.length-2]
-
-    mov  rax,qword [@ctx.elem]
-    mov  rsi,qword [rax+alloc.chain.mask]
-
-    call alloc._dbout
-
-
     constr.sow alloc.dbout_01
     call reap
 
+
   ; END SCRATCH
 
-  pop  rax
+  pop rax
 
 
   ; cleanup and give
@@ -438,20 +518,20 @@ proc.arg alloc.req ctx r11
   mov rdi,qword [@ctx.stab]
 
   ; get elem at top-offset
-  mov   rsi,qword [rdi+stk.top]
-  shr   rsi,1
-  dec   rsi
+  mov rsi,qword [rdi+stk.top]
+  shr rsi,1
+  dec rsi
 
-  mov   rdx,qword [@ctx.ptr]
-  inc   qword [@ctx.ptr]
+  mov rdx,qword [@ctx.ptr]
+  inc qword [@ctx.ptr]
 
 
   ; end search on X < offset
-  cmp   rdx,rsi
-  jg    .exhaust
+  cmp rdx,rsi
+  jg  .exhaust
 
-  sub   rsi,rdx
-  jmp   .found
+  sub rsi,rdx
+  jmp .found
 
 
   ; inviable, reset to top
@@ -546,21 +626,13 @@ proc.stk qword     id
 
   proc.enter
 
-
-  ; get block id
-  push rdi
-
-  mov  rdi,qword [@ctx.out]
-  mov  rsi,$20
-
-  call crypt.xorkey
-
-  ; ^save tmp
-  mov qword [@id],rax
+  ; save tmp
+  push rsi
+  mov  qword [@id],rdi
 
   ; get idex for hash
-  pop  rdi
   call alloc.hash_blk
+  pop  rsi
 
 
   ; reset counter
@@ -574,24 +646,38 @@ proc.stk qword     id
     lea rdx,[rax+r8]
 
     ; ^clamp idex
-    mov  rcx,$08+alloc.hash_bits
-    mov  rdi,$01
-    shl  rdi,cl
-    dec  rdi
+    mov rcx,$08+alloc.hash_bits
+    mov rdi,$01
+    shl rdi,cl
+    dec rdi
 
     ; ^scale up
-    and  rdx,rdi
-    shl  rdx,$04
+    and rdx,rdi
+    shl rdx,$04
 
 
     ; no entry at this position
-    mov  rcx,qword [rbx+rdx]
-    or   rcx,$00
-    jz   .hash_ok
+    mov rcx,qword [rbx+rdx]
+    or  rcx,$00
+    jz  .hash_ok
 
     ; existing entry, check id
-    cmp  rcx,qword [@id]
-    je   .hash_ok
+    cmp rcx,qword [@id]
+    je  .hash_ok
+
+    ; ^skip to sentinel handler
+    cmp rcx,alloc.sentinel
+    je  .hash_sentinel
+
+    ; ^skip to collision handler
+    jmp .hash_col
+
+
+  ; ^keep sentinels on search
+  ; but skip on insert
+  .hash_sentinel:
+    cmp rsi,alloc.sentinel
+    jne .hash_ok
 
 
   ; primitive collision handling
@@ -637,8 +723,8 @@ proc.stk qword     id
     ; id of block when allocating
     ; clear if freeing
     mov    rcx,qword [@id]
-    or     rsi,$00
-    cmovnz rsi,rcx
+    cmp    rsi,alloc.sentinel
+    cmovne rsi,rcx
 
     ; ^write to table
     lea rax,[rbx+rdx]
