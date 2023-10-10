@@ -276,7 +276,7 @@ proc.new mpart.get_level
     mov    rax,sizep2.line - $06
     mov    rbx,sizep2.dline - $06
 
-    cmp    rdi,sizeof.dline
+    cmp    rdi,sizeof.line * $04
     cmovge rax,rbx
 
     jmp    .skip

@@ -31,14 +31,14 @@ proc.stk qword p0
 
 
   ; get mem
-  alloc $100
+  alloc $40
   mov   qword [@p0],rax
 
   ; ^write
   mov qword [rax+$80],$2424
 
   ; ^enlarge
-  realloc qword [@p0],$200
+  realloc qword [@p0],$0C0
   mov     qword [@p0],rax
 
   ; free

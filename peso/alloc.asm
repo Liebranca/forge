@@ -423,7 +423,7 @@ proc.lis alloc.tab self alloc.main
 
   mov  rdx,qword [@self.hash_bits]
   lea  rsi,[$08+rdx]
-  mov  rdx,[$09+rdx]
+  lea  rdx,[$09+rdx]
   mov  rcx,$04
   sub  rcx,rdx
   and  rcx,$07
