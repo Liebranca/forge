@@ -106,6 +106,7 @@ proc.lis array.head self rdi
   ; seek to beg
   sub @self,sizeof.array.head
 
+
   ; ^get top
   xor rax,rax
   mov eax,dword [@self.top]
@@ -131,7 +132,40 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; ^generic set
+; ^remove at end
+
+proc.new array.pop
+proc.lis array.head self rdi
+
+  proc.enter
+
+  ; seek to beg
+  sub @self,sizeof.array.head
+
+
+  ; adjust top
+  mov eax,dword [@self.ezy]
+  sub dword [@self.top],eax
+
+  ; ^get top
+  xor rax,rax
+  mov eax,dword [@self.top]
+  lea rax,[rax+@self+sizeof.array.head]
+
+  ; ^get value
+  mov  edx,dword [@self.ezy]
+  mov  rdi,rsi
+  mov  rsi,rax
+
+  call array.get
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; generic set array[N]
 
 proc.new array.set
 
@@ -180,6 +214,64 @@ proc.new array.set
   ; ^lowest, no cmp
   .set_byte:
     mov byte [rdi],sil
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^generic get
+
+proc.new array.get
+
+  proc.enter
+
+  ; get size is prim
+  cmp edx,$10
+  jl  .set_prim
+
+
+  ; struc setter
+  .set_struc:
+    call array.memcpy
+    jmp  .skip
+
+
+  ; prim setter
+  .set_prim:
+
+    ; fork to lower or highest
+    cmp edx,sizeof.dword
+    jl  .set_word
+    jg  .set_qword
+
+    ; ^do and end
+    mov eax,dword [rsi]
+    jmp .skip
+
+  ; ^lower
+  .set_word:
+
+    ; fork to lowest
+    cmp edx,sizeof.word
+    jl  .set_byte
+
+    ; ^do and end
+    mov ax,word [rsi]
+    jmp .skip
+
+
+  ; ^highest, no cmp
+  .set_qword:
+    mov rax,qword [rsi]
+    jmp .skip
+
+  ; ^lowest, no cmp
+  .set_byte:
+    mov al,byte [rsi]
 
 
   ; cleanup and give

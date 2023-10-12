@@ -53,6 +53,10 @@ proc.stk qword ar
   call sow
   call reap
 
+  ; read
+  mov  rdi,qword [@ar]
+  call array.pop
+
 
   ; release
   mov rdi,qword [@ar]
