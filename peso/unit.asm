@@ -83,28 +83,43 @@ macro unit.malign {
 
 macro unit.salign [type] {
 
-  define .mode
+  local mode
+  mode equ
+
+  macro inner dst,src \{
+    dst equ dst src
+
+  \}
 
   forward
 
     match =r , type \{
-      .mode equ .mode readable
+      inner mode,readable
 
     \}
 
-    match =x ,type \{
-      .mode equ .mode executable
+    match =x , type \{
+      inner mode,executable
 
     \}
 
-    match =w ,type \{
-      .mode equ .mode writeable
+    match =w , type \{
+      inner mode,writeable
 
     \}
 
   common
 
-    segment .mode
+    macro inner [M] \{
+      segment M
+
+    \}
+
+    match any,mode \{
+      inner mode
+
+    \}
+
     unit.malign
 
 }

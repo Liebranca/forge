@@ -22,7 +22,7 @@ import
 
   TITLE     peso.array
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,10 +30,12 @@ import
 
 reg.new array.head
 
-  my .ezy dd $00
-  my .cap dd $00
+  my .mode dd $00
 
-  my .top dd $00
+  my .ezy  dd $00
+  my .cap  dd $00
+
+  my .top  dd $00
 
 reg.end
 
@@ -68,11 +70,79 @@ proc.lis array.head self rax
   mov dword [@self.cap],esi
   mov dword [@self.top],$00
 
+  ; ^get idex for generic ops
+  push @self
+  call array.get_mode
+
+  ; ^set
+  mov  edx,eax
+  pop  @self
+
+  mov  dword [@self.mode],edx
+
 
   ; reset out
-  add rax,sizeof.array.head
+  add @self,sizeof.array.head
 
   ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^determine id for get-set
+
+proc.new array.get_mode
+
+  proc.enter
+
+  ; size is prim
+  cmp edi,$10
+  jl  .is_prim
+
+
+  ; struc setter
+  .is_struc:
+    mov  eax,$04
+    jmp  .skip
+
+
+  ; prim setter
+  .is_prim:
+
+    ; fork to lower or highest
+    cmp edi,sizeof.dword
+    jl  .is_word
+    jg  .is_qword
+
+    ; ^do and end
+    mov eax,$02
+    jmp .skip
+
+  ; ^lower
+  .is_word:
+
+    ; fork to lowest
+    cmp edx,sizeof.word
+    jl  .is_byte
+
+    ; ^do and end
+    mov eax,$01
+    jmp .skip
+
+
+  ; ^highest, no cmp
+  .is_qword:
+    mov eax,$03
+    jmp .skip
+
+  ; ^lowest, no cmp
+  .is_byte:
+    mov eax,$00
+
+
+  ; cleanup and give
+  .skip:
+
   proc.leave
   ret
 
@@ -84,7 +154,7 @@ proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to beg
+  ; seek to head
   sub @self,sizeof.array.head
 
   ; ^release
@@ -103,19 +173,19 @@ proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to beg
+  ; seek to head
   sub @self,sizeof.array.head
 
 
   ; ^get top
-  xor rax,rax
   mov eax,dword [@self.top]
   lea rax,[rax+@self+sizeof.array.head]
 
   ; ^set value
   push @self
 
-  mov  edx,dword [@self.ezy]
+  mov  edx,dword [@self.mode]
+  mov  r8d,dword [@self.ezy]
   mov  rdi,rax
 
   call array.set
@@ -132,14 +202,64 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; ^remove at end
+; generic set array[N]
+
+proc.new array.set
+
+  proc.enter
+
+
+  ; load jmp addr
+  shl edx,$03
+  mov rax,qword [.tab+edx]
+
+  jmp rax
+
+  ; ^jmp table
+  .tab:
+
+    dq .set_byte
+    dq .set_word
+    dq .set_dword
+    dq .set_qword
+
+    dq .set_struc
+
+
+  ; ^land
+  .set_byte:
+    mov byte [rdi],sil
+    ret
+
+  .set_word:
+    mov word [rdi],si
+    ret
+
+  .set_dword:
+    mov dword [rdi],esi
+    ret
+
+  .set_qword:
+    mov qword [rdi],rsi
+    ret
+
+  .set_struc:
+    call array.set_struc
+    ret
+
+
+  ; cleanup
+  proc.leave
+
+; ---   *   ---   *   ---
+; remove at end
 
 proc.new array.pop
 proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to beg
+  ; seek to head
   sub @self,sizeof.array.head
 
 
@@ -148,12 +268,12 @@ proc.lis array.head self rdi
   sub dword [@self.top],eax
 
   ; ^get top
-  xor rax,rax
   mov eax,dword [@self.top]
   lea rax,[rax+@self+sizeof.array.head]
 
   ; ^get value
-  mov  edx,dword [@self.ezy]
+  mov  edx,dword [@self.mode]
+  mov  r8d,dword [@self.ezy]
   mov  rdi,rsi
   mov  rsi,rax
 
@@ -165,132 +285,66 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; generic set array[N]
-
-proc.new array.set
-
-  proc.enter
-
-  ; get size is prim
-  cmp edx,$10
-  jl  .set_prim
-
-
-  ; struc setter
-  .set_struc:
-    call array.memcpy
-    jmp  .skip
-
-
-  ; prim setter
-  .set_prim:
-
-    ; fork to lower or highest
-    cmp edx,sizeof.dword
-    jl  .set_word
-    jg  .set_qword
-
-    ; ^do and end
-    mov dword [rdi],esi
-    jmp .skip
-
-  ; ^lower
-  .set_word:
-
-    ; fork to lowest
-    cmp edx,sizeof.word
-    jl  .set_byte
-
-    ; ^do and end
-    mov word [rdi],si
-    jmp .skip
-
-
-  ; ^highest, no cmp
-  .set_qword:
-    mov qword [rdi],rsi
-    jmp .skip
-
-  ; ^lowest, no cmp
-  .set_byte:
-    mov byte [rdi],sil
-
-
-  ; cleanup and give
-  .skip:
-
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; ^generic get
+; generic get array[N]
 
 proc.new array.get
 
   proc.enter
 
-  ; get size is prim
-  cmp edx,$10
-  jl  .set_prim
+
+  ; load jmp addr
+  shl edx,$03
+  mov rax,qword [.tab+edx]
+
+  jmp rax
+
+  ; ^jmp table
+  .tab:
+
+    dq .get_byte
+    dq .get_word
+    dq .get_dword
+    dq .get_qword
+
+    dq .get_struc
 
 
-  ; struc setter
-  .set_struc:
-    call array.memcpy
-    jmp  .skip
-
-
-  ; prim setter
-  .set_prim:
-
-    ; fork to lower or highest
-    cmp edx,sizeof.dword
-    jl  .set_word
-    jg  .set_qword
-
-    ; ^do and end
-    mov eax,dword [rsi]
-    jmp .skip
-
-  ; ^lower
-  .set_word:
-
-    ; fork to lowest
-    cmp edx,sizeof.word
-    jl  .set_byte
-
-    ; ^do and end
-    mov ax,word [rsi]
-    jmp .skip
-
-
-  ; ^highest, no cmp
-  .set_qword:
-    mov rax,qword [rsi]
-    jmp .skip
-
-  ; ^lowest, no cmp
-  .set_byte:
+  ; ^land
+  .get_byte:
     mov al,byte [rsi]
+    ret
+
+  .get_word:
+    mov ax,word [rsi]
+    ret
+
+  .get_dword:
+    mov eax,dword [rsi]
+    ret
+
+  .get_qword:
+    mov rax,qword [rsi]
+    ret
+
+  .get_struc:
+    call array.set_struc
+    ret
 
 
-  ; cleanup and give
-  .skip:
-
+  ; cleanup
   proc.leave
-  ret
 
 ; ---   *   ---   *   ---
-; ^deref struc and copy
+; deref struc and copy
 
-proc.new array.memcpy
+proc.new array.set_struc
 
   proc.enter
 
 
   ; see if bytes left
   .chk_size:
-    or edx,$00
+    or r8d,$00
     jz .skip
 
   ; ^write unit-sized chunks
@@ -303,7 +357,7 @@ proc.new array.memcpy
     ; go next
     add rdi,$10
     add rsi,$10
-    sub edx,$10
+    sub r8d,$10
 
     jmp .chk_size
 

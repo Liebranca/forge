@@ -46,14 +46,7 @@ proc.stk qword ar
 
   call array.push
 
-  ; ^print
-  mov  rdi,qword [@ar]
-  mov  rsi,$03
-
-  call sow
-  call reap
-
-  ; read
+  ; ^read
   mov  rdi,qword [@ar]
   call array.pop
 
