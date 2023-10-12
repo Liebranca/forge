@@ -435,6 +435,7 @@ proc.lis alloc.tab self alloc.main
   push rax
 
   ; SCRATCH
+  if alloc.debug
 
     constr.new alloc.dbout_00,\
       "0000000000000000",$20
@@ -460,7 +461,7 @@ proc.lis alloc.tab self alloc.main
     constr.sow alloc.dbout_01
     call reap
 
-
+  end if
   ; END SCRATCH
 
   pop rax
