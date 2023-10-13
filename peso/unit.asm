@@ -129,29 +129,15 @@ macro unit.salign [type] {
 
 macro unit.div.proto name {
 
-
-  align $10
-  name#.urdiv:
-
-  macro name#.urdiv.inline \{
+  macro name#.urdiv \{
     UInt.urdivp2.proto sizep2.#name
 
   \}
 
-  name#.urdiv.inline
-  ret
-
-
-  align $10
-  name#.align:
-
-  macro name#.align.inline \{
+  macro name#.align \{
     UInt.align.proto sizep2.#name
 
   \}
-
-  name#.align.inline
-  ret
 
 }
 

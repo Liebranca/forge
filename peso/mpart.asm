@@ -204,6 +204,7 @@ proc.stk qword mask
 ; maps req,lvl to bitmask
 
 proc.new mpart.qmask
+proc.cpr rbx
 
   proc.enter
 

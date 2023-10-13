@@ -22,7 +22,7 @@ import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

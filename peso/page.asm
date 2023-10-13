@@ -22,7 +22,7 @@ import
 
   TITLE     peso.page
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,7 +34,7 @@ proc.new page.new
 
   ; [0] rdi is size in bytes
   ; get N*page from that
-  inline page.align
+  page.align
 
   ; ^set page*N
   mov rsi,rax

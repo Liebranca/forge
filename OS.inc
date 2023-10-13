@@ -14,7 +14,7 @@
 
   TITLE     OS
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -28,10 +28,15 @@
   define STDERR     $02
 
 ; ---   *   ---   *   ---
+; terminate
 
-macro exit exit_code=0 {
+macro exit code=0 {
 
-  mov rdi,exit_code
+  ; run 'atexit' queue
+  call alloc.del
+
+  ; kill
+  mov rdi,code
   mov rax,SYS_EXIT
 
   syscall
@@ -39,6 +44,7 @@ macro exit exit_code=0 {
 }
 
 ; ---   *   ---   *   ---
+; push bytes
 
 macro write f*,msg*,len* {
 

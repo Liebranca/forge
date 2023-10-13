@@ -14,8 +14,6 @@
 
 library ARPATH '/forge/'
   use '.asm' peso::mpart
-  use '.asm' peso::crypt
-  use '.asm' peso::stk
 
 import
 

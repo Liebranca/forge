@@ -27,8 +27,6 @@ proc.stk qword p0
 
   proc.enter
 
-  call alloc.new
-
 
   ; get mem
   alloc $40
@@ -44,8 +42,6 @@ proc.stk qword p0
   ; free
   free qword [@p0]
 
-
-  call alloc.del
 
   proc.leave
   exit

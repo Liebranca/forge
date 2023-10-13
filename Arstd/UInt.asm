@@ -14,7 +14,7 @@
 
   TITLE     Arstd.UInt
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -60,7 +60,6 @@ UInt.urdiv:
 ; ^quick by-pow2 v
 
 UInt.urdivp2:
-macro UInt.urdivp2.inline {
 
   ; [1] cx is exponent
   ; get 2^N thru shift
@@ -79,27 +78,29 @@ macro UInt.urdivp2.inline {
   lea rax,[rdi+rax-1]
   shr rax,cl
 
-}
 
-  ; ^invoke
-  UInt.urdivp2.inline
+  ; give
   ret
 
 ; ---   *   ---   *   ---
 ; ^as a paste-in
 
-macro UInt.urdivp2.proto size {
+macro UInt.urdivp2.proto size,keep=0 {
 
-  mov rcx,size
-  UInt.urdivp2.inline
+  match =1 , keep \{push rcx\}
+
+  mov  rcx,size
+  call UInt.urdivp2
+
+  match =1 , keep \{pop rcx\}
 
 }
 
 ; ---   *   ---   *   ---
 ; ^with scaling up
 
-macro UInt.align.proto size {
-  UInt.urdivp2.proto size
+macro UInt.align.proto size,keep=0 {
+  UInt.urdivp2.proto size,keep
   shl rax,size
 
 }
