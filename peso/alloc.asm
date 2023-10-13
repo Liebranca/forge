@@ -23,12 +23,12 @@
 library ARPATH '/forge/'
   use '.asm' peso::stk
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; GBL
 
-unit.salign r,w
+RAMSEG
 
 reg.new alloc.tab
 
@@ -95,7 +95,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; cstruc
 
-unit.salign r,x
+EXESEG
 
 proc.new alloc.crux
 

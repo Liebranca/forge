@@ -37,7 +37,7 @@ end if
 
   TITLE     Imp
 
-  VERSION   v0.01.5a
+  VERSION   v0.01.5
   AUTHOR    'IBN-3DILA'
 
 
@@ -245,7 +245,7 @@ macro library em {
 ; ---   *   ---   *   ---
 ; ^pull use from library
 
-macro import.prologue {
+macro library.import.prologue {
 
   local list
   list equ
@@ -286,7 +286,7 @@ macro import.prologue {
 ; ---   *   ---   *   ---
 ; ^recursive include hack
 
-import fix \
+library.import fix \
 \
 rept 1 {\
 \
@@ -295,7 +295,6 @@ rept 1 {\
     paste \
       if ~ defined loaded?\#name,\
         include fpath,\
-\;        define loaded?\#name 1,\
 \
       end if\
   \}\
@@ -314,7 +313,7 @@ rept 1 {\
 \
   \}\
 \
-  rept 1 \{import.prologue\}\
+  rept 1 \{library.import.prologue\}\
   rept 1 \{convolute Imp.final\}\
 \
 }

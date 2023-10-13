@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.inc' peso::proc
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -28,7 +28,8 @@ import
 ; ---   *   ---   *   ---
 ; get N-bits hash
 
-unit.salign r,x
+EXESEG
+
 proc.new crypt.xorkey
 
   proc.enter

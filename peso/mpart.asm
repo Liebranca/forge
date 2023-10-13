@@ -16,7 +16,7 @@ library ARPATH '/forge/'
   use '.inc' peso::constr
   use '.asm' peso::page
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -326,6 +326,6 @@ proc.new mpart.get_level
 ; ---   *   ---   *   ---
 ; ROM II
 
-constr.seg
+constr ROM
 
 ; ---   *   ---   *   ---

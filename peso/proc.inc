@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.inc' peso::reg
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info

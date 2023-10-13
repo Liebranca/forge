@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.asm' peso::file
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -69,11 +69,21 @@ macro constr.new name,[ct] {
 ; ---   *   ---   *   ---
 ; ^paste
 
-macro constr.seg {
+macro constr mode* {
 
-  ; NOTE: made it readable to debug something
-  ;       i'll make it ROM again later
-  segment readable writeable
+  local type
+  type equ
+
+  match ,mode \{
+    type equ ROM
+
+  \}
+
+  match T,type \{
+    T\#SEG
+
+  \}
+
 
   macro _inner [line] \{
     npaste line
@@ -131,6 +141,6 @@ constr.new tag.FATAL, \
   $1B,$5B,'37;1m> ',\
   $1B,$5B,'0m'
 
-constr.seg
+constr ROM
 
 ; ---   *   ---   *   ---

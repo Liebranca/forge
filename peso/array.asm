@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.inc' peso::alloc_h
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -42,7 +42,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; cstruc
 
-unit.salign r,x
+EXESEG
 
 proc.new array.new
 proc.lis array.head self rax

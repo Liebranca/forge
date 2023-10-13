@@ -14,8 +14,45 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; ROM
+
+  MAM.xmode='stat'
+
+; ---   *   ---   *   ---
+; top-level switch
+
+macro MAM.head name=crux {
+
+  if MAM.xmode = 'stat'
+    format ELF64 executable 3
+    entry  name
+
+  else if MAM.xmode = 'obj'
+    format ELF64
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; dude, what *is* a SECTION?!
+
+macro MAM.segment name,type,size {
+
+  if MAM.xmode = 'stat'
+    segment type
+    align   size
+
+  else if MAM.xmode = 'obj'
+    section name align size
+
+  end if
+
+}
 
 ; ---   *   ---   *   ---
 ; pastes comma separated as lines

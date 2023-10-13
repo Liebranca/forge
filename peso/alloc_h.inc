@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.asm' peso::mpart
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info

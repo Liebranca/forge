@@ -15,7 +15,7 @@
 library ARPATH '/forge/'
   use '.inc' peso::proc
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -53,7 +53,7 @@ macro alloc.sigt.new type& {
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-unit.salign r,x
+EXESEG
 
 proc.new stk.new
 alloc.sigt.new stk

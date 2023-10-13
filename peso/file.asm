@@ -14,50 +14,51 @@
 
 library ARPATH '/forge/'
   use '.inc' OS
+  use '.inc' peso::proc
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
 
   TITLE     peso.file
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; GBL
 
-segment readable writeable
-align $10
+RAMSEG
 
-buffio:
+reg.new file.buff
 
-  define BUFFIO_SZ   $100
-  define BUFFIO_REPT $10
-
-
-  ; ^pool
-  .ct    db BUFFIO_SZ dup $00
+  my .SZ   = $100
+  my .REPT = $10
 
 
-  ; ^keep
-  .fto   dw STDOUT
-  .avail dw BUFFIO_SZ
+  ; pool
+  my .ct    db .SZ dup $00
 
-  .ptr   dw $00
+  ; bkeep
+  my .fto   dw STDOUT
+  my .avail dw .SZ
 
+  my .ptr   dw $00
+
+reg.end
+
+reg.ice file.buff buffio
 
 ; ---   *   ---   *   ---
 ; set fhandle
 
-segment readable executable
-align $10
+EXESEG
 
-fto:
+proc.new fto
+proc.cpr rbx
 
-  push rbx
-
+  proc.enter
 
   ; get current fh eq passed
   xor rbx,rbx
@@ -65,33 +66,27 @@ fto:
 
   ; ^skip if so
   cmp rbx,rdi
-  je .skip
+  je  .skip
 
   ; ^else flush, then swap
   call reap
-  mov word [buffio.fto],di
+  mov  word [buffio.fto],di
 
 
-  ; cleanup
+  ; cleanup and give
   .skip:
-    pop rbx
 
-
+  proc.leave
   ret
 
 
 ; ---   *   ---   *   ---
 ; ^issue write
 
-sow:
+proc.new sow
+proc.cpr rbx,rdi,rsi
 
-  push rdi
-  push rsi
-
-  push rbx
-  push rcx
-  push rdx
-
+  proc.enter
 
   ; flush on full buff
   .top:
@@ -106,7 +101,7 @@ sow:
     call reap
 
     ; ^refresh avail
-    mov dx,BUFFIO_SZ
+    mov dx,buffio.SZ
 
 
   ; offset into buff
@@ -163,31 +158,22 @@ sow:
     mov word [buffio.ptr],cx
 
     ; repeat on pending
-    or  rsi,$00
-    jg  .top
+    or rsi,$00
+    jg .top
 
 
-  ; cleanup
-  pop rdx
-  pop rcx
-  pop rbx
-
-  pop rsi
-  pop rdi
-
+  ; cleanup and give
+  proc.leave
   ret
 
 
 ; ---   *   ---   *   ---
 ; ^write, then empty used buff
 
-reap:
+proc.new reap
+proc.cpr r11,rdi,rsi
 
-  push rdi
-  push rsi
-  push rdx
-  push r11
-
+  proc.enter
 
   ; clear registers
   xor rdi,rdi
@@ -205,7 +191,7 @@ reap:
   ; ^zero-flood
   pxor xmm0,xmm0
 
-  repeat BUFFIO_REPT
+  repeat buffio.REPT
     movdqa xword [rsi],xmm0
     add    rsi,$10
 
@@ -213,17 +199,12 @@ reap:
 
 
   ; ^reset meta
-  mov word [buffio.avail],BUFFIO_SZ
+  mov word [buffio.avail],buffio.SZ
   mov word [buffio.ptr],$0000
 
 
-  ; cleanup
-  pop r11
-  pop rdx
-  pop rsi
-  pop rdi
-
-
+  ; cleanup and give
+  proc.leave
   ret
 
 

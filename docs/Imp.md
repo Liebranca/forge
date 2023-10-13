@@ -16,7 +16,7 @@ end if
 library ENV '/subdir/'
   use '.ext' path::to::file
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; ^or with no environs
@@ -24,7 +24,7 @@ import
 library _ '/abs/path/subdir/'
   use '.ext' path::to::file
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 
@@ -50,7 +50,7 @@ import
 
 ```
 
-Looks for the files `OS.inc` and `peso/file.asm` in the `/forge/` subdirectory of the environment variable `$ARPATH`. This invocation will define the symbols `loaded?OS` and `loaded?Arstd.IO` if they are not defined already, such that:
+Looks for the files `OS.inc` and `peso/file.asm` in the `/forge/` subdirectory of the environment variable `$ARPATH`. These files, in turn, define the symbols `loaded?OS` and `loaded?peso.file` such that:
 
 ```asm
 if ~ defined loaded?OS
@@ -74,7 +74,7 @@ AUTHOR    'your_name'
 
 ```
 
-Which defines the symbols `<ID>?version` and `<ID>?author` which are used by the `module_info` macro from `Arstd::IO`; the `INFO_FIELD` macro can also be used to declare your own module data.
+Where `TITLE` defines the aforementioned `loaded?<ID>`, with `VERSION` and `AUTHOR` defining the symbols `<ID>?version` and `<ID>?author`, used by the `module_info` macro from `Arstd::IO`; the `INFO_FIELD` macro can also be used to declare your own module data.
 
 Usage of `INFO_FIELD` is fairly straight-forward:
 
@@ -94,6 +94,12 @@ The only requirement is that all your fields are defined *after* `TITLE`.
 Right from the very start Imp was complete enough for what I needed it for. However, improvements can always be made. For any oddities or annoyances you might encounter, please open an issue or contact me directly.
 
 # CHANGELOG
+
+### v0.01.6
+
+- First non-alpha version ;>
+
+- `import` changed to `library.import` in order to avoid clashing with the `import64.inc` file that comes with fasm.
 
 ### v0.01.5a
 

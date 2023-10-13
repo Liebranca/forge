@@ -14,9 +14,9 @@
 
 library ARPATH '/forge/'
   use '.inc' peso::sfield
-  use '.asm' peso::unit
+  use '.inc' peso::unit
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
@@ -34,12 +34,14 @@ import
 ; ---   *   ---   *   ---
 ; beg cstruc
 
-macro reg.new name {
+macro reg.new name,args& {
 
   hier.creg equ name
 
   define name#.$reg 1
   define name#.$reg.fields
+
+  define name#.$reg.args args
 
   ; put definition 'on hold' ;>
   virtual at $00

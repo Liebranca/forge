@@ -1,6 +1,3 @@
-format ELF64 executable 3
-entry _start
-
 ; ---   *   ---   *   ---
 ; get importer
 
@@ -9,20 +6,23 @@ if ~ defined loaded?Imp
 
 end if
 
+MAM.xmode='stat'
+MAM.head
+
 ; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
   use '.inc' peso::alloc_h
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; crux
 
-unit.salign r,x
+EXESEG non
 
-proc.new _start
+proc.new crux
 proc.stk qword p0
 
   proc.enter

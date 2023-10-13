@@ -20,9 +20,9 @@
 ; ---   *   ---   *   ---
 ; rounded-up division
 
-segment readable executable
-align $10
+MAM.segment '.text',readable executable,$10
 
+;align $10
 UInt.urdiv:
 
   push rcx
@@ -59,6 +59,7 @@ UInt.urdiv:
 ; ---   *   ---   *   ---
 ; ^quick by-pow2 v
 
+;align $10
 UInt.urdivp2:
 
   ; [1] cx is exponent
