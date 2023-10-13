@@ -210,20 +210,21 @@ proc.new array.set
 
 
   ; load jmp addr
-  shl edx,$03
-  mov rax,qword [.tab+edx]
+  mov eax,.tab
+  mov dl,byte [eax+edx]
+  add eax,edx
 
   jmp rax
 
   ; ^jmp table
   .tab:
 
-    dq .set_byte
-    dq .set_word
-    dq .set_dword
-    dq .set_qword
+    db .set_byte  - .tab
+    db .set_word  - .tab
+    db .set_dword - .tab
+    db .set_qword - .tab
 
-    dq .set_struc
+    db .set_struc - .tab
 
 
   ; ^land
@@ -293,20 +294,21 @@ proc.new array.get
 
 
   ; load jmp addr
-  shl edx,$03
-  mov rax,qword [.tab+edx]
+  mov eax,.tab
+  mov dl,byte [eax+edx]
+  add eax,edx
 
   jmp rax
 
   ; ^jmp table
   .tab:
 
-    dq .get_byte
-    dq .get_word
-    dq .get_dword
-    dq .get_qword
+    db .get_byte  - .tab
+    db .get_word  - .tab
+    db .get_dword - .tab
+    db .get_qword - .tab
 
-    dq .get_struc
+    db .get_struc - .tab
 
 
   ; ^land
