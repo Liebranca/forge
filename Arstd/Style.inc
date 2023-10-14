@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -35,6 +35,9 @@ macro MAM.head name=crux {
     format ELF64
 
   end if
+
+  List.new MAM.foot
+  List.new MAM.atexit
 
 }
 

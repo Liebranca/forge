@@ -14,7 +14,7 @@
 
   TITLE     List
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Arstd.List 2
@@ -198,6 +198,45 @@ macro List.cflatten list,len,out {
     \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; cstruc
+
+macro List.new name {
+
+  define name#.m_list
+  define name#.m_len
+
+  macro name#.push item \{
+    List.push name#.m_list,item
+    name#.m_len equ name#.m_len + 1
+
+  \}
+
+  macro name#.cflatten dst \{
+
+    dst equ
+
+    match any,name#.m_len \\{
+      List.cflatten name#.m_list,name#.m_len,dst
+
+    \\}
+
+  \}
+
+  macro name#.npaste \{
+
+    local dst
+    macro inner [item] \\{forward item\\}
+
+    name#.cflatten dst
+    match any,dst \\{inner any\\}
+
+  \}
+
+  macro name \{name#.npaste\}
 
 }
 

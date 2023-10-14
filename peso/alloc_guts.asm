@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; PESO ALLOC
+; PESO ALLOC (GUTS)
 ; Hands you mem
 ;
 ; LIBRE SOFTWARE
@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     peso.alloc
+  TITLE     peso.alloc_guts
 
   VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'

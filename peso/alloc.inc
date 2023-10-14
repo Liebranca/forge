@@ -20,9 +20,9 @@ library.import
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     peso.alloc_h
+  TITLE     peso.alloc
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 
@@ -95,13 +95,21 @@ macro free addr {
 }
 
 ; ---   *   ---   *   ---
+; cleanup routine
+
+macro alloc.atexit {
+  call alloc.del
+
+}
+
+; ---   *   ---   *   ---
 ; footer
 
-macro alloc.seg {
+macro alloc.foot {
 
   local bX
 
-  if ~ defined loaded?peso.alloc
+  if ~ defined loaded?peso.alloc_guts
 
     if alloc.debug
 
@@ -111,10 +119,13 @@ macro alloc.seg {
 
     end if
 
-    include '%ARPATH%/forge/peso/alloc.asm'
+    include '%ARPATH%/forge/peso/alloc_guts.asm'
 
   end if
 
 }
+
+MAM.foot.push   alloc.foot
+MAM.atexit.push alloc.atexit
 
 ; ---   *   ---   *   ---

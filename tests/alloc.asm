@@ -13,7 +13,7 @@ MAM.head
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::alloc_h
+  use '.inc' peso::alloc
 
 library.import
 
@@ -49,6 +49,6 @@ proc.stk qword p0
 ; ---   *   ---   *   ---
 ; footer
 
-alloc.seg
+MAM.foot
 
 ; ---   *   ---   *   ---

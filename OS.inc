@@ -14,7 +14,7 @@
 
   TITLE     OS
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,11 +32,13 @@
 
 macro exit code=0 {
 
+  push code
+
   ; run 'atexit' queue
-  call alloc.del
+  MAM.atexit
 
   ; kill
-  mov rdi,code
+  pop rdi
   mov rax,SYS_EXIT
 
   syscall
