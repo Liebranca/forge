@@ -56,9 +56,13 @@ macro proc.new name {
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
 
+  ; conditionally apply alignment
+  if MAM.align
+    unit.malign
 
-  ; add unit aligned label
-  unit.malign
+  end if
+
+  ; add label
   name#:
 
 }

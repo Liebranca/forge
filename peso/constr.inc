@@ -53,15 +53,22 @@ macro constr._ins line {
 
 macro constr.new name,[ct] {
 
+  ; alignment not subject to MAM config
+  ; as peso standard requires that all
+  ; strings and strucs be unit-aligned
   common
     constr._ins align $10
     constr._ins name#:
 
+  ; ^paste in bytes
   forward
     constr._ins db ct
 
+  ; ^get string length in bytes
+  ; then pad buffer to unit size
   common
     constr._ins name#.length=$-name
+    constr._ins align $10
 
 }
 

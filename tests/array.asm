@@ -1,6 +1,3 @@
-format ELF64 executable 3
-entry _start
-
 ; ---   *   ---   *   ---
 ; get importer
 
@@ -9,26 +6,26 @@ if ~ defined loaded?Imp
 
 end if
 
+MAM.xmode='stat'
+MAM.head
+
 ; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
   use '.asm' peso::array
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; crux
 
-alloc.debug=0
+EXESEG
 
-unit.salign r,x
-
-proc.new _start
+proc.new crux
 proc.stk qword ar
 
   proc.enter
-  call alloc.new
 
   ; get mem
   mov  rdi,$04
@@ -40,13 +37,26 @@ proc.stk qword ar
   mov qword [@ar],rax
 
 
-  ; write
+  ; add to end
   mov  rdi,qword [@ar]
-  mov  rsi,$000A2424
+  mov  rsi,$24242424
 
   call array.push
 
-  ; ^read
+  ; add to end
+  mov  rdi,qword [@ar]
+  mov  rsi,$21212121
+
+  call array.push
+
+  ; add to beg
+  mov   rdi,qword [@ar]
+  mov   rsi,$000A2525
+
+  call  array.unshift
+
+
+  ; remove from end
   mov  rdi,qword [@ar]
   call array.pop
 
@@ -57,14 +67,12 @@ proc.stk qword ar
 
 
   ; cleanup and give
-  call alloc.del
-
   proc.leave
   exit
 
 ; ---   *   ---   *   ---
 ; footer
 
-alloc.seg
+MAM.foot
 
 ; ---   *   ---   *   ---

@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::alloc_h
+  use '.inc' peso::alloc
 
 library.import
 
@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -166,6 +166,27 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
+; set value + increase top
+
+macro array.insert_proto {
+
+  push @self
+
+  mov  edx,dword [@self.mode]
+  mov  r8d,dword [@self.ezy]
+  mov  rdi,rax
+
+  call array.set
+
+  ; ^grow by elem size
+  pop @self
+
+  mov eax,dword [@self.ezy]
+  add dword [@self.top],eax
+
+}
+
+; ---   *   ---   *   ---
 ; add element at end
 
 proc.new array.push
@@ -181,20 +202,8 @@ proc.lis array.head self rdi
   mov eax,dword [@self.top]
   lea rax,[rax+@self+sizeof.array.head]
 
-  ; ^set value
-  push @self
-
-  mov  edx,dword [@self.mode]
-  mov  r8d,dword [@self.ezy]
-  mov  rdi,rax
-
-  call array.set
-
-  ; ^grow by elem size
-  pop @self
-
-  mov eax,dword [@self.ezy]
-  add dword [@self.top],eax
+  ; add elem and grow top
+  array.insert_proto
 
 
   ; cleanup and give
@@ -369,5 +378,124 @@ proc.new array.set_struc
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; add element at beg
+
+proc.new array.unshift
+proc.cpr rbx
+
+proc.lis array.head self rdi
+
+  proc.enter
+
+  ; get bot
+  mov rax,@self
+
+  ; ^seek to head
+  sub @self,sizeof.array.head
+
+
+  ; save tmp
+  push @self
+  push rsi
+  push rax
+
+  ; get [beg+N,cap-N]
+  mov  edx,dword [@self.ezy]
+  mov  r8d,dword [@self.top]
+
+  mov  rsi,rax
+  lea  rbx,[rax+rdx]
+
+  sub  r8d,edx
+  mov  edx,dword [@self.mode]
+  mov  rdi,rbx
+
+  ; ^copy bytes N places right
+  call array.shr
+
+
+  ; restore tmp
+  pop rax
+  pop rsi
+  pop @self
+
+  ; ^write to beg
+  array.insert_proto
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^reverse walk copy
+
+proc.new array.shr
+
+  proc.enter
+
+  ; get mask size
+  mov rax,$01
+  mov cl,dl
+  shl rax,cl
+
+  mov rcx,rax
+
+
+  ; make jump table
+  jmptab .tab,byte,\
+    .is_byte,.is_word,\
+    .is_dword,.is_qword,\
+    .is_struc
+
+  ; ^land
+  .is_byte:
+  .is_word:
+  .is_dword:
+  .is_qword:
+
+    ; get mask
+    mov rdx,$01
+    shl rcx,$03
+    shl rdx,cl
+    dec rdx
+
+    ; get first bit
+    mov rax,qword [rsi]
+    ror rax,cl
+
+    ; ^get next bit
+    mov rbx,rax
+    shr rbx,cl
+
+    ; ^exclude
+    and rbx,rdx
+    and rax,rdx
+
+    ; ^copy
+    shr rcx,$03
+    mov qword [rdi],rbx
+    mov qword [rdi+rcx],rax
+
+
+    ; go next
+    sub rdi,rcx
+    sub rsi,rcx
+    sub r8d,ecx
+
+    or  r8d,$00
+    jg .is_qword
+
+    ret
+
+
+  .is_struc:
+    ret
+
+
+  ; cleanup
+  proc.leave
 
 ; ---   *   ---   *   ---

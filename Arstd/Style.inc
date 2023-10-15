@@ -14,13 +14,14 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
   MAM.xmode='stat'
+  MAM.align=0
 
 ; ---   *   ---   *   ---
 ; top-level switch
@@ -48,12 +49,67 @@ macro MAM.segment name,type,size {
 
   if MAM.xmode = 'stat'
     segment type
-    align   size
+
+    if MAM.align
+      align size
+
+    end if
+
 
   else if MAM.xmode = 'obj'
-    section name align size
+
+    if MAM.align
+      section name align size
+
+    else
+      section name
+
+    end if
 
   end if
+
+}
+
+; ---   *   ---   *   ---
+; builds jump table
+
+macro jmptab base,size,[item] {
+
+  common
+
+    local rX
+    local kX
+    local offset
+
+    ; default to 8-bit tab
+    rX     equ dl
+    kX     equ db
+
+    offset equ byte [eax+edx]
+
+    ; ^optionally 16-bit
+    match =word , size \{
+
+      rX     equ dx
+      kX     equ dw
+
+      offset equ word [eax+edx]
+
+    \}
+
+    ; load jmp addr
+    mov eax,base
+    mov rX,offset
+    add eax,edx
+
+    jmp rax
+
+    ; ^jmp table
+    base#:
+
+
+  forward
+    kX item - base
 
 }
 

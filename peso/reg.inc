@@ -95,6 +95,7 @@ macro reg.ice tn {
 
   match type name,tn \{
 
+    unit.malign
     name\#:
 
     ; ^re-paste accum on non-virtual
