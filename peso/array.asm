@@ -376,14 +376,14 @@ proc.lis array.head self rdi
 
 
   ; JIC clear
-  xor  rdx,rdx
-  xor  r8,r8
-  xor  r9,r9
+  xor rdx,rdx
+  xor r8,r8
+  xor r9,r9
 
   ; get [N,end,mode]
-  mov  r8d,dword [@self.ezy]
-  mov  r9d,dword [@self.top]
-  mov  edx,dword [@self.mode]
+  mov r8d,dword [@self.ezy]
+  mov r9d,dword [@self.top]
+  mov edx,dword [@self.mode]
 
   ; ^get [end,end-N]
   mov  rsi,rax
@@ -482,18 +482,175 @@ proc.new array.shr
     call array.set_struc
 
     ; ^restore
-    pop  r8
-    pop  rsi
-    pop  rdi
+    pop r8
+    pop rsi
+    pop rdi
 
     ; go next
-    sub  rdi,r9
-    sub  rsi,r9
-    sub  r9d,r8d
+    sub rdi,r9
+    sub rsi,r9
+    sub r9d,r8d
 
     ; end on beg reached
-    or   r9d,$00
-    jg   .loop_struc
+    or r9d,$00
+    jg .loop_struc
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; remove element at beg
+
+proc.new array.shift
+proc.cpr rbx
+
+proc.lis array.head self rdi
+
+  proc.enter
+
+  ; get bot
+  mov rax,@self
+
+  ; ^seek to head
+  sub @self,sizeof.array.head
+
+  ; save tmp
+  push @self
+  push rax
+
+
+  ; adjust top
+  mov r8d,dword [@self.ezy]
+  sub dword [@self.top],r8d
+
+  ; read beg
+  mov  edx,dword [@self.mode]
+  mov  rdi,rsi
+  mov  rsi,rax
+
+  call array.get
+
+  ; ^restore tmp
+  pop rbx
+  pop @self
+
+
+  ; save prim out
+  push rax
+
+  ; JIC clear
+  xor rdx,rdx
+  xor r8,r8
+  xor r9,r9
+
+  ; get [N,beg,mode]
+  mov r8d,dword [@self.ezy]
+  mov r9d,dword [@self.top]
+  mov edx,dword [@self.mode]
+
+  ; ^get [beg,beg+N]
+  mov rsi,rbx
+  add rsi,r8
+
+  mov rdi,rbx
+
+  ; ^copy bytes N places left
+  call array.shl
+
+
+  ; reset out
+  pop rax
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^forward walk copy
+
+proc.new array.shl
+
+  proc.enter
+
+  ; branch on ptr type
+  cmp rdx,$04
+  je  .loop_struc
+
+
+  ; get mask size
+  mov rax,$01
+  mov cl,dl
+  shl rax,cl
+
+  mov rcx,rax
+
+  ; get mask
+  mov rdx,$01
+  shl rcx,$03
+  shl rdx,cl
+  dec rdx
+
+
+  .loop_prim:
+
+    ; get first bit
+    mov rax,qword [rsi]
+    rol rax,cl
+
+    ; ^get next bit
+    mov rbx,rax
+    shr rbx,cl
+
+    ; ^exclude
+    and rbx,rdx
+    and rax,rdx
+
+    ; ^copy
+    shr rcx,$03
+    mov qword [rdi],rbx
+    mov qword [rdi+rcx],rax
+
+
+    ; go next
+    sub rdi,rcx
+    sub rsi,rcx
+    sub r9d,ecx
+    shl rcx,$03
+
+    ; end on beg reached
+    or  r9d,$00
+    jg  .loop_prim
+    jmp .skip
+
+
+  ; struc ptr
+  .loop_struc:
+
+    ; save tmp
+    push rdi
+    push rsi
+    push r8
+
+    ; ^copy B to A
+    mov  r8d,r9d
+    call array.set_struc
+
+    ; ^restore
+    pop r8
+    pop rsi
+    pop rdi
+
+    ; go next
+    add rdi,r9
+    add rsi,r9
+    sub r9d,r8d
+
+    ; end on beg reached
+    or r9d,$00
+    jg .loop_struc
 
   ; cleanup and give
   .skip:

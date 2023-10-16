@@ -30,11 +30,11 @@ reg.new tstruc
 reg.end
 
 ; ---   *   ---   *   ---
-; crux
+; array of strucs
 
 EXESEG
 
-proc.new crux
+proc.new struc_test
 proc.stk qword  ar
 proc.stk tstruc scratch
 
@@ -71,10 +71,86 @@ proc.stk tstruc scratch
   call  array.unshift
 
 
-  ; remove from end
+  ; clear test buff
+  mov qword [@scratch.a],$0000
+  mov qword [@scratch.b],$0000
+
+  ; remove from beg
   mov  rdi,qword [@ar]
   lea  rsi,[@scratch]
 
+  call array.shift
+
+
+  ; add to end
+  mov  rdi,qword [@ar]
+  lea  rsi,[@scratch]
+
+  call array.push
+
+
+  ; clear test buff
+  mov qword [@scratch.a],$0000
+  mov qword [@scratch.b],$0000
+
+  ; ^remove
+  mov  rdi,qword [@ar]
+  lea  rsi,[@scratch]
+
+  call array.pop
+
+  ; release
+  mov rdi,qword [@ar]
+  call array.del
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; array of primitives
+
+proc.new prim_test
+proc.stk qword ar
+
+  proc.enter
+
+  ; get mem
+  mov  rdi,4
+  mov  rsi,$20
+
+  call array.new
+
+  ; ^save tmp
+  mov qword [@ar],rax
+
+
+  ; add to end
+  mov  rdi,qword [@ar]
+  mov  rsi,$25252424
+
+  call array.push
+
+  ; ^add to beg
+  mov  rdi,qword [@ar]
+  mov  rsi,$23232121
+
+  call array.unshift
+
+
+  ; remove from beg
+  mov  rdi,qword [@ar]
+  call array.shift
+
+  ; ^add to end
+  mov  rdi,qword [@ar]
+  mov  rsi,rax
+
+  call array.push
+
+  ; ^remove end
+  mov  rdi,qword [@ar]
   call array.pop
 
 
@@ -82,6 +158,19 @@ proc.stk tstruc scratch
   mov rdi,qword [@ar]
   call array.del
 
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^entry
+
+proc.new crux
+
+  proc.enter
+
+  call prim_test
 
   ; cleanup and give
   proc.leave
