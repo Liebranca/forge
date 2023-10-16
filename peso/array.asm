@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -217,24 +217,11 @@ proc.new array.set
 
   proc.enter
 
-
-  ; load jmp addr
-  mov eax,.tab
-  mov dl,byte [eax+edx]
-  add eax,edx
-
-  jmp rax
-
-  ; ^jmp table
-  .tab:
-
-    db .set_byte  - .tab
-    db .set_word  - .tab
-    db .set_dword - .tab
-    db .set_qword - .tab
-
-    db .set_struc - .tab
-
+  ; make table
+  jmptab .tab,byte,\
+    .set_byte,.set_word,\
+    .set_dword,.set_qword,\
+    .set_struc
 
   ; ^land
   .set_byte:
@@ -301,24 +288,11 @@ proc.new array.get
 
   proc.enter
 
-
-  ; load jmp addr
-  mov eax,.tab
-  mov dl,byte [eax+edx]
-  add eax,edx
-
-  jmp rax
-
-  ; ^jmp table
-  .tab:
-
-    db .get_byte  - .tab
-    db .get_word  - .tab
-    db .get_dword - .tab
-    db .get_qword - .tab
-
-    db .get_struc - .tab
-
+  ; make table
+  jmptab .tab,byte,\
+    .get_byte,.get_word,\
+    .get_dword,.get_qword,\
+    .get_struc
 
   ; ^land
   .get_byte:
@@ -395,22 +369,30 @@ proc.lis array.head self rdi
   ; ^seek to head
   sub @self,sizeof.array.head
 
-
   ; save tmp
   push @self
   push rsi
   push rax
 
-  ; get [beg+N,cap-N]
-  mov  edx,dword [@self.ezy]
-  mov  r8d,dword [@self.top]
 
-  mov  rsi,rax
-  lea  rbx,[rax+rdx]
+  ; JIC clear
+  xor  rdx,rdx
+  xor  r8,r8
+  xor  r9,r9
 
-  sub  r8d,edx
+  ; get [N,end,mode]
+  mov  r8d,dword [@self.ezy]
+  mov  r9d,dword [@self.top]
   mov  edx,dword [@self.mode]
+
+  ; ^get [end,end-N]
+  mov  rsi,rax
+  add  rsi,r9
+  mov  rbx,rsi
+  sub  rbx,r8
+
   mov  rdi,rbx
+  xchg rsi,rdi
 
   ; ^copy bytes N places right
   call array.shr
@@ -436,6 +418,11 @@ proc.new array.shr
 
   proc.enter
 
+  ; branch on ptr type
+  cmp rdx,$04
+  je  .loop_struc
+
+
   ; get mask size
   mov rax,$01
   mov cl,dl
@@ -443,24 +430,14 @@ proc.new array.shr
 
   mov rcx,rax
 
+  ; get mask
+  mov rdx,$01
+  shl rcx,$03
+  shl rdx,cl
+  dec rdx
 
-  ; make jump table
-  jmptab .tab,byte,\
-    .is_byte,.is_word,\
-    .is_dword,.is_qword,\
-    .is_struc
 
-  ; ^land
-  .is_byte:
-  .is_word:
-  .is_dword:
-  .is_qword:
-
-    ; get mask
-    mov rdx,$01
-    shl rcx,$03
-    shl rdx,cl
-    dec rdx
+  .loop_prim:
 
     ; get first bit
     mov rax,qword [rsi]
@@ -483,19 +460,45 @@ proc.new array.shr
     ; go next
     sub rdi,rcx
     sub rsi,rcx
-    sub r8d,ecx
+    sub r9d,ecx
+    shl rcx,$03
 
-    or  r8d,$00
-    jg .is_qword
-
-    ret
-
-
-  .is_struc:
-    ret
+    ; end on beg reached
+    or  r9d,$00
+    jg  .loop_prim
+    jmp .skip
 
 
-  ; cleanup
+  ; struc ptr
+  .loop_struc:
+
+    ; save tmp
+    push rdi
+    push rsi
+    push r8
+
+    ; ^copy B to A
+    mov  r8d,r9d
+    call array.set_struc
+
+    ; ^restore
+    pop  r8
+    pop  rsi
+    pop  rdi
+
+    ; go next
+    sub  rdi,r9
+    sub  rsi,r9
+    sub  r9d,r8d
+
+    ; end on beg reached
+    or   r9d,$00
+    jg   .loop_struc
+
+  ; cleanup and give
+  .skip:
+
   proc.leave
+  ret
 
 ; ---   *   ---   *   ---

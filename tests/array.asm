@@ -18,46 +18,63 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; test struc
+
+RAMSEG
+
+reg.new tstruc
+
+  my .a dq $00
+  my .b dq $00
+
+reg.end
+
+; ---   *   ---   *   ---
 ; crux
 
 EXESEG
 
 proc.new crux
-proc.stk qword ar
+proc.stk qword  ar
+proc.stk tstruc scratch
 
   proc.enter
 
   ; get mem
-  mov  rdi,$04
-  mov  rsi,$30
+  mov  rdi,sizeof.tstruc
+  mov  rsi,$20
 
   call array.new
 
   ; ^save tmp
   mov qword [@ar],rax
 
+  ; make test buff
+  mov qword [@scratch.a],$2424
+  mov qword [@scratch.b],$2525
 
   ; add to end
   mov  rdi,qword [@ar]
-  mov  rsi,$24242424
+  lea  rsi,[@scratch]
 
   call array.push
 
-  ; add to end
-  mov  rdi,qword [@ar]
-  mov  rsi,$21212121
 
-  call array.push
+  ; mod test buff
+  mov qword [@scratch.a],$2121
+  mov qword [@scratch.b],$2323
 
   ; add to beg
   mov   rdi,qword [@ar]
-  mov   rsi,$000A2525
+  lea   rsi,[@scratch]
 
   call  array.unshift
 
 
   ; remove from end
   mov  rdi,qword [@ar]
+  lea  rsi,[@scratch]
+
   call array.pop
 
 
