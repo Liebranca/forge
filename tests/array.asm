@@ -100,7 +100,7 @@ proc.stk tstruc scratch
   call array.pop
 
   ; release
-  mov rdi,qword [@ar]
+  mov  rdi,qword [@ar]
   call array.del
 
 
@@ -155,7 +155,7 @@ proc.stk qword ar
 
 
   ; release
-  mov rdi,qword [@ar]
+  mov  rdi,qword [@ar]
   call array.del
 
 

@@ -81,6 +81,7 @@ proc.new mpart.shr_free
 ; ^find last occupied bit
 
 proc.new mpart.get_occu
+proc.cpr rbx
 
   proc.enter
 
@@ -238,6 +239,7 @@ macro mpart.get_level.brend sz {
 ; block size in rdi
 
 proc.new mpart.get_level
+proc.cpr rbx
 
   proc.enter
 

@@ -462,6 +462,7 @@ proc.arg alloc.req ctx  r11
 ; get at least N bytes
 
 proc.new alloc.new_blk
+proc.cpr rbx
 
 proc.lis alloc.tab self alloc.main
 proc.arg alloc.req ctx  r11
@@ -509,6 +510,8 @@ proc.arg alloc.req ctx  r11
 ; requested block in stab elem
 
 proc.new alloc.blk_fit
+proc.cpr rbx
+
 proc.arg alloc.req ctx r11
 
   proc.enter
@@ -554,9 +557,9 @@ proc.arg alloc.req ctx r11
 ; modify entry
 
 proc.new alloc.update_blk
+proc.cpr rbx
 
 proc.arg alloc.req ctx r11
-proc.cpr rbx
 
   proc.enter
 

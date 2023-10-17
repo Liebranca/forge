@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,12 +30,18 @@ library.import
 
 reg.new array.head
 
-  my .mode dd $00
+  my .buff  dq $00
 
-  my .ezy  dd $00
-  my .cap  dd $00
+  my .igrow dd $00
+  my .grow  dd $00
 
-  my .top  dd $00
+  my .mode  dd $00
+
+  my .ezy   dd $00
+  my .cap   dd $00
+  my .icap  dd $00
+
+  my .top   dd $00
 
 reg.end
 
@@ -45,7 +51,9 @@ reg.end
 EXESEG
 
 proc.new array.new
-proc.lis array.head self rax
+proc.cpr rbx
+
+proc.lis array.head self rbx
 
   proc.enter
 
@@ -56,9 +64,19 @@ proc.lis array.head self rax
   ; get ezy * cap
   mov  rax,rdi
   imul rsi
-  add  rax,sizeof.array.head
 
-  ; ^make ice
+  push rsi
+
+  ; make wrapper
+  alloc sizeof.array.head
+  mov   @self,rax
+
+
+  ; make buffer
+  pop rsi
+  mov qword [@self.cap],rsi
+  mov qword [@self.grow],rsi
+
   alloc rsi
 
   ; restore tmp
@@ -66,23 +84,23 @@ proc.lis array.head self rax
   pop rdi
 
   ; nit
+  mov qword [@self.buff],rax
+  mov qword [@self.grow],rsi
   mov dword [@self.ezy],edi
-  mov dword [@self.cap],esi
+  mov dword [@self.icap],esi
+  mov dword [@self.igrow],esi
   mov dword [@self.top],$00
 
   ; ^get idex for generic ops
-  push @self
   call array.get_mode
 
   ; ^set
-  mov  edx,eax
-  pop  @self
-
-  mov  dword [@self.mode],edx
+  mov edx,eax
+  mov dword [@self.mode],edx
 
 
   ; reset out
-  add @self,sizeof.array.head
+  mov rax,@self
 
   ; cleanup and give
   proc.leave
@@ -154,10 +172,12 @@ proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to head
-  sub @self,sizeof.array.head
+  ; release buffer
+  push @self
+  free qword [@self.buff]
 
-  ; ^release
+  ; ^then wraps
+  pop  @self
   free @self
 
 
@@ -168,13 +188,13 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; set value + increase top
 
-macro array.insert_proto {
+macro array.insert_proto dst {
 
   push @self
 
   mov  edx,dword [@self.mode]
   mov  r8d,dword [@self.ezy]
-  mov  rdi,rax
+  mov  rdi,dst
 
   call array.set
 
@@ -187,23 +207,72 @@ macro array.insert_proto {
 }
 
 ; ---   *   ---   *   ---
-; add element at end
+; conditionally resize array
 
-proc.new array.push
+proc.new array.resize_chk
+proc.cpr rbx
+
 proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to head
-  sub @self,sizeof.array.head
+  ; get top, cap, elem size
+  mov eax,dword [@self.top]
+  mov ebx,dword [@self.cap]
+  mov edx,dword [@self.ezy]
 
+  ; ^compare top to cap*ezy
+  cmp ebx,eax
+  jg  .skip
+
+
+  ; save tmp
+  push @self
+
+  ; get [N*cstep] growth rate
+  mov  rbx,qword [@self.grow]
+  add  qword [@self.cap],rbx
+
+  ; ^resize on cap reached
+  mov     rax,qword [@self.buff]
+  realloc rax,rbx
+
+  ; ^restore tmp, save new addr
+  pop @self
+  mov qword [@self.buff],rax
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; add element at end
+
+proc.new array.push
+proc.cpr rbx
+
+proc.lis array.head self rdi
+
+  proc.enter
+
+  ; get bounds
+  push rsi
+  call array.resize_chk
+
+  pop  rsi
+
+  ; get buff
+  mov rbx,qword [@self.buff]
 
   ; ^get top
   mov eax,dword [@self.top]
-  lea rax,[rax+@self+sizeof.array.head]
+  lea rax,[rbx+rax]
 
   ; add elem and grow top
-  array.insert_proto
+  array.insert_proto rax
 
 
   ; cleanup and give
@@ -252,12 +321,14 @@ proc.new array.set
 ; remove at end
 
 proc.new array.pop
+proc.cpr rbx
+
 proc.lis array.head self rdi
 
   proc.enter
 
-  ; seek to head
-  sub @self,sizeof.array.head
+  ; get buff
+  mov rbx,qword [@self.buff]
 
 
   ; adjust top
@@ -266,7 +337,7 @@ proc.lis array.head self rdi
 
   ; ^get top
   mov eax,dword [@self.top]
-  lea rax,[rax+@self+sizeof.array.head]
+  lea rax,[rbx+rax]
 
   ; ^get value
   mov  edx,dword [@self.mode]
@@ -363,11 +434,14 @@ proc.lis array.head self rdi
 
   proc.enter
 
-  ; get bot
-  mov rax,@self
+  ; get bounds
+  push rsi
+  call array.resize_chk
 
-  ; ^seek to head
-  sub @self,sizeof.array.head
+  pop  rsi
+
+  ; get bot
+  mov rax,qword [@self.buff]
 
   ; save tmp
   push @self
@@ -404,7 +478,7 @@ proc.lis array.head self rdi
   pop @self
 
   ; ^write to beg
-  array.insert_proto
+  array.insert_proto rax
 
 
   ; cleanup and give
@@ -512,10 +586,7 @@ proc.lis array.head self rdi
   proc.enter
 
   ; get bot
-  mov rax,@self
-
-  ; ^seek to head
-  sub @self,sizeof.array.head
+  mov rax,qword [@self.buff]
 
   ; save tmp
   push @self
