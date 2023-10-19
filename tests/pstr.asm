@@ -18,13 +18,19 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
-; stack string test
+; ROM
+
+constr.new raws_00,"Hello, world!",$0A
+constr.new raws_01,"Bye, world!",$0A
+constr ROM
+
+; ---   *   ---   *   ---
+; raw string test
 
 EXESEG
 
 proc.new test_00
-proc.stk qword ar_00
-proc.stk qword ar_01
+proc.stk qword ar
 
   proc.enter
 
@@ -36,43 +42,36 @@ proc.stk qword ar_01
   xor  r8,r8
 
   call string.new
-  mov  qword [@ar_00],rax
+  mov  qword [@ar],rax
 
-  ; ^src buff
-  mov  rdi,$01
-  mov  rsi,$20
-
-  xor  rdx,rdx
-  xor  r8,r8
-
-  call string.new
-  mov  qword [@ar_01],rax
-
-  ; write to end of B
-  mov  rdi,rax
-  mov  rsi,$24
-
-  call array.push
-
-  ; ^end of A
-  mov  rdi,qword [@ar_00]
-  mov  rsi,$25
-
-  call array.push
 
   ; cat A+B
-  mov  rdi,qword [@ar_00]
-  mov  rsi,qword [@ar_01]
+  mov  rdi,qword [@ar]
+  mov  rsi,raws_00
+  mov  r8d,raws_00.length
+
+  call string.cat
+
+  ; cat A+C
+  mov  rdi,qword [@ar]
+  mov  rsi,raws_01
+  mov  r8d,raws_01.length
+
+  call string.cat
+
+  ; cat A+A
+  mov  rdi,qword [@ar]
+  mov  rsi,qword [@ar]
   xor  r8d,r8d
 
   call string.cat
 
+  ; termout
+  mov    rdi,qword [@ar]
+  inline string.sow
 
   ; ^release
-  mov  rdi,qword [@ar_00]
-  call array.del
-
-  mov  rdi,qword [@ar_01]
+  mov  rdi,qword [@ar]
   call array.del
 
 

@@ -127,10 +127,13 @@ proc.new array.get_mode
   ; prim setter
   .is_prim:
 
-    ; fork to lower or highest
+    ; fork to highest
+    cmp edi,sizeof.dword+3
+    jg  .is_qword
+
+    ; fork to lower
     cmp edi,sizeof.dword
     jl  .is_word
-    jg  .is_qword
 
     ; ^do and end
     mov eax,$02

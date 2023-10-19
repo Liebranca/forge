@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -66,11 +66,9 @@ proc.lis array.head self rax
 ; ^concatenate
 
 proc.new string.cat
-proc.cpr rbx
 
 proc.stk dword total
 proc.stk qword head
-proc.stk qword dst
 
 proc.lis array.head self  rdi
 proc.lis array.head other rsi
@@ -93,11 +91,9 @@ proc.lis array.head other rsi
     mov qword [@head],rdi
 
     mov rax,qword [@self.top]
-    mov rbx,qword [@self.buff]
+    mov rdi,qword [@self.buff]
 
-    add rax,rbx
-    mov qword [@dst],rax
-    mov rdi,qword [@dst]
+    add rdi,rax
 
 
   ; iter until no chunks left
@@ -110,28 +106,30 @@ proc.lis array.head other rsi
     call string.get_chunk
     mov  edx,eax
 
-    ; ^copy one chunk
+    ; conditionally dereference ptr
     pop   rdi
 
     cmp   r9d,$10
     cmovl rsi,qword [rsi]
 
+    ; copy one chunk
     call  array.set
 
-
-    ; conditionally consume
+    ; conditionally increase ptr
     pop   rsi
 
     xor   rax,rax
     cmp   r9d,$10
     cmovl eax,r9d
 
-    add   rsi,rax
+    add   rsi,r9
 
 
     ; go next
+    sub r8d,eax
     or  r8d,$00
-    jnz .loop_body
+
+    jg  .loop_body
 
 
   ; grow own top
@@ -167,13 +165,10 @@ proc.cpr rbx
 
   ; ^check size >= unit
   mov ebx,$05
-  mov ecx,$03
   cmp r9d,$10
 
   ; ^mark unit as unaligned struc
-  ; ^mark less as qword
   cmovge eax,ebx
-  cmovl  eax,ecx
 
 
   ; cleanup and give
@@ -181,5 +176,30 @@ proc.cpr rbx
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; write to selected file
+
+proc.new string.sow
+proc.lis array.head self rdi
+
+macro string.sow.inline {
+
+  proc.enter
+
+  mov  rsi,qword [@self.top]
+  mov  rdi,qword [@self.buff]
+
+  call sow
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline string.sow
+  ret
+
 
 ; ---   *   ---   *   ---

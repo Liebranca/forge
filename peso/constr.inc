@@ -67,8 +67,9 @@ macro constr.new name,[ct] {
   ; ^get string length in bytes
   ; then pad buffer to unit size
   common
-    constr._ins name#.length=$-name
-    constr._ins align $10
+    constr._ins .length=$-name
+    constr._ins .pad=$ mod $10
+    constr._ins db .pad dup $00
 
 }
 
