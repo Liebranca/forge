@@ -32,12 +32,13 @@ reg.new array.head
 
   my .buff  dq $00
 
-  my .igrow dd $00
   my .grow  dd $00
+  my .igrow dd $00
 
   my .mode  dd $00
 
   my .ezy   dd $00
+
   my .cap   dd $00
   my .icap  dd $00
 
@@ -65,9 +66,9 @@ proc.lis array.head self rbx
   mov  rax,rdi
   imul rsi
 
-  push rsi
-
   ; make wrapper
+  push  rax
+
   alloc sizeof.array.head
   mov   @self,rax
 
@@ -85,7 +86,6 @@ proc.lis array.head self rbx
 
   ; nit
   mov qword [@self.buff],rax
-  mov qword [@self.grow],rsi
   mov dword [@self.ezy],edi
   mov dword [@self.icap],esi
   mov dword [@self.igrow],esi
@@ -140,7 +140,7 @@ proc.new array.get_mode
   .is_word:
 
     ; fork to lowest
-    cmp edx,sizeof.word
+    cmp edi,sizeof.word
     jl  .is_byte
 
     ; ^do and end
@@ -290,32 +290,94 @@ proc.new array.set
   jmptab .tab,byte,\
     .set_byte,.set_word,\
     .set_dword,.set_qword,\
-    .set_struc
+    .set_struc,.set_strucun
 
   ; ^land
   .set_byte:
     mov byte [rdi],sil
+    inc rdi
     ret
 
   .set_word:
     mov word [rdi],si
+    add rdi,$02
     ret
 
   .set_dword:
     mov dword [rdi],esi
+    add rdi,$04
     ret
 
   .set_qword:
     mov qword [rdi],rsi
+    add rdi,$08
     ret
 
   .set_struc:
     call array.set_struc
     ret
 
+  .set_strucun:
+    call array.set_strucun
+    ret
+
 
   ; cleanup
   proc.leave
+
+; ---   *   ---   *   ---
+; deref struc and copy
+
+macro array.memcpy_proto fdst,fsrc {
+
+  ; see if bytes left
+  .chk_size:
+    cmp r8d,$10
+    jl  .skip
+
+  ; ^write unit-sized chunks
+  .cpy:
+
+    ; read src,write dst
+    fsrc xmm0,xword [rsi]
+    fdst xword [rdi],xmm0
+
+    ; go next
+    add rdi,$10
+    add rsi,$10
+    sub r8d,$10
+
+    jmp .chk_size
+
+
+  .skip:
+
+}
+
+
+; ---   *   ---   *   ---
+; ^aligned src && dst
+
+proc.new array.set_struc
+
+  proc.enter
+  array.memcpy_proto movdqa,movdqa
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^unaligned dst
+
+proc.new array.set_strucun
+
+  proc.enter
+  array.memcpy_proto movdqu,movdqa
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; remove at end
@@ -389,40 +451,6 @@ proc.new array.get
 
   ; cleanup
   proc.leave
-
-; ---   *   ---   *   ---
-; deref struc and copy
-
-proc.new array.set_struc
-
-  proc.enter
-
-
-  ; see if bytes left
-  .chk_size:
-    or r8d,$00
-    jz .skip
-
-  ; ^write unit-sized chunks
-  .cpy:
-
-    ; read src,write dst
-    movdqa xmm0,xword [rsi]
-    movdqa xword [rdi],xmm0
-
-    ; go next
-    add rdi,$10
-    add rsi,$10
-    sub r8d,$10
-
-    jmp .chk_size
-
-
-  ; cleanup and give
-  .skip:
-
-  proc.leave
-  ret
 
 ; ---   *   ---   *   ---
 ; add element at beg
