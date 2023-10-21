@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -201,5 +201,105 @@ macro string.sow.inline {
   inline string.sow
   ret
 
+; ---   *   ---   *   ---
+; color request struc
+
+reg.new via.ansic
+
+  my .esc      dw $0000
+
+  my .fgc      dw $0000
+  my .fgc_term db $00
+
+  my .fgd      dw $0000
+  my .fgd_term db $00
+
+  my .bgc      dw $0000
+  my .bgc_term db $00
+
+  my .bgd      dw $0000
+  my .bgd_term db $00
+
+reg.end
+
+; ---   *   ---   *   ---
+; ^fill out
+
+proc.new string.ansic
+
+proc.stk via.ansic  cmd
+proc.lis array.head self rdi
+
+  proc.enter
+
+  ; clear tmp
+  pxor   xmm0,xmm0
+  movdqa xword [@cmd],xmm0
+
+
+  ; get fg,bg
+  mov al,sil
+  mov bl,sil
+
+  ; ^clamp each to F
+  and ax,$0F
+  shr bx,$04
+  and bx,$0F
+
+  ; ^clear first byte
+  shl ax,$08
+  shl bx,$08
+
+  ; ^or N,X
+  or ax,$3033
+  or bx,$3034
+
+  ; ^set struc
+  mov word [@cmd.fgc],ax
+  mov word [@cmd.bgc],bx
+
+
+  ; get bold fg,bg
+  shr si,8
+  mov al,sil
+  mov bl,sil
+
+  ; ^invert
+  not bx
+  not ax
+
+  ; ^clamp to bool*2
+  and ax,$01
+  shl al,$01
+
+  and bx,$02
+
+  ; or N,X
+  or ax,$3130
+  or bx,$3530
+
+  ; ^set struc
+  mov word [@cmd.fgd],ax
+  mov word [@cmd.bgd],bx
+
+
+  ; set terminators
+  mov byte [@cmd.fgc_term],$3B
+  mov byte [@cmd.fgd_term],$3B
+  mov byte [@cmd.bgc_term],$3B
+  mov byte [@cmd.bgd_term],$6D
+  mov word [@cmd.esc],$5B1B
+
+
+  ; cat to dst
+  lea  rsi,[@cmd]
+  mov  r8d,sizeof.via.ansic
+
+  call string.cat
+
+
+  ; cleanup and live
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---

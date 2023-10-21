@@ -88,8 +88,8 @@ macro proc.enter {
   sfield.get n,hier.cproc,$proc.stksize
 
   ; ^convert size to units
-  n equ n+(sizeof.unit-1)
-  n equ n shr sizep2.unit
+  n equ (n+(sizeof.unit-1))
+  n equ (n shr sizep2.unit)
   n equ n shl sizep2.unit
 
   ; ^paste prologue

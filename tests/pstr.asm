@@ -20,8 +20,7 @@ library.import
 ; ---   *   ---   *   ---
 ; ROM
 
-constr.new raws_00,"Hello, world!",$0A
-constr.new raws_01,"Bye, world!",$0A
+constr.new raws,"Hello, world!",$0A
 constr ROM
 
 ; ---   *   ---   *   ---
@@ -36,7 +35,7 @@ proc.stk qword ar
 
   ; make ice
   mov  rdi,$01
-  mov  rsi,$20
+  mov  rsi,$40
 
   xor  rdx,rdx
   xor  r8,r8
@@ -45,26 +44,25 @@ proc.stk qword ar
   mov  qword [@ar],rax
 
 
-  ; cat A+B
+  ; put color
   mov  rdi,qword [@ar]
-  mov  rsi,raws_00
-  mov  r8d,raws_00.length
+  mov  si,$002
+
+  call string.ansic
+
+  ; ^add text
+  mov  rdi,qword [@ar]
+  mov  rsi,raws
+  mov  r8d,raws.length
 
   call string.cat
 
-  ; cat A+C
+  ; ^remove color
   mov  rdi,qword [@ar]
-  mov  rsi,raws_01
-  mov  r8d,raws_01.length
+  mov  rsi,$007
 
-  call string.cat
+  call string.ansic
 
-  ; cat A+A
-  mov  rdi,qword [@ar]
-  mov  rsi,qword [@ar]
-  xor  r8d,r8d
-
-  call string.cat
 
   ; termout
   mov    rdi,qword [@ar]
