@@ -44,11 +44,17 @@ proc.stk qword ar
   mov  qword [@ar],rax
 
 
+  ; move cursor
+  mov  rdi,qword [@ar]
+  mov  si,$0310
+
+  call string.mvcur
+
   ; put color
   mov  rdi,qword [@ar]
   mov  si,$002
 
-  call string.ansic
+  call string.color
 
   ; ^add text
   mov  rdi,qword [@ar]
@@ -61,7 +67,7 @@ proc.stk qword ar
   mov  rdi,qword [@ar]
   mov  rsi,$007
 
-  call string.ansic
+  call string.color
 
 
   ; termout
@@ -83,7 +89,6 @@ proc.stk qword ar
 proc.new crux
 
   proc.enter
-
   call test_00
 
   ; cleanup and give

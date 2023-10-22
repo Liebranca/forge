@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -90,6 +90,15 @@ proc.lis array.head other rsi
     mov dword [@total],r8d
     mov qword [@head],rdi
 
+    ; get bounds
+    push rsi
+    mov  esi,r8d
+
+    call array.resize_chk
+
+    pop  rsi
+
+    ; ^use old/updated buff
     mov rax,qword [@self.top]
     mov rdi,qword [@self.buff]
 
@@ -204,20 +213,20 @@ macro string.sow.inline {
 ; ---   *   ---   *   ---
 ; color request struc
 
-reg.new via.ansic
+reg.new via.ansi.color
 
-  my .esc      dw $0000
+  my .esc      dw $00
 
-  my .fgc      dw $0000
+  my .fgc      dw $00
   my .fgc_term db $00
 
-  my .fgd      dw $0000
+  my .fgd      dw $00
   my .fgd_term db $00
 
-  my .bgc      dw $0000
+  my .bgc      dw $00
   my .bgc_term db $00
 
-  my .bgd      dw $0000
+  my .bgd      dw $00
   my .bgd_term db $00
 
 reg.end
@@ -225,10 +234,10 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^fill out
 
-proc.new string.ansic
+proc.new string.color
 
-proc.stk via.ansic  cmd
-proc.lis array.head self rdi
+proc.stk via.ansi.color cmd
+proc.lis array.head     self rdi
 
   proc.enter
 
@@ -290,15 +299,169 @@ proc.lis array.head self rdi
   mov byte [@cmd.bgd_term],$6D
   mov word [@cmd.esc],$5B1B
 
-
   ; cat to dst
   lea  rsi,[@cmd]
-  mov  r8d,sizeof.via.ansic
+  mov  r8d,sizeof.via.ansi.color
 
   call string.cat
 
 
-  ; cleanup and live
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; cursor relocate struc
+
+reg.new via.ansi.mvcur
+
+  my .esc    dw $00
+
+  my .y      dd $00
+  my .y_term db $00
+
+  my .x      dd $00
+  my .x_term db $00
+
+reg.end
+
+; ---   *   ---   *   ---
+; ^fill out
+
+proc.new string.mvcur
+
+proc.stk via.ansi.mvcur cmd
+proc.lis array.head     self rdi
+
+  proc.enter
+
+  ; clear tmp
+  pxor   xmm0,xmm0
+  movdqa xword [@cmd],xmm0
+
+  ; save tmp
+  push rdi
+
+
+  ; get x
+  push rsi
+  mov  rax,rsi
+
+  ; ^clamp to byte
+  and  rax,$FF
+
+  ; ^make decimal string
+  mov  rdi,rax
+  lea  rsi,[@cmd.x]
+  xor  r9,r9
+
+  call btods
+
+
+  ; get y
+  pop rsi
+  shr rsi,$08
+  mov rax,rsi
+
+  ; ^clamp to byte
+  and  rax,$FF
+
+  ; ^make decimal string
+  mov  rdi,rax
+  lea  rsi,[@cmd.y]
+  xor  r9,r9
+
+  call btods
+
+
+  ; set terminators
+  mov byte [@cmd.y_term],$3B
+  mov byte [@cmd.x_term],$48
+  mov word [@cmd.esc],$5B1B
+
+  ; cat to dst
+  pop  rdi
+  lea  rsi,[@cmd]
+  mov  r8d,sizeof.via.ansi.mvcur
+
+  call string.cat
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; bytes to decimal string
+
+proc.new btods
+proc.cpr rbx
+
+  proc.enter
+
+
+  xor rcx,rcx
+  .go_next:
+
+    ; get dit
+    call UInt.mod10
+    mov  rbx,rax
+
+    ; ^shr dit
+    call UInt.div10
+    mov  rdi,rax
+
+    ; write tmp
+    or  rbx,$30
+    shl rbx,cl
+    or  r8,rbx
+
+    add rcx,8
+
+    ; ^write dst on full tmp
+    cmp rcx,$38
+    jne .stop_chk
+
+    ; select dst size
+    .write_dst:
+
+      mov    rdx,r9
+      jmptab .tab,byte,\
+        .write_dword,\
+        .write_qword
+
+    ; ^4
+    .write_dword:
+
+      bswap r8d
+
+      or    dword [rsi],r8d
+      xor   rcx,rcx
+      xor   r8,r8
+
+      jmp   .stop_chk
+
+    ; ^8
+    .write_qword:
+
+      bswap r8
+
+      or    qword [rsi],r8
+      xor   rcx,rcx
+      xor   r8,r8
+
+
+    ; stop on empty src
+    .stop_chk:
+      or  rdi,$00
+      jnz .go_next
+
+
+  ; ^backtrack on end
+  or  r8,$00
+  jnz .write_dst
+
+  ; cleanup and give
   proc.leave
   ret
 

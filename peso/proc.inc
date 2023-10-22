@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -94,9 +94,12 @@ macro proc.enter {
 
   ; ^paste prologue
   if n > 0
+
     push rbp
+
     mov  rbp,rsp
     sub  rsp,n
+    and  spl,$F0
 
   end if
 

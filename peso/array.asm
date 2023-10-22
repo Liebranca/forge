@@ -219,13 +219,14 @@ proc.lis array.head self rdi
 
   proc.enter
 
-  ; get top, cap, elem size
+  ; get top,cap
   mov eax,dword [@self.top]
   mov ebx,dword [@self.cap]
-  mov edx,dword [@self.ezy]
 
-  ; ^compare top to cap*ezy
+  ; ^skip on top+req < cap
+  add eax,esi
   cmp ebx,eax
+
   jg  .skip
 
 
@@ -233,8 +234,8 @@ proc.lis array.head self rdi
   push @self
 
   ; get [N*cstep] growth rate
-  mov  rbx,qword [@self.grow]
-  add  qword [@self.cap],rbx
+  mov rbx,qword [@self.grow]
+  add qword [@self.cap],rbx
 
   ; ^resize on cap reached
   mov     rax,qword [@self.buff]
@@ -263,6 +264,8 @@ proc.lis array.head self rdi
 
   ; get bounds
   push rsi
+  mov  esi,dword [@self.ezy]
+
   call array.resize_chk
 
   pop  rsi
@@ -467,6 +470,8 @@ proc.lis array.head self rdi
 
   ; get bounds
   push rsi
+  mov  esi,dword [@self.ezy]
+
   call array.resize_chk
 
   pop  rsi

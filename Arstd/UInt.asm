@@ -14,8 +14,16 @@
 
   TITLE     Arstd.UInt
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+
+MAM.segment '.rodata',readable,$10
+
+UInt.ROM:
+
+  .mag10 dq $CCCCCCCCCCCCCCCD
 
 ; ---   *   ---   *   ---
 ; rounded-up division
@@ -127,5 +135,29 @@ macro UInt.align n,m {
   mul  rsi
 
 }
+
+; ---   *   ---   *   ---
+; ty gcc ;>
+
+UInt.div10:
+
+  mov rax,qword [UInt.ROM.mag10]
+  mul rdi
+
+  mov rax,rdx
+  shr rax,$03
+
+  ret
+
+UInt.mod10:
+
+  call UInt.div10
+  lea  rdx,[rax+rax*4]
+
+  mov rax,rdi
+  add rdx,rdx
+  sub rax,rdx
+
+  ret
 
 ; ---   *   ---   *   ---
