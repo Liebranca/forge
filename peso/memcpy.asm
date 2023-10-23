@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,16 +47,16 @@ macro memcpy.ldst fdst,fsrc,size {
 
 
   ; walk register list
-  repeat size
+  rept size \{
 
     ; stop if registers exhausted
-    match , rem \{
+    match , rem \\{
       sys@err 'Oversized memcpy step'
 
-    \}
+    \\}
 
     ; ^else proceed
-    match rX =, next , rem \{
+    match rX =, next , rem \\{
 
       ; ^load register, write dst
       fsrc rX,xword [rsi+offset]
@@ -66,9 +66,9 @@ macro memcpy.ldst fdst,fsrc,size {
       offset equ offset+$10
       rem    equ next
 
-    \}
+    \\}
 
-  end repeat
+  \}
 
 }
 
