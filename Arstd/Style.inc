@@ -95,6 +95,7 @@ macro jmptab base,size,[item] {
       rX     equ dx
       kX     equ dw
 
+      shl edx,$01
       offset equ word [eax+edx]
 
     \}

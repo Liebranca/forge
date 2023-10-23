@@ -19,84 +19,93 @@ end if
 
 library ARPATH '/forge/'
   use '.inc' peso::reg
+  use '.inc' peso::alloc
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
 
   TITLE     OS.Term
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; GBL
+; ROM
 
-  define SYS_IOCTL  $10
+SYS.ioctl:
+
+  .id     = $10
+
+  .tcgets = $5401
+  .tcsets = $5402
 
 ; ---   *   ---   *   ---
 ; struct copied verbatim from termios
 
-reg
-  dd c_iflag    ?
-  dd c_oflag    ?
-  dd c_cflag    ?
-  dd c_lflag    ?
+reg.new Termios
 
-  db v_intr     ?
-  db v_quit     ?
-  db v_erase    ?
-  db v_kill     ?
+  my .c_iflag   dd $00
+  my .c_oflag   dd $00
+  my .c_cflag   dd $00
+  my .c_lflag   dd $00
 
-  db v_eof      ?
-  db v_time     ?
-  db v_min      ?
-  db v_swtc     ?
+  my .v_intr    db $00
+  my .v_quit    db $00
+  my .v_erase   db $00
+  my .v_kill    db $00
 
-  db v_start    ?
-  db v_stop     ?
-  db v_susp     ?
-  db v_eol      ?
+  my .v_eof     db $00
+  my .v_time    db $00
+  my .v_min     db $00
+  my .v_swtc    db $00
 
-  db v_reprint  ?
-  db v_discard  ?
-  db v_werase   ?
-  db v_lnext    ?
-  db v_eol2     ?
+  my .v_start   db $00
+  my .v_stop    db $00
+  my .v_susp    db $00
+  my .v_eol     db $00
 
-end_reg Termios
+  my .v_reprint db $00
+  my .v_discard db $00
+  my .v_werase  db $00
+  my .v_lnext   db $00
+  my .v_eol2    db $00
+
+reg.end
 
 ; ---   *   ---   *   ---
+; syscall proto
 
-macro get_term fd*,addr* {
+macro ioctl buff,fd,mode {
 
-
+  mov rdx,buff
   mov rdi,fd
-  mov rsi,$5401 ;TCGETS
-  mov rdx,addr
+  mov rsi,mode
 
-  mov rax,SYS_IOCTL
-
-  syscall
-
-}
-
-macro set_term fd*,addr* {
-
-  mov rdi,fd
-  mov rsi,$5402 ;TCSETS
-  mov rdx,addr
-
-  mov rax,SYS_IOCTL
-
+  mov rax,SYS.ioctl.id
   syscall
 
 }
 
 ; ---   *   ---   *   ---
+; ^ice-of
 
-macro raw_term fd*,addr* {
+macro Termios.get buff,fd {
+  ioctl buff,fd,SYS.ioctl.tcgets
+
+}
+
+macro Termios.set buff,fd {
+  ioctl buff,fd,SYS.ioctl.tcsets
+
+}
+
+; ---   *   ---   *   ---
+; the titular move
+
+proc.new Termios.raw
+proc.lis Termios self rdi
 
   ; OPOST
   oflags=not $01
@@ -112,29 +121,34 @@ macro raw_term fd*,addr* {
   ; CS8
   cflags=$60
 
-  mov eax,dword [addr#.c_oflag]
-  and eax,oflags
-  mov dword [addr#.c_oflag],eax
 
-  mov eax,dword [addr#.c_iflag]
-  and eax,iflags
-  mov dword [addr#.c_iflag],eax
+  proc.enter
 
-  mov eax,dword [addr#.c_lflag]
-  and eax,lflags
-  mov dword [addr#.c_lflag],eax
+  ; mod flags
+  and dword [@self.c_oflag],oflags
+  and dword [@self.c_iflag],iflags
+  and dword [@self.c_lflag],lflags
+  or  dword [@self.c_cflag],cflags
 
-  mov eax,dword [addr#.c_cflag]
-  or  eax,cflags
-  mov dword [addr#.c_cflag],eax
+  ; ^syscall
+  Termios.set fd,@buff
 
-  set_term fd,addr
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 }
 
 ; ---   *   ---   *   ---
+; set A to B
 
-macro cpy_term dst*,src* {
+proc.new Termios.cpy
+proc.lis Termios self  rdi
+proc.lis Termios other rsi
+
+  proc.enter
+
 
   mov rax,qword [src#.c_iflag]
   mov qword [dst#.c_iflag],rax
@@ -151,7 +165,10 @@ macro cpy_term dst*,src* {
   mov al,byte [src#.v_eol2]
   mov byte [dst#.v_eol2],al
 
-}
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 

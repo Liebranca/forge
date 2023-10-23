@@ -14,7 +14,7 @@
 
   TITLE     peso.alloc_guts
 
-  VERSION   v0.01.2b
+  VERSION   v0.01.3a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -26,7 +26,7 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
-; GBL
+; base strucs
 
 RAMSEG
 

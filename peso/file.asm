@@ -41,7 +41,7 @@ reg.new file.buff
   my .ct    db .SZ dup $00
 
   ; bkeep
-  my .fto   dw STDOUT
+  my .fto   dw stdout
   my .avail dw .SZ
 
   my .ptr   dw $00
@@ -184,7 +184,7 @@ proc.cpr r11,rdi,rsi
   mov rsi,buffio.ct
   mov dx,word [buffio.ptr]
 
-  mov rax,SYS_WRITE
+  mov rax,SYS.write.id
   syscall
 
 

@@ -40,6 +40,9 @@ library.import
   sizeof.qword = $0008
   sizep2.qword = $0003
 
+  sizeof.xword = $0010
+  sizep2.xword = $0004
+
   sizeof.unit  = $0010
   sizep2.unit  = $0004
 

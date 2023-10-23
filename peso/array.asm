@@ -92,10 +92,10 @@ proc.lis array.head self rbx
   mov dword [@self.top],$00
 
   ; ^get idex for generic ops
+  mov  r8d,edi
   call array.get_mode
 
   ; ^set
-  mov edx,eax
   mov dword [@self.mode],edx
 
 
@@ -103,67 +103,6 @@ proc.lis array.head self rbx
   mov rax,@self
 
   ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; ^determine id for get-set
-
-proc.new array.get_mode
-
-  proc.enter
-
-  ; size is prim
-  cmp edi,$10
-  jl  .is_prim
-
-
-  ; struc setter
-  .is_struc:
-    mov  eax,$04
-    jmp  .skip
-
-
-  ; prim setter
-  .is_prim:
-
-    ; fork to highest
-    cmp edi,sizeof.dword+3
-    jg  .is_qword
-
-    ; fork to lower
-    cmp edi,sizeof.dword
-    jl  .is_word
-
-    ; ^do and end
-    mov eax,$02
-    jmp .skip
-
-  ; ^lower
-  .is_word:
-
-    ; fork to lowest
-    cmp edi,sizeof.word
-    jl  .is_byte
-
-    ; ^do and end
-    mov eax,$01
-    jmp .skip
-
-
-  ; ^highest, no cmp
-  .is_qword:
-    mov eax,$03
-    jmp .skip
-
-  ; ^lowest, no cmp
-  .is_byte:
-    mov eax,$00
-
-
-  ; cleanup and give
-  .skip:
-
   proc.leave
   ret
 
@@ -320,21 +259,21 @@ proc.new array.set
     ret
 
   .set_struc:
-    call array.set_struc
+    call alloc.set_struc
     ret
 
   .set_strucun:
-    call array.set_strucun
+    call alloc.set_strucun
     ret
 
 
-  ; cleanup
+  ; void
   proc.leave
 
 ; ---   *   ---   *   ---
 ; deref struc and copy
 
-macro array.memcpy_proto fdst,fsrc {
+macro alloc.memcpy_proto fdst,fsrc {
 
   ; see if bytes left
   .chk_size:
@@ -364,10 +303,10 @@ macro array.memcpy_proto fdst,fsrc {
 ; ---   *   ---   *   ---
 ; ^aligned src && dst
 
-proc.new array.set_struc
+proc.new alloc.set_struc
 
   proc.enter
-  array.memcpy_proto movdqa,movdqa
+  alloc.memcpy_proto movdqa,movdqa
 
   ; cleanup and give
   proc.leave
@@ -376,10 +315,10 @@ proc.new array.set_struc
 ; ---   *   ---   *   ---
 ; ^unaligned dst
 
-proc.new array.set_strucun
+proc.new alloc.set_strucun
 
   proc.enter
-  array.memcpy_proto movdqu,movdqa
+  alloc.memcpy_proto movdqu,movdqa
 
   ; cleanup and give
   proc.leave

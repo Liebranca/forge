@@ -18,14 +18,14 @@
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; GBL
+; ROM
 
-  define SYS_WRITE  $01
-  define SYS_EXIT   $3C
+  SYS.write.id = $01
+  SYS.exit.id  = $3C
 
-  define STDIN      $00
-  define STDOUT     $01
-  define STDERR     $02
+  stdin  = $00
+  stdout = $01
+  stderr = $02
 
 ; ---   *   ---   *   ---
 ; terminate
@@ -39,7 +39,7 @@ macro exit code=0 {
 
   ; kill
   pop rdi
-  mov rax,SYS_EXIT
+  mov rax,SYS.exit.id
 
   syscall
 
@@ -54,7 +54,7 @@ macro write f*,msg*,len* {
   lea rsi,[msg]
   mov rdx,len
 
-  mov rax,SYS_WRITE
+  mov rax,SYS.write.id
 
   syscall
 

@@ -26,11 +26,30 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; ROM
+
+SYS.mmap:
+
+  .id        = $09
+
+  .proto_r   = $01
+  .proto_rw  = $03
+  .proto_rx  = $05
+
+  .anon_priv = $22
+
+  .nofd      = -1
+
+
+SYS.munmap.id=$0B
+
+; ---   *   ---   *   ---
 ; cstruc
 
 proc.new page.new
+proc.cpr r11
 
-  push r11
+  proc.enter
 
   ; [0] rdi is size in bytes
   ; get N*page from that
@@ -39,19 +58,22 @@ proc.new page.new
   ; ^set page*N
   mov rsi,rax
 
+
   ; linux boilerpaste
-  mov rdi,$00
-  mov rdx,$03
-  mov r10,$22
-  mov r8,-1
-  mov r9,$00
+  mov rdx,SYS.mmap.proto_rw
+  mov r10,SYS.mmap.anon_priv
+  mov r8 ,SYS.mmap.nofd
+
+  xor rdi,rdi
+  xor r9 ,r9
 
   ; ^call mmap
-  mov rax,$09
-
+  mov rax,SYS.mmap.id
   syscall
-  pop r11
 
+
+  ; cleanup and give
+  proc.leave
   ret
 
 
@@ -61,19 +83,22 @@ proc.new page.new
 proc.new page.free
 macro page.free.inline {
 
+  proc.enter
+
   ; N pages to N*page
   shl rsi,sizep2.page
 
   ; ^call munmap
-  mov rax,$0B
-
+  mov rax,SYS.munmap.id
   syscall
+
+  ; cleanup
+  proc.leave
 
 }
 
-  ; ^invoke
+  ; ^invoke and give
   inline page.free
-
   ret
 
 ; ---   *   ---   *   ---
