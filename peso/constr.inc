@@ -125,7 +125,7 @@ macro constr.sow name {
 macro constr.errout name,code {
 
   ; switch file
-  mov  rdi,STDERR
+  mov  rdi,stderr
   call fto
 
   ; ^write

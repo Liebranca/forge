@@ -93,7 +93,7 @@ proc.lis array.head self rbx
 
   ; ^get idex for generic ops
   mov  r8d,edi
-  call array.get_mode
+  call memcpy.get_size
 
   ; ^set
   mov dword [@self.mode],edx
@@ -138,7 +138,7 @@ macro array.insert_proto dst {
   mov  r8d,dword [@self.ezy]
   mov  rdi,dst
 
-  call array.set
+  call memcpy.direct
 
   ; ^grow by elem size
   pop @self
@@ -209,6 +209,7 @@ proc.lis array.head self rdi
 
   pop  rsi
 
+
   ; get buff
   mov rbx,qword [@self.buff]
 
@@ -219,106 +220,6 @@ proc.lis array.head self rdi
   ; add elem and grow top
   array.insert_proto rax
 
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; generic set array[N]
-
-proc.new array.set
-
-  proc.enter
-
-  ; make table
-  jmptab .tab,byte,\
-    .set_byte,.set_word,\
-    .set_dword,.set_qword,\
-    .set_struc,.set_strucun
-
-  ; ^land
-  .set_byte:
-    mov byte [rdi],sil
-    inc rdi
-    ret
-
-  .set_word:
-    mov word [rdi],si
-    add rdi,$02
-    ret
-
-  .set_dword:
-    mov dword [rdi],esi
-    add rdi,$04
-    ret
-
-  .set_qword:
-    mov qword [rdi],rsi
-    add rdi,$08
-    ret
-
-  .set_struc:
-    call alloc.set_struc
-    ret
-
-  .set_strucun:
-    call alloc.set_strucun
-    ret
-
-
-  ; void
-  proc.leave
-
-; ---   *   ---   *   ---
-; deref struc and copy
-
-macro alloc.memcpy_proto fdst,fsrc {
-
-  ; see if bytes left
-  .chk_size:
-    cmp r8d,$10
-    jl  .skip
-
-  ; ^write unit-sized chunks
-  .cpy:
-
-    ; read src,write dst
-    fsrc xmm0,xword [rsi]
-    fdst xword [rdi],xmm0
-
-    ; go next
-    add rdi,$10
-    add rsi,$10
-    sub r8d,$10
-
-    jmp .chk_size
-
-
-  .skip:
-
-}
-
-
-; ---   *   ---   *   ---
-; ^aligned src && dst
-
-proc.new alloc.set_struc
-
-  proc.enter
-  alloc.memcpy_proto movdqa,movdqa
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; ^unaligned dst
-
-proc.new alloc.set_strucun
-
-  proc.enter
-  alloc.memcpy_proto movdqu,movdqa
 
   ; cleanup and give
   proc.leave
@@ -390,7 +291,7 @@ proc.new array.get
     ret
 
   .get_struc:
-    call array.set_struc
+    call memcpy.set_struc
     ret
 
 
@@ -528,7 +429,7 @@ proc.new array.shr
 
     ; ^copy B to A
     mov  r8d,r9d
-    call array.set_struc
+    call memcpy.set_struc
 
     ; ^restore
     pop r8
@@ -682,7 +583,7 @@ proc.new array.shl
 
     ; ^copy B to A
     mov  r8d,r9d
-    call array.set_struc
+    call memcpy.set_struc
 
     ; ^restore
     pop r8

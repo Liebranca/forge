@@ -32,9 +32,9 @@ proc.stk xword src
 
   lea  rdi,[@dst]
   lea  rsi,[@src]
-  mov  r8d,$70
+  mov  r8d,$10
 
-  call memcpy.set_struc
+  call memcpy
 
 
   ; cleanup and give

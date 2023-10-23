@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -113,7 +113,6 @@ proc.lis array.head other rsi
     push rdi
 
     call string.get_chunk
-    mov  edx,eax
 
     ; conditionally dereference ptr
     pop   rdi
@@ -122,7 +121,7 @@ proc.lis array.head other rsi
     cmovl rsi,qword [rsi]
 
     ; copy one chunk
-    call  array.set
+    call  memcpy.direct
 
     ; conditionally increase ptr
     pop   rsi
@@ -163,26 +162,15 @@ proc.cpr rbx
   proc.enter
 
   ; select function
-  mov  edi,r8d
-  call array.get_mode
-
+  call memcpy.get_size
 
   ; get step size
-  mov ecx,eax
+  mov ecx,edx
   mov r9d,$01
   shl r9d,cl
 
-  ; ^check size >= unit
-  mov ebx,$05
-  cmp r9d,$10
-
-  ; ^mark unit as unaligned struc
-  cmovge eax,ebx
-
 
   ; cleanup and give
-  .skip:
-
   proc.leave
   ret
 

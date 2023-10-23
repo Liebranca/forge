@@ -179,6 +179,12 @@ proc.new memcpy
   ; get branch
   call memcpy.get_size
 
+; ---   *   ---   *   ---
+; ^for when you want to skip
+; recalculating size!
+
+memcpy.direct:
+
   ; ^make table
   jmptab .tab,byte,\
     .is_byte,.is_word,\

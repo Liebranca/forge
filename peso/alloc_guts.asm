@@ -22,6 +22,7 @@
 
 library ARPATH '/forge/'
   use '.asm' peso::stk
+  use '.asm' peso::memcpy
 
 library.import
 
@@ -172,8 +173,8 @@ proc.stk qword old_size
   je  .skip
 
   ; ^copy contents if so
-  mov  rdx,qword [@old_size]
-  call alloc.memcpy
+  mov  r8,qword [@old_size]
+  call memcpy
 
 
   ; cleanup and give
@@ -245,47 +246,6 @@ proc.arg alloc.head head rdi
 
 
   ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; write N bytes from B to A
-
-proc.new alloc.memcpy
-
-  proc.enter
-
-  ; see if bytes left
-  .chk_size:
-    or rdx,$00
-    jz .skip
-
-  ; ^write line-sized chunks
-  .cpy:
-
-    ; read [src,src+$40]
-    movdqa xmm0,xword [rsi+$00]
-    movdqa xmm1,xword [rsi+$10]
-    movdqa xmm2,xword [rsi+$20]
-    movdqa xmm3,xword [rsi+$30]
-
-    ; ^write to [dst,dst+$40]
-    movdqa xword [rdi+$00],xmm0
-    movdqa xword [rdi+$10],xmm1
-    movdqa xword [rdi+$20],xmm2
-    movdqa xword [rdi+$30],xmm3
-
-    ; go next chunk
-    sub rdx,$40
-    add rdi,$40
-    add rsi,$40
-
-    jmp .chk_size
-
-
-  ; cleanup and give
-  .skip:
-
   proc.leave
   ret
 
