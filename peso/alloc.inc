@@ -26,7 +26,7 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 
-  alloc.debug        = 1
+  alloc.debug        = 0
   alloc.hash_dynamic = 0
 
   alloc.hash_cnt     = 0

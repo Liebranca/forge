@@ -26,6 +26,30 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; make string from const
+
+macro string.from ct& {
+
+  local name
+
+  proc.get_id name,constr
+
+  match any,name \{
+
+    constr.new any,ct
+
+    mov  rdi,$01
+    mov  rsi,any\#.length
+    mov  rdx,any
+    mov  r8,any\#.length
+
+    call string.new
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; cstruc
 
 EXESEG
@@ -46,8 +70,9 @@ proc.lis array.head self rax
   pop r8
   pop rdx
 
-  or  rdx,$00
-  jz  .skip
+  push rax
+  or   rdx,$00
+  jz   .skip
 
   ; ^cat to empty ;>
   mov  rdi,rax
@@ -58,6 +83,7 @@ proc.lis array.head self rax
 
   ; cleanup and give
   .skip:
+    pop rax
 
   proc.leave
   ret

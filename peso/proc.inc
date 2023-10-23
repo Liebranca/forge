@@ -68,6 +68,61 @@ macro proc.new name {
 }
 
 ; ---   *   ---   *   ---
+; get unique local id
+
+macro proc.get_id dst,prefix {
+
+  local n
+
+  if ~ defined .#prefix#_ax
+    .#prefix#_ax = 0
+
+  end if
+
+  n=.#prefix#_ax
+
+  match name id,hier.cproc n \{
+    dst equ name\#.#prefix\#_\#id
+    .#prefix#_ax = (.#prefix#_ax)+1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^ensure id per prefix
+
+macro proc.new_id_chk n,name,prefix {
+
+  local dst
+  local m
+
+  m   equ 0
+  dst equ
+
+  match any,name \{
+    dst equ any\#.$proc.accum_#prefix
+
+  \}
+
+  if ~ defined dst
+    define dst 0
+
+  end if
+
+  n equ dst
+  m equ n+1
+
+  rept 1 cnt:m \{
+
+    display cnt+$30,$20,`prefix,$0A
+    dst equ cnt
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; push register list, then
 ; reserve N bytes in stack
 

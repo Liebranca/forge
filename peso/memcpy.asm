@@ -101,7 +101,7 @@ macro memcpy.albranch fdst,fsrc {
   match any,name \{
 
     ; branch accto size
-    mov edx,ebx
+    mov edx,r10d
     jmptab any,word,\
       any\#.s1,any\#.s2,\
       any\#.s3,any\#.s4,\
@@ -293,12 +293,10 @@ memcpy.direct:
 ; size of struc
 
 proc.new memcpy.set_struc
-proc.cpr rbx
 
   proc.enter
 
   ; clamp chunk size to dline
-  mov   rcx,-$10
   mov   ecx,$80
   cmp   ecx,r8d
   cmovg ecx,r8d
@@ -310,33 +308,39 @@ proc.cpr rbx
   ; clear
   xor eax,eax
   xor edx,edx
-  xor ebx,ebx
+  xor r10d,r10d
 
   ; get ptrs are aligned
   mov al,dil
   mov bl,sil
 
   and al,$0F
-  and bl,$0F
+  and r10b,$0F
 
   ; ^1 on dst unaligned
-  mov   dl,$01
-  cmp   al,$00
-  cmovg eax,edx
+  mov    dl,$01
+  or     al,$00
+  cmovnz eax,edx
 
   ; ^2 on src unaligned
-  mov   dl,$02
-  cmp   bl,$00
-  cmovg ebx,edx
+  mov    dl,$02
+  or     r10b,$00
+  cmovnz r10d,edx
 
   ; ^combine
-  or   al,bl
-  mov  edx,eax
+  or  al,r10b
+  mov edx,eax
 
-  ; ^get branch idex accto size
-  mov  ebx,ecx
-  shr  rbx,$04
-  dec  rbx
+; ---   *   ---   *   ---
+; ^for when you want to skip
+; recalculating alignment!
+
+memcpy.set_struc.direct:
+
+  ; get branch idex accto size
+  mov r10d,ecx
+  shr r10d,$04
+  dec r10d
 
 
   ; see if bytes left
@@ -370,12 +374,12 @@ proc.cpr rbx
   ; ^consume
   .go_next:
 
-    add  rdi,rcx
-    add  rsi,rcx
-    sub  r8d,ecx
+    add rdi,rcx
+    add rsi,rcx
+    sub r8d,ecx
 
-    pop  rdx
-    jmp  .chk_size
+    pop rdx
+    jmp .chk_size
 
 
   ; cleanup and give

@@ -20,8 +20,7 @@ library.import
 ; ---   *   ---   *   ---
 ; ROM
 
-constr.new raws,"Hello, world!",$0A
-constr ROM
+constr.new raws,"TECHNICOLOR",$0A
 
 ; ---   *   ---   *   ---
 ; raw string test
@@ -84,12 +83,48 @@ proc.stk qword ar
   ret
 
 ; ---   *   ---   *   ---
+; make dynamic strings from ROM
+
+proc.new test_01
+proc.stk qword s
+
+  proc.enter
+
+  ; make string and print
+  string.from "HLOWRLD!",$0A
+  mov qword [@s],rax
+
+  mov    rdi,rax
+  inline string.sow
+
+  mov  rdi,qword [@s]
+  call array.del
+
+
+  ; ^make another just for kicks
+  string.from "BYEWRLD!",$0A
+  mov qword [@s],rax
+
+  mov    rdi,rax
+  inline string.sow
+
+  mov  rdi,qword [@s]
+  call array.del
+
+
+  ; cleanup and give
+  proc.leave
+  exit
+
+; ---   *   ---   *   ---
 ; entry
 
 proc.new crux
 
   proc.enter
+
   call test_00
+  call test_01
 
   ; cleanup and give
   proc.leave
@@ -98,6 +133,7 @@ proc.new crux
 ; ---   *   ---   *   ---
 ; footer
 
+constr ROM
 MAM.foot
 
 ; ---   *   ---   *   ---

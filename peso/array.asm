@@ -167,7 +167,7 @@ proc.lis array.head self rdi
   add eax,esi
   cmp ebx,eax
 
-  jg  .skip
+  jge .skip
 
 
   ; save tmp
