@@ -109,35 +109,15 @@ proc.lis array.head other rsi
   .loop_body:
 
     ; get chunk size
-    push rsi
-    push rdi
-
     call string.get_chunk
 
-    ; conditionally dereference ptr
-    pop   rdi
-
-    cmp   r9d,$10
-    cmovl rsi,qword [rsi]
-
-    ; copy one chunk
-    call  memcpy.direct
-
-    ; conditionally increase ptr
-    pop   rsi
-
-    xor   rax,rax
-    cmp   r9d,$10
-    cmovl eax,r9d
-
-    add   rsi,r9
-
+    ; ^copy this chunk
+    mov  r10w,memcpy.CDEREF
+    call memcpy.direct
 
     ; go next
-    sub r8d,eax
-    or  r8d,$00
-
-    jg  .loop_body
+    or r8d,$00
+    jg .loop_body
 
 
   ; grow own top

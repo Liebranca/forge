@@ -13,11 +13,19 @@ MAM.head
 ; deps
 
 library ARPATH '/forge/'
+
   use '.inc' OS
+
+  use '.inc' peso::constr
   use '.asm' peso::file
-  use '.asm' peso::memcpy
 
 library.import
+
+; ---   *   ---   *   ---
+; ROM
+
+constr.new me,"HLOWRLD!",$0A
+constr ROM
 
 ; ---   *   ---   *   ---
 ; the bit
@@ -25,16 +33,10 @@ library.import
 EXESEG
 
 proc.new crux
-proc.stk xword dst
-proc.stk xword src
 
   proc.enter
 
-  lea  rdi,[@dst]
-  lea  rsi,[@src]
-  mov  r8d,$10
-
-  call memcpy
+  constr.sow me
 
 
   ; cleanup and give

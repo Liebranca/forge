@@ -137,6 +137,7 @@ macro array.insert_proto dst {
   mov  edx,dword [@self.mode]
   mov  r8d,dword [@self.ezy]
   mov  rdi,dst
+  xor  r10w,r10w
 
   call memcpy.direct
 

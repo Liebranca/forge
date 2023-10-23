@@ -40,8 +40,6 @@ macro MAM.head name=crux {
   List.new MAM.foot
   List.new MAM.atexit
 
-  MAM.atexit.push call reap
-
 }
 
 ; ---   *   ---   *   ---

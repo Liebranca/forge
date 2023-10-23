@@ -13,8 +13,9 @@
 ; deps
 
 library ARPATH '/forge/'
+
   use '.inc' OS
-  use '.inc' peso::proc
+  use '.asm' peso::memcpy
 
 library.import
 
@@ -23,7 +24,7 @@ library.import
 
   TITLE     peso.file
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,7 +35,7 @@ RAMSEG
 reg.new file.buff
 
   my .SZ   = $100
-  my .REPT = $10
+  my .REPT = .SZ shr 7
 
 
   ; pool
@@ -42,9 +43,9 @@ reg.new file.buff
 
   ; bkeep
   my .fto   dw stdout
-  my .avail dw .SZ
 
-  my .ptr   dw $00
+  my .avail dd .SZ
+  my .ptr   dd $00
 
 reg.end
 
@@ -56,16 +57,15 @@ reg.ice file.buff buffio
 EXESEG
 
 proc.new fto
-proc.cpr rbx
 
   proc.enter
 
   ; get current fh eq passed
-  xor rbx,rbx
-  mov bx,word [buffio.fto]
+  xor rax,rax
+  mov ax,word [buffio.fto]
 
   ; ^skip if so
-  cmp rbx,rdi
+  cmp rax,rdi
   je  .skip
 
   ; ^else flush, then swap
@@ -84,82 +84,60 @@ proc.cpr rbx
 ; ^issue write
 
 proc.new sow
-proc.cpr rbx,rdi,rsi
 
   proc.enter
 
+  ; store total
+  mov r9,rsi
+  mov rsi,rdi
+
   ; flush on full buff
-  .top:
+  .chk_size:
 
     ; get avail
-    xor rdx,$00
-    mov dx,word [buffio.avail]
+    xor r8,r8
+    mov r8d,dword [buffio.avail]
 
     ; ^clear on below chunk
-    cmp  dx,$10
-    jge  .pre_walk
+    cmp  r8d,sizeof.unit
+    jge  .go_next
     call reap
 
     ; ^refresh avail
-    mov dx,buffio.SZ
+    mov r8w,buffio.SZ
 
 
-  ; offset into buff
-  .pre_walk:
-
-    ; clear old offset
-    xor rcx,rcx
+  ; ^write next chunk
+  .go_next:
 
     ; use smallest length
-    cmp   si,dx
-    cmovl dx,si
+    cmp   r9d,r8d
+    cmovl r8d,r9d
+    sub   r9d,r8d
 
     ; get buff+ptr
-    lea rbx,[buffio.ct]
-    mov cx,word [buffio.ptr]
-    add rbx,rcx
+    xor edx,edx
+    mov edx,dword [buffio.ptr]
+    lea rdi,[buffio.ct+edx]
 
-    ; stop on length exhausted
-    cmp dx,$00
-    jle .top
-
-
-  ; ^walk in xword-sized chunks
-  .walk:
-
-    ; write to buff
-    movdqa xmm0,xword [rdi]
-    movdqa xword [rbx],xmm0
-
-    ; clamp step
-    mov   r8w,$10
-    cmp   dx,r8w
-    cmovl r8w,dx
-
-    ; go next chunk
-    add di,$10
-    add bx,$10
-
-    ; ^consume current
-    add cx,$10
-    sub dx,r8w
-    sub si,r8w
-
-    ; ^check end-of
-    cmp dx,$10
-    jge .walk
+    ; adjust buff meta
+    sub dword [buffio.avail],r8d
+    add dword [buffio.ptr],r8d
 
 
-  ; ^adjust buff meta
-  .post_walk:
+  ; write chunks
+  .cpy:
 
-    ; update ptr
-    sub word [buffio.avail],cx
-    mov word [buffio.ptr],cx
+    mov r10w,memcpy.CDEREF
+    call memcpy
 
-    ; repeat on pending
-    or rsi,$00
-    jg .top
+    ; ^repeat on pending
+    or  r8d,$00
+    jg .cpy
+
+    ; ^restart
+    or r9d,$00
+    jg .chk_size
 
 
   ; cleanup and give
@@ -192,8 +170,18 @@ proc.cpr r11,rdi,rsi
   pxor xmm0,xmm0
 
   repeat buffio.REPT
-    movdqa xword [rsi],xmm0
-    add    rsi,$10
+
+    movdqa xword [rsi+$00],xmm0
+    movdqa xword [rsi+$10],xmm0
+    movdqa xword [rsi+$20],xmm0
+    movdqa xword [rsi+$30],xmm0
+
+    movdqa xword [rsi+$40],xmm0
+    movdqa xword [rsi+$50],xmm0
+    movdqa xword [rsi+$60],xmm0
+    movdqa xword [rsi+$70],xmm0
+
+    add    rsi,$80
 
   end repeat
 
@@ -207,5 +195,9 @@ proc.cpr r11,rdi,rsi
   proc.leave
   ret
 
+; ---   *   ---   *   ---
+; footer
+
+MAM.atexit.push call reap
 
 ; ---   *   ---   *   ---

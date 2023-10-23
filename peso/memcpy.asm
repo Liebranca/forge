@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -24,6 +24,11 @@ library ARPATH '/forge/'
   use '.inc' peso::proc
 
 library.import
+
+; ---   *   ---   *   ---
+; ROM
+
+  memcpy.CDEREF = $CDEF
 
 ; ---   *   ---   *   ---
 ; load-store proto
@@ -111,6 +116,73 @@ macro memcpy.albranch fdst,fsrc {
 }
 
 ; ---   *   ---   *   ---
+; primitive copy proto
+
+macro memcpy.prim size {
+
+  ; default to byte
+  local rX
+  local step
+
+  rX   equ sil
+  rY   equ r15b
+
+  step equ $01
+
+
+  ; ^16-bit
+  match =word , size \{
+
+    rX   equ si
+    rY   equ r15w
+
+    step equ $02
+
+  \}
+
+  ; ^32-bit
+  match =dword , size \{
+
+    rX   equ esi
+    rY   equ r15d
+
+    step equ $04
+
+  \}
+
+  ; ^64-bit
+  match =qword , size \{
+
+    rX   equ rsi
+    rY   equ r15
+
+    step equ $08
+
+  \}
+
+
+  ; conditionally dereference
+  push  rsi
+  push  r15
+
+  mov   rY,size [rsi]
+  cmp   r10w,memcpy.CDEREF
+  cmove rsi,r15
+
+  ; ^move value
+  mov size [rdi],rX
+  add rdi,step
+
+  ; ^re-reference, go next
+  pop r15
+  pop rsi
+
+  add rsi,step
+  sub r8d,step
+
+}
+
+; ---   *   ---   *   ---
 ; map size to branch
 
 proc.new memcpy.get_size
@@ -193,23 +265,19 @@ memcpy.direct:
 
   ; ^land
   .is_byte:
-    mov byte [rdi],sil
-    inc rdi
+    memcpy.prim byte
     ret
 
   .is_word:
-    mov word [rdi],si
-    add rdi,$02
+    memcpy.prim word
     ret
 
   .is_dword:
-    mov dword [rdi],esi
-    add rdi,$04
+    memcpy.prim dword
     ret
 
   .is_qword:
-    mov qword [rdi],rsi
-    add rdi,$08
+    memcpy.prim qword
     ret
 
   .is_struc:
@@ -219,7 +287,6 @@ memcpy.direct:
 
   ; void
   proc.leave
-
 
 ; ---   *   ---   *   ---
 ; ^further branching accto
