@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -125,37 +125,26 @@ macro memcpy.prim size {
   local step
 
   rX   equ sil
-  rY   equ r15b
-
   step equ $01
 
 
   ; ^16-bit
   match =word , size \{
-
     rX   equ si
-    rY   equ r15w
-
     step equ $02
 
   \}
 
   ; ^32-bit
   match =dword , size \{
-
     rX   equ esi
-    rY   equ r15d
-
     step equ $04
 
   \}
 
   ; ^64-bit
   match =qword , size \{
-
     rX   equ rsi
-    rY   equ r15
-
     step equ $08
 
   \}
@@ -163,18 +152,18 @@ macro memcpy.prim size {
 
   ; conditionally dereference
   push  rsi
-  push  r15
 
-  mov   rY,size [rsi]
-  cmp   r10w,memcpy.CDEREF
-  cmove rsi,r15
+  cmp r10w,memcpy.CDEREF
+  jne @f
+  mov rX,size [rsi]
+
+  @@:
 
   ; ^move value
   mov size [rdi],rX
   add rdi,step
 
   ; ^re-reference, go next
-  pop r15
   pop rsi
 
   add rsi,step

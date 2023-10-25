@@ -89,15 +89,28 @@ proc.lis array.head self rax
   ret
 
 ; ---   *   ---   *   ---
-; ^concatenate
+; ^dstruc alias
 
-proc.new string.cat
+string.del=array.del
 
-proc.stk dword total
-proc.stk qword head
+; ---   *   ---   *   ---
+; array cat request
+
+reg.new string.insert_req
+  my .total dq $00
+  my .head  dd $00
+
+reg.end
+
+; ---   *   ---   *   ---
+; common routine to cat/lcat
+
+proc.new string.insert_prologue
 
 proc.lis array.head self  rdi
 proc.lis array.head other rsi
+
+proc.lis string.insert_req ctx r11
 
   proc.enter
 
@@ -113,10 +126,10 @@ proc.lis array.head other rsi
   ; save tmp
   .loop_beg:
 
-    mov dword [@total],r8d
-    mov qword [@head],rdi
+    mov dword [@ctx.total],r8d
+    mov qword [@ctx.head],rdi
 
-    ; get bounds
+    ; get buff
     push rsi
     mov  esi,r8d
 
@@ -124,33 +137,50 @@ proc.lis array.head other rsi
 
     pop  rsi
 
-    ; ^use old/updated buff
-    mov rax,qword [@self.top]
-    mov rdi,qword [@self.buff]
 
-    add rdi,rax
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; add at end
+
+proc.new string.cat
+
+proc.stk string.insert_req ctx
+
+proc.lis array.head self  rdi
+proc.lis array.head other rsi
+
+  proc.enter
+
+  ; load struc addr
+  lea r11,[@ctx]
+
+  ; ^fill out
+  call string.insert_prologue
+
+  ; ^seek to end
+  mov rdi,qword [@self.buff]
+  add rdi,qword [@self.top]
 
 
   ; iter until no chunks left
-  .loop_body:
+  .loop_cpy:
 
-    ; get chunk size
-    call string.get_chunk
-
-    ; ^copy this chunk
     mov  r10w,memcpy.CDEREF
-    call memcpy.direct
+    call memcpy
 
-    ; go next
+    ; ^go next
     or r8d,$00
-    jg .loop_body
+    jg .loop_cpy
 
 
   ; grow own top
   .loop_end:
 
-    mov r8d,dword [@total]
-    mov @self,qword [@head]
+    mov r8d,dword [@ctx.total]
+    mov @self,qword [@ctx.head]
 
     add dword [@self.top],r8d
 
@@ -160,21 +190,57 @@ proc.lis array.head other rsi
   ret
 
 ; ---   *   ---   *   ---
-; generic get chunk size
+; ^add at beg
 
-proc.new string.get_chunk
-proc.cpr rbx
+proc.new string.lcat
+
+proc.stk string.insert_req ctx
+
+proc.lis array.head self  rdi
+proc.lis array.head other rsi
 
   proc.enter
 
-  ; select function
-  call memcpy.get_size
+  ; load struc addr
+  lea r11,[@ctx]
 
-  ; get step size
-  mov ecx,edx
-  mov r9d,$01
-  shl r9d,cl
+  ; ^fill out
+  call string.insert_prologue
 
+  ; ^save tmp
+  push r8
+  push rsi
+  push @self
+
+  ; shift N bytes right
+  call array.shr
+
+
+  ; ^restore tmp
+  pop @self
+  pop rsi
+  pop r8
+
+  mov rdi,[@self.buff]
+
+  ; iter until no chunks left
+  .loop_cpy:
+
+    mov  r10w,memcpy.CDEREF
+    call memcpy
+
+    ; ^go next
+    or r8d,$00
+    jg .loop_cpy
+
+
+  ; grow own top
+  .loop_end:
+
+    mov r8d,dword [@ctx.total]
+    mov @self,qword [@ctx.head]
+
+    add dword [@self.top],r8d
 
   ; cleanup and give
   proc.leave

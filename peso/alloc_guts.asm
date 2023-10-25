@@ -14,7 +14,7 @@
 
   TITLE     peso.alloc_guts
 
-  VERSION   v0.01.3a
+  VERSION   v0.01.4a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -243,6 +243,31 @@ proc.arg alloc.head head rdi
 
   add qword [rbx+alloc.chain.avail],rax
   shl rax,cl
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; get usable block size
+
+proc.new alloc.get_blk_size
+proc.arg alloc.head head rdi
+
+  proc.enter
+
+  ; seek to head
+  sub @head,sizeof.alloc.head
+
+
+  ; scale size up
+  xor rax,rax
+  mov ax,word [@head.req]
+  shl rax,$06
+
+  ; ^sub head size
+  sub rax,sizeof.alloc.head
 
 
   ; cleanup and give

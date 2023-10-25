@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -33,14 +33,10 @@ reg.new array.head
   my .buff  dq $00
 
   my .grow  dd $00
-  my .igrow dd $00
-
   my .mode  dd $00
 
   my .ezy   dd $00
-
   my .cap   dd $00
-  my .icap  dd $00
 
   my .top   dd $00
 
@@ -74,28 +70,33 @@ proc.lis array.head self rbx
 
 
   ; make buffer
-  pop rsi
-  mov qword [@self.cap],rsi
-  mov qword [@self.grow],rsi
-
+  pop   rsi
   alloc rsi
 
   ; restore tmp
   pop rsi
   pop rdi
 
-  ; nit
+  ; ^store
   mov qword [@self.buff],rax
   mov dword [@self.ezy],edi
-  mov dword [@self.icap],esi
-  mov dword [@self.igrow],esi
   mov dword [@self.top],$00
 
-  ; ^get idex for generic ops
-  mov  r8d,edi
+
+  ; get buff capacity
+  mov  rdi,rax
+  call alloc.get_blk_size
+
+  ; ^store
+  mov dword [@self.cap],eax
+  mov dword [@self.grow],eax
+
+
+  ; get idex for generic ops
+  mov  r8d,dword [@self.ezy]
   call memcpy.get_size
 
-  ; ^set
+  ; ^store
   mov dword [@self.mode],edx
 
 
@@ -160,30 +161,48 @@ proc.lis array.head self rdi
   proc.enter
 
   ; get top,cap
-  mov eax,dword [@self.top]
-  mov ebx,dword [@self.cap]
+  mov ecx,dword [@self.top]
+  mov eax,dword [@self.cap]
 
   ; ^skip on top+req < cap
-  add eax,esi
-  cmp ebx,eax
+  add ecx,esi
+  cmp ecx,eax
 
-  jge .skip
+  jle .skip
 
-
-  ; save tmp
-  push @self
 
   ; get [N*cstep] growth rate
-  mov rbx,qword [@self.grow]
-  add qword [@self.cap],rbx
+  mov ebx,dword [@self.grow]
 
-  ; ^resize on cap reached
+  ; ^add until req fits
+  .grow:
+
+    add ecx,ebx
+    cmp ecx,esi
+
+    jl  .grow
+
+
+  ; resize
+  push    @self
   mov     rax,qword [@self.buff]
+
   realloc rax,rbx
 
-  ; ^restore tmp, save new addr
+  ; ^save new addr
   pop @self
   mov qword [@self.buff],rax
+
+
+  ; get new cap
+  push @self
+  mov  rdi,rax
+
+  call alloc.get_blk_size
+
+  ; ^store
+  pop @self
+  mov qword [@self.cap],rax
 
 
   ; cleanup and give
@@ -315,47 +334,21 @@ proc.lis array.head self rdi
 
   call array.resize_chk
 
-  pop  rsi
-
-  ; get bot
-  mov rax,qword [@self.buff]
 
   ; save tmp
   push @self
-  push rsi
-  push rax
-
-
-  ; JIC clear
-  xor rdx,rdx
-  xor r8,r8
-  xor r9,r9
-
-  ; get [N,end,mode]
-  mov r8d,dword [@self.ezy]
-  mov r9d,dword [@self.top]
-  mov edx,dword [@self.mode]
-
-  ; ^get [end,end-N]
-  mov  rsi,rax
-  add  rsi,r9
-  mov  rbx,rsi
-  sub  rbx,r8
-
-  mov  rdi,rbx
-  xchg rsi,rdi
 
   ; ^copy bytes N places right
+  mov  r8d,dword [@self.ezy]
   call array.shr
 
 
   ; restore tmp
-  pop rax
-  pop rsi
   pop @self
+  pop rsi
 
   ; ^write to beg
-  array.insert_proto rax
+  array.insert_proto qword [@self.buff]
 
 
   ; cleanup and give
@@ -366,89 +359,39 @@ proc.lis array.head self rdi
 ; ^reverse walk copy
 
 proc.new array.shr
+proc.cpr rdi
+
+proc.lis array.head self rdi
 
   proc.enter
 
-  ; branch on ptr type
-  cmp rdx,$04
-  je  .loop_struc
+  ; size of other is shift size
+  ; own top is copy size
+  mov esi,r8d
+  mov r8d,dword [@self.top]
+
+  ; get beg,beg+N
+  mov rdi,qword [@self.buff]
+  lea rsi,[rdi+rsi]
 
 
-  ; get mask size
-  mov rax,$01
-  mov cl,dl
-  shl rax,cl
+  ; dst eq beg+N
+  ; src eq beg
+  xchg rdi,rsi
 
-  mov rcx,rax
+  ; ^make space from beg to beg+N
+  .iter:
 
-  ; get mask
-  mov rdx,$01
-  shl rcx,$03
-  shl rdx,cl
-  dec rdx
-
-
-  .loop_prim:
-
-    ; get first bit
-    mov rax,qword [rsi]
-    ror rax,cl
-
-    ; ^get next bit
-    mov rbx,rax
-    shr rbx,cl
-
-    ; ^exclude
-    and rbx,rdx
-    and rax,rdx
-
-    ; ^copy
-    shr rcx,$03
-    mov qword [rdi],rbx
-    mov qword [rdi+rcx],rax
-
+    ; ^copy this chunk
+    mov  r10w,memcpy.CDEREF
+    call memcpy
 
     ; go next
-    sub rdi,rcx
-    sub rsi,rcx
-    sub r9d,ecx
-    shl rcx,$03
+    or r8d,$00
+    jg .iter
 
-    ; end on beg reached
-    or  r9d,$00
-    jg  .loop_prim
-    jmp .skip
-
-
-  ; struc ptr
-  .loop_struc:
-
-    ; save tmp
-    push rdi
-    push rsi
-    push r8
-
-    ; ^copy B to A
-    mov  r8d,r9d
-    call memcpy.set_struc
-
-    ; ^restore
-    pop r8
-    pop rsi
-    pop rdi
-
-    ; go next
-    sub rdi,r9
-    sub rsi,r9
-    sub r9d,r8d
-
-    ; end on beg reached
-    or r9d,$00
-    jg .loop_struc
 
   ; cleanup and give
-  .skip:
-
   proc.leave
   ret
 

@@ -75,7 +75,7 @@ proc.stk qword ar
 
   ; ^release
   mov  rdi,qword [@ar]
-  call array.del
+  call string.del
 
 
   ; cleanup and give
@@ -98,7 +98,7 @@ proc.stk qword s
   inline string.sow
 
   mov  rdi,qword [@s]
-  call array.del
+  call string.del
 
 
   ; ^make another just for kicks
@@ -109,12 +109,57 @@ proc.stk qword s
   inline string.sow
 
   mov  rdi,qword [@s]
-  call array.del
+  call string.del
 
 
   ; cleanup and give
   proc.leave
-  exit
+  ret
+
+; ---   *   ---   *   ---
+; ^unshift/lcat
+
+proc.new test_02
+proc.stk qword s0
+proc.stk qword s1
+
+  proc.enter
+
+  ; make strings
+  string.from "$$$$"
+  mov qword [@s0],rax
+
+  string.from "%%%%"
+  mov qword [@s1],rax
+
+  ; ^join
+  mov  rdi,qword [@s0]
+  mov  rsi,qword [@s1]
+  xor  r8,r8
+
+  call string.lcat
+
+  ; sneaky
+  mov  rdi,qword [@s0]
+  mov  rsi,$0A
+
+  call array.unshift
+
+  ; prich
+  mov    rdi,qword [@s0]
+  inline string.sow
+
+
+  ; ^release
+  mov  rdi,qword [@s0]
+  call string.del
+
+  mov  rdi,qword [@s1]
+  call string.del
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; entry
@@ -123,8 +168,10 @@ proc.new crux
 
   proc.enter
 
-  call test_00
-  call test_01
+;  call test_00
+;  call test_01
+
+  call test_02
 
   ; cleanup and give
   proc.leave
