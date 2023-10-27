@@ -14,7 +14,7 @@
 
   TITLE     List
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Arstd.List 2
@@ -237,6 +237,21 @@ macro List.new name {
   \}
 
   macro name \{name#.npaste\}
+
+}
+
+; ---   *   ---   *   ---
+; ^anon from set
+
+macro List.from dst,len,[item] {
+
+  common
+    dst equ
+    len equ 0
+
+  forward
+    List.push dst,item
+    len equ len+1
 
 }
 

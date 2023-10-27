@@ -14,6 +14,7 @@ MAM.head
 
 library ARPATH '/forge/'
   use '.asm' peso::string
+;  use '.asm' peso::memcmp
 
 library.import
 
@@ -162,16 +163,78 @@ proc.stk qword s1
   ret
 
 ; ---   *   ---   *   ---
-; entry
+; string cmp
 
-proc.new crux
+proc.new test_03
+proc.stk xword s0
+proc.stk xword s1
+proc.stk xword s2
+proc.stk xword s3
 
   proc.enter
 
-;  call test_00
-;  call test_01
+;  ; make ice
+;  string.from "$$$$%%%%"
+;  mov qword [@s0],rax
+;
+;  string.from "$$$!%%%%"
+;  mov qword [@s1],rax
 
+  mov qword [@s0+0],-$24
+  mov qword [@s0+8],-$7F
+  mov qword [@s1+0],-$25
+  mov qword [@s1+8],-$76
+
+  mov qword [@s2+0],-$24
+  mov qword [@s2+8],-$7F
+  mov qword [@s3+0],-$25
+  mov qword [@s3+8],-$76
+
+  movdqa xmm0,xword [@s0]
+  pxor   xmm0,xword [@s2]
+
+  movdqa xmm1,xword [@s1]
+  pxor   xmm1,xword [@s3]
+
+  movdqa xword [@s0],xmm0
+  movdqa xword [@s1],xmm1
+
+  mov rax,qword [@s0+0]
+  or  rax,qword [@s0+8]
+  or  rax,qword [@s1+0]
+  or  rax,qword [@s1+8]
+  jz  @f
+
+  xor ax,ax
+
+  @@:
+
+
+;  ; ^release
+;  mov  rdi,qword [@s0]
+;  call string.del
+;
+;  mov  rdi,qword [@s1]
+;  call string.del
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; entry
+
+proc.new crux
+proc.stk xword s0
+proc.stk xword s1
+
+  proc.enter
+
+  call test_00
+  call test_01
   call test_02
+
+;  call test_03
 
   ; cleanup and give
   proc.leave

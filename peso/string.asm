@@ -161,14 +161,15 @@ proc.lis array.head other rsi
   call string.insert_prologue
 
   ; ^seek to end
+  mov rcx,qword [@self.top]
   mov rdi,qword [@self.buff]
-  add rdi,qword [@self.top]
+  add rdi,rcx
 
 
   ; iter until no chunks left
   .loop_cpy:
 
-    mov  r10w,memcpy.CDEREF
+    mov  r10w,smX.CDEREF
     call memcpy
 
     ; ^go next
@@ -226,7 +227,7 @@ proc.lis array.head other rsi
   ; iter until no chunks left
   .loop_cpy:
 
-    mov  r10w,memcpy.CDEREF
+    mov  r10w,smX.CDEREF
     call memcpy
 
     ; ^go next

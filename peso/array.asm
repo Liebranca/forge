@@ -94,7 +94,7 @@ proc.lis array.head self rbx
 
   ; get idex for generic ops
   mov  r8d,dword [@self.ezy]
-  call memcpy.get_size
+  call smX.get_size
 
   ; ^store
   mov dword [@self.mode],edx
@@ -311,7 +311,7 @@ proc.new array.get
     ret
 
   .get_struc:
-    call memcpy.set_struc
+    call memcpy.struc
     ret
 
 
@@ -383,7 +383,7 @@ proc.lis array.head self rdi
   .iter:
 
     ; ^copy this chunk
-    mov  r10w,memcpy.CDEREF
+    mov  r10w,smX.CDEREF
     call memcpy
 
     ; go next
@@ -527,7 +527,7 @@ proc.new array.shl
 
     ; ^copy B to A
     mov  r8d,r9d
-    call memcpy.set_struc
+    call memcpy.struc
 
     ; ^restore
     pop r8

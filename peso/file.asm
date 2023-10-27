@@ -128,7 +128,7 @@ proc.new sow
   ; write chunks
   .cpy:
 
-    mov r10w,memcpy.CDEREF
+    mov r10w,smX.CDEREF
     call memcpy
 
     ; ^repeat on pending

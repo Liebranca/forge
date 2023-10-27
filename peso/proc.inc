@@ -68,55 +68,57 @@ macro proc.new name {
 }
 
 ; ---   *   ---   *   ---
-; get unique local id
+; get unique id
 
-macro proc.get_id dst,prefix {
+macro proc.get_id dst,prefix,mode=global {
 
-  local n
+  ; fet/nit counter
+  local PROC_GET_ID
 
   if ~ defined .#prefix#_ax
     .#prefix#_ax = 0
 
   end if
 
-  n=.#prefix#_ax
+  PROC_GET_ID = .#prefix#_ax
+
+
+  ; generate global label
+  match =global , mode \{
+    proc.get_gid dst,prefix
+
+  \}
+
+  ; ^generate local
+  match =local , mode \{
+    proc.get_lid dst,prefix,PROC_GET_ID
+
+  \}
+
+  ; ^increase counter
+  .#prefix#_ax = (.#prefix#_ax)+1
+
+}
+
+; ---   *   ---   *   ---
+; ^global
+
+macro proc.get_gid dst,prefix,n {
 
   match name id,hier.cproc n \{
     dst equ name\#.#prefix\#_\#id
-    .#prefix#_ax = (.#prefix#_ax)+1
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^ensure id per prefix
+; ^local
 
-macro proc.new_id_chk n,name,prefix {
+macro proc.get_lid dst,prefix,n {
 
-  local dst
-  local m
-
-  m   equ 0
-  dst equ
-
-  match any,name \{
-    dst equ any\#.$proc.accum_#prefix
-
-  \}
-
-  if ~ defined dst
-    define dst 0
-
-  end if
-
-  n equ dst
-  m equ n+1
-
-  rept 1 cnt:m \{
-
-    display cnt+$30,$20,`prefix,$0A
-    dst equ cnt
+  match id , n \{
+    dst equ .#prefix\#_\#id
 
   \}
 
