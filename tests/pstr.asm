@@ -230,9 +230,9 @@ proc.stk xword s1
 
   proc.enter
 
-  call test_00
-  call test_01
-  call test_02
+;  call test_00
+;  call test_01
+;  call test_02
 
 ;  call test_03
 

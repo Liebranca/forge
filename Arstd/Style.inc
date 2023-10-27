@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -41,7 +41,6 @@ macro MAM.head name=crux {
   List.new MAM.atexit
 
 }
-
 ; ---   *   ---   *   ---
 ; dude, what *is* a SECTION?!
 
@@ -111,6 +110,37 @@ macro jmptab base,size,[item] {
 
   forward
     kX item - base
+
+}
+
+; ---   *   ---   *   ---
+; inneficient way of finding
+; a symbol within a list
+
+macro tokin dst,N,[item] {
+
+  common
+    local ok
+    ok equ 0
+
+  forward match =0 , ok \{
+
+    ; search for literal value of
+    local item2
+    item2 equ =#item
+
+    ; ^unroll
+    match pat , item2 \\{
+
+      match pat , N \\\{
+        dst equ 1
+        ok  equ 1
+
+      \\\}
+
+    \\}
+
+  \}
 
 }
 

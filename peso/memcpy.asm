@@ -26,18 +26,6 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
-; struc branching proto
-
-macro memcpy.albranch fdst,fsrc {
-
-  mov edx,r10d
-
-  smX.sse_tab smX.ldst,\
-    jmp .go_next,fdst,fsrc
-
-}
-
-; ---   *   ---   *   ---
 ; crux
 
 proc.new memcpy
@@ -94,27 +82,10 @@ memcpy.struc.direct:
     cmp r8d,ecx
     jl  .skip
 
-  ; branch accto alignment
-  push rdx
-
-  jmptab .altab,word,\
-    .adst_asrc,.udst_asrc,\
-    .adst_usrc,.udst_usrc
-
-
-  ; ^land
-  .adst_asrc:
-    memcpy.albranch movdqa,movdqa
-
-  .udst_asrc:
-    memcpy.albranch movdqu,movdqa
-
-  .adst_usrc:
-    memcpy.albranch movdqa,movdqu
-
-  .udst_usrc:
-    memcpy.albranch movdqu,movdqu
-
+  ; galactic unroll
+  smX.sse_tab2 \
+    smX.sse_mov,\
+    jmp .go_next
 
   ; ^consume
   .go_next:
@@ -123,7 +94,6 @@ memcpy.struc.direct:
     add rsi,rcx
     sub r8d,ecx
 
-    pop rdx
     jmp .chk_size
 
 

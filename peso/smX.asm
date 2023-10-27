@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -33,7 +33,7 @@ library.import
 ; ---   *   ---   *   ---
 ; sse load register, write dst
 
-macro smX.ldst rX,offset,fdst,fsrc {
+macro smX.sse_mov rX,offset,fdst,fsrc {
   fsrc rX,xword [rsi+offset]
   fdst xword [rdi+offset],rX
 
@@ -43,7 +43,11 @@ macro smX.ldst rX,offset,fdst,fsrc {
 ; i8-64 move src to dst with a
 ; conditional dereference
 
-macro smX.i_mov rX,rY,size,step,args& {
+macro smX.i_mov size,step,_nullarg& {
+
+  ; get src
+  local rX
+  smX.i_sized_reg rX,si,size
 
   ; deref
   push  rsi
@@ -69,43 +73,68 @@ macro smX.i_mov rX,rY,size,step,args& {
 ; ---   *   ---   *   ---
 ; sse compare equality proto
 
-macro mmX.sse_eq rX,offset,dst,fsrc {
+macro smX.sse_eq rX,offset,fdst,fsrc,dst {
 
-  ; ^load register
-  fsrc rX,xword [rdi+offset]
+  ; ^load registers
+  fdst rX,xword [rdi+offset]
+  fsrc xmm8,xword [rsi+offset]
 
   ; ^chk equality, write dst
-  pxor   rX,xword [rsi+offset]
-  movdqa xword [dst+offset],rX
+  pxor   rX,xmm8
+  movdqu xword [dst+offset],rX
 
   ; ^write to out
-  or rax,qword [dst+offset]
-  or rax,qword [dst+offset+8]
+  or rbx,qword [dst+offset]
+  or rbx,qword [dst+offset+8]
 
 }
 
 ; ---   *   ---   *   ---
 ; ^i8-64
 
-macro mmX.i_eq rX,rY,size,step,args& {
+macro smX.i_eq size,step,_nullarg& {
 
-  ; deref
-  push  rsi
+  ; get src
+  local rX
+  smX.i_sized_reg rX,si,size
 
-  cmp r10w,smX.CDEREF
-  jne @f
-  mov rX,size [rsi]
+  ; get dst
+  local rY
+  smX.i_sized_reg rY,di,size
+
+  ; get scratch
+  local rZ
+  smX.i_sized_reg rZ,a,size
+
+  ; save tmp
+  push rsi
+  push rdi
+
+
+  ; deref src
+  cmp  r10w,smX.CDEREF
+  jne  @f
+  mov  rX,size [rsi]
+
+  @@:
+
+  ; ^deref dst
+  cmp  r9w,smX.CDEREF
+  jne  @f
+  mov  rY,size [rdi]
 
   @@:
 
   ; ^move value
-  mov rax,rX
-  mov size [rdi],rX
-  add rdi,step
+  mov rZ,rX
+  xor rZ,rY
 
-  ; ^re-ref
+  ; restore tmp
+  pop rdi
   pop rsi
 
+  ; ^re-ref
+  add rdi,step
   add rsi,step
   sub r8d,step
 
@@ -146,46 +175,120 @@ macro smX.sse_walk op,size,args& {
 }
 
 ; ---   *   ---   *   ---
-; ^alloc register,step from
-; size keyword
+; map size keyword to value
 
-macro smX.i_walk op,size,args& {
+macro smX.i_rX_proto \
+  dst,size,b8,b16,b32,b64 {
 
-  ; default to byte
-  local rX
-  local step
+  dst equ
 
-  rX   equ sil
-  rY   equ dil
-  step equ $01
+  ; 8-bit
+  match =byte , size \{
+    dst equ b8
 
+  \}
 
   ; ^16-bit
   match =word , size \{
-    rX   equ si
-    rY   equ di
-    step equ $02
+    dst equ b16
 
   \}
 
   ; ^32-bit
   match =dword , size \{
-    rX   equ esi
-    rY   equ edi
-    step equ $04
+    dst equ b32
 
   \}
 
   ; ^64-bit
   match =qword , size \{
-    rX   equ rsi
-    rY   equ rdi
-    step equ $08
+    dst equ b64
 
   \}
 
+}
+
+; ---   *   ---   *   ---
+; ^map to register
+; (E/R) [name] (L/X)
+
+macro smX.i_sized_reg0 dst,name,size {
+  smX.i_rX_proto dst,size,\
+    name#l,name#x,e#name#x,r#name#x
+
+}
+
+; ---   *   ---   *   ---
+; ^(R) [name] (D/W/B)
+
+macro smX.i_sized_reg1 dst,name,size {
+  smX.i_rX_proto dst,size,\
+    name#b,name#w,name#d,name
+
+}
+
+; ---   *   ---   *   ---
+; ^(E/R) [name] (L)
+
+macro smX.i_sized_reg2 dst,name,size {
+  smX.i_rX_proto dst,size,\
+    name#l,name,e#name,r#name
+
+}
+
+; ---   *   ---   *   ---
+; ^sweetcrux
+
+macro smX.i_sized_reg dst,name,size {
+
+  local ok
+  ok equ 0
+
+  ; (E/R) [name] (L/X)
+  tokin ok,name,a,b,c,d
+  match =1 , ok \{
+    smX.i_sized_reg0 dst,name,size
+    ok equ 2
+
+  \}
+
+  ; (R) [name] (D/W/B)
+  match =0 , ok \{
+    tokin ok,name,\
+      r8,r9,r10,r11,r12,r13,r14,r15
+
+  \}
+
+  match =1 , ok \{
+    smX.i_sized_reg1 dst,name,size
+    ok equ 2
+
+  \}
+
+  ; (E/R) [name] (L)
+  match =0 , ok \{
+    tokin ok,name,di,si,bp,sp
+
+  \}
+
+  match =1 , ok \{
+    smX.i_sized_reg2 dst,name,size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^alloc register,step from
+; size keyword
+
+macro smX.i_walk op,size,args& {
+
+  local step
+  step equ sizeof.#size
+
   ; paste op [args]
-  op rX,rY,size,step,args
+  op size,step,args
 
 }
 
@@ -293,6 +396,51 @@ macro smX.i_tab op,eob,args& {
     smX.i_walk,byte,\
     entry,entry.len,\
     eob,op,args
+
+}
+
+; ---   *   ---   *   ---
+; 2-dimetional jmptable
+;
+; first level is alignment
+; second is size of elem
+
+macro smX.sse_tab2 op,eob,args& {
+
+  ; individual entry
+  macro item args2& \{
+    mov edx,r10d
+    smX.sse_tab op,foot,args2,args
+
+  \}
+
+  ; ^end-of for each
+  macro foot \{
+    pop rdx
+    eob
+
+  \}
+
+
+  ; branch accto alignment
+  push rdx
+
+  jmptab .altab,word,\
+    .adst_asrc,.udst_asrc,\
+    .adst_usrc,.udst_usrc
+
+  ; ^land
+  .adst_asrc:
+    item movdqa,movdqa
+
+  .udst_asrc:
+    item movdqu,movdqa
+
+  .adst_usrc:
+    item movdqa,movdqu
+
+  .udst_usrc:
+    item movdqu,movdqu
 
 }
 
