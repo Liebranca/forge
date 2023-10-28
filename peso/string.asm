@@ -14,6 +14,7 @@
 
 library ARPATH '/forge/'
   use '.asm' peso::array
+  use '.asm' peso::memcmp
 
 library.import
 
@@ -22,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -103,6 +104,28 @@ reg.new string.insert_req
 reg.end
 
 ; ---   *   ---   *   ---
+; identify arraywraps/raw string
+
+macro string.get_type {
+
+  ; chk src is raw string
+  or  r8,$00
+  jnz @f
+
+  ; ^src is array wraps
+  mov r8d,dword [@other.top]
+  mov rsi,qword [@other.buff]
+
+
+  @@:
+
+  ; save tmp
+  mov dword [@ctx.total],r8d
+  mov qword [@ctx.head],rdi
+
+}
+
+; ---   *   ---   *   ---
 ; common routine to cat/lcat
 
 proc.new string.insert_prologue
@@ -114,28 +137,16 @@ proc.lis string.insert_req ctx r11
 
   proc.enter
 
-  ; chk src is raw string
-  or  r8,$00
-  jnz .loop_beg
+  ; load req
+  string.get_type
 
-  ; ^src is array wraps
-  mov r8d,dword [@other.top]
-  mov rsi,qword [@other.buff]
+  ; chk src fits in dst
+  push rsi
+  mov  esi,r8d
 
+  call array.resize_chk
 
-  ; save tmp
-  .loop_beg:
-
-    mov dword [@ctx.total],r8d
-    mov qword [@ctx.head],rdi
-
-    ; get buff
-    push rsi
-    mov  esi,r8d
-
-    call array.resize_chk
-
-    pop  rsi
+  pop  rsi
 
 
   ; cleanup and give
@@ -143,14 +154,38 @@ proc.lis string.insert_req ctx r11
   ret
 
 ; ---   *   ---   *   ---
+; insertion+update top
+
+macro string.insert_epilogue {
+
+  mov  r10w,smX.CDEREF
+  call memcpy
+
+  ; grow own top
+  mov r8d,dword [@ctx.total]
+  mov @self,qword [@ctx.head]
+
+  add dword [@self.top],r8d
+
+}
+
+; ---   *   ---   *   ---
+; insert/compare proto
+
+macro string.sigt.insert {
+
+  proc.stk string.insert_req ctx
+
+  proc.lis array.head self  rdi
+  proc.lis array.head other rsi
+
+}
+
+; ---   *   ---   *   ---
 ; add at end
 
 proc.new string.cat
-
-proc.stk string.insert_req ctx
-
-proc.lis array.head self  rdi
-proc.lis array.head other rsi
+string.sigt.insert
 
   proc.enter
 
@@ -165,25 +200,8 @@ proc.lis array.head other rsi
   mov rdi,qword [@self.buff]
   add rdi,rcx
 
-
-  ; iter until no chunks left
-  .loop_cpy:
-
-    mov  r10w,smX.CDEREF
-    call memcpy
-
-    ; ^go next
-    or r8d,$00
-    jg .loop_cpy
-
-
-  ; grow own top
-  .loop_end:
-
-    mov r8d,dword [@ctx.total]
-    mov @self,qword [@ctx.head]
-
-    add dword [@self.top],r8d
+  ; write
+  string.insert_epilogue
 
 
   ; cleanup and give
@@ -194,11 +212,7 @@ proc.lis array.head other rsi
 ; ^add at beg
 
 proc.new string.lcat
-
-proc.stk string.insert_req ctx
-
-proc.lis array.head self  rdi
-proc.lis array.head other rsi
+string.sigt.insert
 
   proc.enter
 
@@ -222,28 +236,48 @@ proc.lis array.head other rsi
   pop rsi
   pop r8
 
+  ; write
   mov rdi,[@self.buff]
+  string.insert_epilogue
 
-  ; iter until no chunks left
-  .loop_cpy:
-
-    mov  r10w,smX.CDEREF
-    call memcpy
-
-    ; ^go next
-    or r8d,$00
-    jg .loop_cpy
-
-
-  ; grow own top
-  .loop_end:
-
-    mov r8d,dword [@ctx.total]
-    mov @self,qword [@ctx.head]
-
-    add dword [@self.top],r8d
 
   ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; get A eq B
+
+proc.new string.cmp
+string.sigt.insert
+
+  proc.enter
+
+  ; load req
+  string.get_type
+
+
+  ; chk equal length
+  mov eax,dword [@self.top]
+  mov rcx,$01
+
+  ; ^on unequal, return fail
+  cmp    eax,r8d
+  cmovne rax,rcx
+  jne    .skip
+
+
+  ; run comparison
+  mov  rdi,[@self.buff]
+  mov  r9w,smX.CDEREF
+  mov  r10w,smX.CDEREF
+
+  call memcmp
+
+
+  ; cleanup and give
+  .skip:
+
   proc.leave
   ret
 

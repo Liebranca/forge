@@ -14,7 +14,7 @@
 
   TITLE     peso.memcmp
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,31 +30,58 @@ library.import
 
 proc.new memcmp
 
-  ; get branch
   proc.enter
+
+  xor  rax,rax
+  push r10
+  push r9
+
+
+  ; stop at first inequality
+  .chk_eq:
+    or  rax,$00
+    jnz .skip
+
+  ; see if bytes left
+  .chk_size:
+    pop r9
+    pop r10
+
+    cmp r8d,$00
+    jle .skip
+
+  ; get branch
   call smX.get_size
 
 ; ---   *   ---   *   ---
 ; ^for when you want to skip
 ; recalculating size!
 
-memcmp.direct:
+.direct:
 
-  xor rax,rax
-  cmp dl,$04
-  jge .is_struc
+  ; ^branch
+  push r10
+  push r9
+
+  cmp  dl,$04
+  jge  .is_struc
+
 
   ; i8-64 jmptab
-  smX.i_tab smX.i_eq,ret
+  smX.i_tab smX.i_eq,\
+  jmp .chk_size
 
   ; ^sse
   .is_struc:
     call memcmp.struc
-    ret
+    jmp  .chk_size
 
 
-  ; void
+  ; cleanup and give
+  .skip:
+
   proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; ^large mem struc
@@ -86,7 +113,7 @@ proc.stk memcmp.req dst
 ; ^for when you want to skip
 ; recalculating alignment!
 
-memcmp.struc.direct:
+.direct:
 
   ; save tmp
   push rbx

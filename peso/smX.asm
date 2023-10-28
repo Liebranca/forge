@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -31,9 +31,17 @@ library.import
   smX.CDEREF = $CDEF
 
 ; ---   *   ---   *   ---
+; GBL
+
+  List.new smX.sse_eq.foot
+  smX.sse_eq.has_foot equ 1
+
+; ---   *   ---   *   ---
 ; sse load register, write dst
 
-macro smX.sse_mov rX,offset,fdst,fsrc {
+macro smX.sse_mov \
+  rX,rY,offset,fdst,fsrc,_nullarg& {
+
   fsrc rX,xword [rsi+offset]
   fdst xword [rdi+offset],rX
 
@@ -73,19 +81,20 @@ macro smX.i_mov size,step,_nullarg& {
 ; ---   *   ---   *   ---
 ; sse compare equality proto
 
-macro smX.sse_eq rX,offset,fdst,fsrc,dst {
+macro smX.sse_eq rX,rY,offset,fdst,fsrc,dst {
 
-  ; ^load registers
+  ; load registers
   fdst rX,xword [rdi+offset]
-  fsrc xmm8,xword [rsi+offset]
+  fsrc rY,xword [rsi+offset]
 
-  ; ^chk equality, write dst
-  pxor   rX,xmm8
-  movdqu xword [dst+offset],rX
+  ; ^chk equality
+  pxor rX,rY
 
-  ; ^write to out
-  or rbx,qword [dst+offset]
-  or rbx,qword [dst+offset+8]
+  ; ^Q write out
+  smX.sse_eq.foot.push \
+    movdqu xword [dst+offset] '\,' rX,\
+    or     rbx '\,' qword [dst+offset+$00],\
+    or     rbx '\,' qword [dst+offset+$08]
 
 }
 
@@ -150,8 +159,10 @@ macro smX.sse_walk op,size,args& {
   local offset
 
   rem equ \
-    xmm0,xmm1,xmm2,xmm3,\
-    xmm4,xmm5,xmm6,xmm7
+    xmm0,xmm8,xmm1,xmm9,\
+    xmm2,xmm10,xmm3,xmm11,\
+    xmm4,xmm12,xmm5,xmm13,\
+    xmm6,xmm14,xmm7,xmm15
 
   offset equ $00
 
@@ -159,16 +170,24 @@ macro smX.sse_walk op,size,args& {
   ; ^walk register list
   rept size \{
 
-    match rX =, next , rem \\{
+    match rX =, rY =, next , rem \\{
 
       ; paste op [args]
-      op rX,offset,args
+      op rX,rY,offset,args
 
       ; ^go next
       offset equ offset+$10
       rem    equ next
 
     \\}
+
+  \}
+
+
+  ; append footer if present
+  match =1 , op#.has_foot \{
+    op#.foot
+    op#.foot.clear
 
   \}
 

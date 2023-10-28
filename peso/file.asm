@@ -131,10 +131,6 @@ proc.new sow
     mov r10w,smX.CDEREF
     call memcpy
 
-    ; ^repeat on pending
-    or  r8d,$00
-    jg .cpy
-
     ; ^restart
     or r9d,$00
     jg .chk_size

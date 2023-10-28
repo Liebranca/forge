@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,30 +30,47 @@ library.import
 
 proc.new memcpy
 
-  ; get branch
   proc.enter
+  push r10
+
+  ; see if bytes left
+  .chk_size:
+    pop r10
+
+    cmp r8d,$00
+    jle .skip
+
+  ; get branch
   call smX.get_size
 
 ; ---   *   ---   *   ---
 ; ^for when you want to skip
 ; recalculating size!
 
-memcpy.direct:
+.direct:
 
-  cmp dl,$04
-  jge .is_struc
+  ; ^branch
+  push r10
+
+  cmp  dl,$04
+  jge  .is_struc
+
 
   ; i8-64 jmptab
-  smX.i_tab smX.i_mov,ret
+  smX.i_tab smX.i_mov,\
+  jmp .chk_size
 
   ; ^sse
   .is_struc:
     call memcpy.struc
-    ret
+    jmp  .chk_size
 
 
-  ; void
+  ; cleanup and give
+  .skip:
+
   proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; ^further branching accto
@@ -69,7 +86,7 @@ proc.new memcpy.struc
 ; ^for when you want to skip
 ; recalculating alignment!
 
-memcpy.struc.direct:
+.direct:
 
   ; branch accto step
   mov r10d,ecx

@@ -209,8 +209,14 @@ macro List.new name {
   define name#.m_list
   define name#.m_len
 
-  macro name#.push item \{
+  macro name#.push item& \{
     List.push name#.m_list,item
+    name#.m_len equ name#.m_len + 1
+
+  \}
+
+  macro name#.unshift item& \{
+    List.unshift name#.m_list,item
     name#.m_len equ name#.m_len + 1
 
   \}
@@ -226,10 +232,42 @@ macro List.new name {
 
   \}
 
+  macro name#.clear \{
+    name#.m_list equ
+    name#.m_len  equ 0
+
+  \}
+
   macro name#.npaste \{
 
     local dst
-    macro inner [item] \\{forward item\\}
+
+    macro inner [item] \\{
+
+      forward
+
+        local final
+        local ok
+
+        ok equ 0
+
+        match s0 '\,' s1 , item \\\{
+          final equ s0,s1
+          ok    equ 1
+
+        \\\}
+
+        match =0 , ok \\\{
+          final equ item
+
+        \\\}
+
+        match any , final \\\{
+          any
+
+        \\\}
+
+    \\}
 
     name#.cflatten dst
     match any,dst \\{inner any\\}
