@@ -95,6 +95,17 @@ proc.lis array.head self rax
 string.del=array.del
 
 ; ---   *   ---   *   ---
+; ^bat
+
+macro string.bdel [item] {
+
+  forward
+    mov  rdi,item
+    call string.del
+
+}
+
+; ---   *   ---   *   ---
 ; array cat request
 
 reg.new string.insert_req
@@ -182,6 +193,29 @@ macro string.sigt.insert {
 }
 
 ; ---   *   ---   *   ---
+; overwrite
+
+proc.new string.set
+proc.lis array.head self rdi
+
+macro string.set.inline {
+
+  proc.enter
+  mov dword [@self.top],$00
+
+  call string.cat
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline string.set
+  ret
+
+
+; ---   *   ---   *   ---
 ; add at end
 
 proc.new string.cat
@@ -248,7 +282,7 @@ string.sigt.insert
 ; ---   *   ---   *   ---
 ; get A eq B
 
-proc.new string.cmp
+proc.new string.eq
 string.sigt.insert
 
   proc.enter
@@ -272,7 +306,45 @@ string.sigt.insert
   mov  r9w,smX.CDEREF
   mov  r10w,smX.CDEREF
 
-  call memcmp
+  call memeq
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; get N bytes of A eq B
+
+proc.new string.eq_n
+string.sigt.insert
+
+  proc.enter
+
+  ; load req
+  push r9
+  string.get_type
+
+
+  ; chk ge length
+  mov eax,dword [@self.top]
+  mov rcx,$01
+
+  ; ^on less, return fail
+  cmp   r8d,eax
+  cmovl rax,rcx
+  jl    .skip
+
+
+  ; run comparison
+  pop  r8
+  mov  rdi,[@self.buff]
+  mov  r9w,smX.CDEREF
+  mov  r10w,smX.CDEREF
+
+  call memeq
 
 
   ; cleanup and give

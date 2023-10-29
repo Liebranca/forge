@@ -113,7 +113,7 @@ macro smX.i_eq size,step,_nullarg& {
 
   ; get scratch
   local rZ
-  smX.i_sized_reg rZ,a,size
+  smX.i_sized_reg rZ,b,size
 
   ; save tmp
   push rsi
@@ -298,7 +298,110 @@ macro smX.i_sized_reg dst,name,size {
 }
 
 ; ---   *   ---   *   ---
-; ^alloc register,step from
+; (WIP) i8-64 save,call,restore
+
+macro smX.i_scry F,arg& {
+
+  ; get arg registers
+  local avail
+  avail equ di,si,d,r10,r8,r9
+
+  ; build list from args
+  local list
+  local len
+
+  ; ^roll
+  match any,arg \{
+    List.from list,len,any
+
+  \}
+
+
+  ; Qs for save/restore
+  List.new smX.i_scry.setup
+  List.new smX.i_scry.undo
+
+
+  ; alloc registers
+  rept len \{
+
+    local elem
+    local pX
+    local rX
+
+    rX equ
+    pX equ
+
+    ; get register
+    match cur =, next , avail \\{
+
+      avail equ next
+      rX    equ cur
+
+      smX.i_sized_reg pX,cur,qword
+
+    \\}
+
+
+    ; get value
+    elem equ
+    List.shift list,elem
+
+    ; ^unroll
+    local ok
+    ok equ 0
+
+    ; ^handle casting+deref
+    match dst =** size value , rX elem \\{
+
+      smX.i_sized_reg elem,dst,size
+      elem equ mov elem '\,' size [value]
+
+      ok equ 1
+
+    \\}
+
+    ; ^handle casting
+    match =0 dst =* size value , ok rX elem \\{
+
+      smX.i_sized_reg elem,dst,size
+      elem equ mov elem '\,' value
+
+      ok equ 1
+
+    \\}
+
+    ; ^qword v
+    match =0 value , ok elem \\{
+      elem equ mov pX '\,' value
+
+    \\}
+
+
+    ; ^save tmp and overwrite
+    match any,pX \{
+
+      smX.i_scry.setup.unshift \
+        push pX,\
+        elem
+
+      smX.i_scry.undo.push pop pX
+
+    \}
+
+  \}
+
+
+  ; ^exec all
+  smX.i_scry.setup
+  call F
+
+  smX.i_scry.undo
+
+}
+
+; ---   *   ---   *   ---
+; alloc [register,step] from
 ; size keyword
 
 macro smX.i_walk op,size,args& {

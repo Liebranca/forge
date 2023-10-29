@@ -28,19 +28,25 @@ library.import
 ; ---   *   ---   *   ---
 ; *data eq *data
 
-proc.new memcmp
+proc.new memeq
 
   proc.enter
 
-  xor  rax,rax
   push r10
   push r9
+  push rbx
+
+  xor  rbx,rbx
 
 
   ; stop at first inequality
   .chk_eq:
+
+    mov rax,rbx
+    pop rbx
+
     or  rax,$00
-    jnz .skip
+    jnz .skip_a
 
   ; see if bytes left
   .chk_size:
@@ -48,7 +54,7 @@ proc.new memcmp
     pop r10
 
     cmp r8d,$00
-    jle .skip
+    jle .skip_b
 
   ; get branch
   call smX.get_size
@@ -62,6 +68,7 @@ proc.new memcmp
   ; ^branch
   push r10
   push r9
+  push rbx
 
   cmp  dl,$04
   jge  .is_struc
@@ -69,16 +76,23 @@ proc.new memcmp
 
   ; i8-64 jmptab
   smX.i_tab smX.i_eq,\
-  jmp .chk_size
+  jmp .chk_eq
 
   ; ^sse
   .is_struc:
-    call memcmp.struc
-    jmp  .chk_size
+    call memeq.struc
+    jmp  .chk_eq
 
 
   ; cleanup and give
-  .skip:
+  .skip_a:
+    pop r9
+    pop r10
+
+  .skip_b:
+    mov    rcx,$01
+    or     rax,$00
+    cmovnz rax,rcx
 
   proc.leave
   ret
@@ -86,7 +100,7 @@ proc.new memcmp
 ; ---   *   ---   *   ---
 ; ^large mem struc
 
-reg.new memcmp.req
+reg.new memeq.req
 
   my .l0 dq 2 dup $00
   my .l1 dq 2 dup $00
@@ -102,8 +116,8 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^large mem proc
 
-proc.new memcmp.struc
-proc.stk memcmp.req dst
+proc.new memeq.struc
+proc.stk memeq.req dst
 
   ; get branch
   proc.enter

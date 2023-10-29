@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -41,6 +41,7 @@ macro MAM.head name=crux {
   List.new MAM.atexit
 
 }
+
 ; ---   *   ---   *   ---
 ; dude, what *is* a SECTION?!
 

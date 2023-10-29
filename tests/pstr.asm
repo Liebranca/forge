@@ -13,7 +13,7 @@ MAM.head
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::string
+  use '.asm' peso::re
 
 library.import
 
@@ -185,9 +185,27 @@ proc.stk xword s3
   mov  rsi,qword [@s1]
   xor  r8,r8
 
-  call string.cmp
+  call string.eq
+  call eq_dbout
 
-  ; ^notify
+  ; ^release
+  mov  rdi,qword [@s0]
+  call string.del
+
+  mov  rdi,qword [@s1]
+  call string.del
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; string match dbout
+
+proc.new eq_dbout
+
+  proc.enter
+
   constr.new me_00,"EQUAL",$0A
   constr.new me_01,"!EQUAL",$0A
 
@@ -202,16 +220,52 @@ proc.stk xword s3
   mov rdi,me_01
   mov rsi,me_01.length
 
+
   ; ^write
   @@:call sow
 
+  ; cleanup and give
+  proc.leave
+  ret
 
-  ; ^release
-  mov  rdi,qword [@s0]
-  call string.del
+; ---   *   ---   *   ---
 
-  mov  rdi,qword [@s1]
-  call string.del
+proc.new test_04
+
+proc.stk qword  s0
+proc.stk qword  s1
+proc.stk re.pat pat
+
+  proc.enter
+
+  ; make ice
+  string.from "$!$!",$0A
+  mov qword [@s0],rax
+
+  string.from "$!"
+  mov qword [@s1],rax
+
+
+  ; make pattern
+  lea    rdi,[@pat]
+  lea    rsi,[@s1]
+  mov    r8w,$02
+  mov    r9w,$04
+  mov    dl,re.SUB
+
+  inline re.new_pat
+
+  ; ^match against
+  lea rdi,qword [@pat]
+  mov rsi,qword [@s0]
+
+  call re.match_pat
+  call eq_dbout
+
+  ; release
+  string.bdel \
+    qword [@s1],\
+    qword [@s0]
 
   ; cleanup and give
   proc.leave
@@ -221,8 +275,8 @@ proc.stk xword s3
 ; entry
 
 proc.new crux
-proc.stk xword s0
-proc.stk xword s1
+;proc.stk xword s0
+;proc.stk xword s1
 
   proc.enter
 
@@ -230,7 +284,9 @@ proc.stk xword s1
 ;  call test_01
 ;  call test_02
 
-  call test_03
+;  call test_03
+
+  call test_04
 
   ; cleanup and give
   proc.leave
