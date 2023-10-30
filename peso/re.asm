@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,6 +38,9 @@ library.import
   ; ^specs
   re.NEG  = $04
   re.FLAG = $04
+
+  ; match repeat signal
+  re.REMATCH = $9E4B
 
 ; ---   *   ---   *   ---
 ; pattern struc
@@ -91,6 +94,8 @@ macro re.sigt.match_pat {
 ; ^attempt (sub)pattern match
 
 proc.new re.match_pat
+proc.cpr rbx
+
 re.sigt.match_pat
 
   proc.enter
@@ -120,7 +125,6 @@ re.sigt.match_pat
   ; ^exec
   .tail:
     call rax
-    xor  rax,$01
 
   ; cleanup and give
   proc.leave
@@ -133,76 +137,39 @@ proc.new re.match_sub
 re.sigt.match_pat
 
 proc.stk word cnt
-proc.stk word out
 
   proc.enter
 
   ; clear stk
-  mov word [@out],$00
   mov word [@cnt],$00
 
 
   ; compare substr to src
   .repeat:
-  push @self
 
-  mov  rdi,qword [@self.data]
-  mov  rdi,qword [rdi]
-  mov  r9d,dword [rdi+array.head.top]
+    push @self
 
-  xor  r8,r8
-  mov  r8w,word [@cnt]
-  imul r8w,r9w
+    mov  rdi,qword [@self.data]
+    mov  rdi,qword [rdi]
+    mov  r9d,dword [rdi+array.head.top]
 
-  call string.eq_n
-  xor  al,$01
+    xor  r8,r8
+    mov  r8w,word [@cnt]
+    imul r8w,r9w
+
+    call string.eq_n
+    xor  al,$01
+
 
   ; ^chk result
-  pop @self
+  pop  @self
+  lea  rbx,[@cnt]
 
+  call re.chk_match
 
-  ; get specs
-  mov dl,byte [@self.type]
-  and dl,re.FLAG
-
-  ; ^flip on negative pattern
-  mov   cl,$00
-  cmp   dl,re.NEG
-  cmove cx,dx
-
-  shr   cl,$02
-  xor   al,cl
-
-  ; end on fail
-  or word [@out],ax
-  or ax,$00
-  jz .skip
-
-
-  ; chk cnt to [min,max]
-  mov cx,word [@cnt]
-  add cx,ax
-  mov word [@cnt],cx
-
-  ; ^repeat on less than either
-  mov dx,word [@self.min]
-  cmp cx,dx
-  jl  .repeat
-
-  mov dx,word [@self.max]
-  cmp cx,dx
-  jl  .repeat
-
-
-  ; fail on less than min
-  .skip:
-
-    xor    ax,ax
-    mov    dx,word [@cnt]
-    mov    cx,word [@self.min]
-
-    cmp    dx,cx
-    cmovge ax,word [@out]
+  ; ^loop on signal
+  cmp bx,re.REMATCH
+  je  .repeat
 
 
   ; cleanup and give
@@ -236,5 +203,67 @@ re.sigt.match_pat
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; chk result of match attempt
+
+proc.new re.chk_match
+
+proc.lis re.pat self rdi
+proc.lis qword  cnt  rbx
+
+  proc.enter
+
+  ; get specs
+  mov dl,byte [@self.type]
+  and dl,re.FLAG
+
+  ; ^flip on negative pattern
+  mov   cl,$00
+  cmp   dl,re.NEG
+  cmove cx,dx
+
+  shr   cl,$02
+  xor   al,cl
+
+  ; end on fail
+  or ax,$00
+  jz .skip
+
+
+  ; chk cnt to [min,max]
+  mov cx,word [@cnt]
+  add cx,ax
+  mov word [@cnt],cx
+
+  ; ^repeat on less than either
+  mov dx,word [@self.min]
+  cmp cx,dx
+  jl  .repeat
+
+  mov dx,word [@self.max]
+  cmp cx,dx
+  jl  .repeat
+
+
+  ; fail on less than min
+  .skip:
+
+    xor    ax,ax
+    mov    dx,word [@cnt]
+    mov    cx,word [@self.min]
+
+    cmp    dx,cx
+    cmovge ax,dx
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+  ; ^continue match
+  .repeat:
+    mov bx,re.REMATCH
+    ret
 
 ; ---   *   ---   *   ---

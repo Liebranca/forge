@@ -186,6 +186,7 @@ proc.stk xword s3
   xor  r8,r8
 
   call string.eq
+  xor  rax,$01
   call eq_dbout
 
   ; ^release
@@ -215,7 +216,7 @@ proc.new eq_dbout
 
   ; A ne B
   or  rax,$00
-  je  @f
+  jnz @f
 
   mov rdi,me_01
   mov rsi,me_01.length
@@ -283,7 +284,6 @@ proc.new crux
 ;  call test_00
 ;  call test_01
 ;  call test_02
-
 ;  call test_03
 
   call test_04

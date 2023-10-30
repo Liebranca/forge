@@ -70,6 +70,7 @@ proc.new memeq
   push r9
   push rbx
 
+  xor  rbx,rbx
   cmp  dl,$04
   jge  .is_struc
 
@@ -80,7 +81,10 @@ proc.new memeq
 
   ; ^sse
   .is_struc:
+
     call memeq.struc
+
+    mov  rbx,rax
     jmp  .chk_eq
 
 
