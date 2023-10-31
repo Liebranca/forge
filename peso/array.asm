@@ -212,6 +212,44 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
+; ensure array is big enough
+; to hold new elem
+
+macro array.grow_proto {
+
+  push rsi
+  mov  esi,dword [@self.ezy]
+
+  call array.resize_chk
+
+  pop  rsi
+
+}
+
+; ---   *   ---   *   ---
+; push without insert
+
+proc.new array.grow
+proc.lis array.head self rdi
+
+  proc.enter
+  array.grow_proto
+
+  ; get [base,elem size,end]
+  mov rax,qword [@self.buff]
+  mov ecx,dword [@self.ezy]
+  mov edx,dword [@self.top]
+
+  ; ^set out to new,grow end
+  add rax,rdx
+  add dword [@self.top],ecx
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
 ; add element at end
 
 proc.new array.push
@@ -220,15 +258,7 @@ proc.cpr rbx
 proc.lis array.head self rdi
 
   proc.enter
-
-  ; get bounds
-  push rsi
-  mov  esi,dword [@self.ezy]
-
-  call array.resize_chk
-
-  pop  rsi
-
+  array.grow_proto
 
   ; get buff
   mov rbx,qword [@self.buff]

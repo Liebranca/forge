@@ -233,38 +233,46 @@ proc.new eq_dbout
 
 proc.new test_04
 
-proc.stk qword  s0
-proc.stk qword  s1
-proc.stk re.pat pat
+proc.stk qword s0
+proc.stk qword s1
+proc.stk qword s2
+
+proc.stk qword pat
 
   proc.enter
 
   ; make ice
-  string.from "$!$!",$0A
+  string.from "~$!",$0A
   mov qword [@s0],rax
 
-  string.from "$!"
+  string.from "~"
   mov qword [@s1],rax
 
+  string.from "$!"
+  mov qword [@s2],rax
 
-  ; make pattern
-  lea    rdi,[@pat]
-  lea    rsi,[@s1]
-  mov    r8w,$02
-  mov    r9w,$04
-  mov    dl,re.SUB
+  ; make pattern array
+  mov    rdi,$02
+  inline re.new
 
-  inline re.new_pat
+  mov    qword [@pat],rax
+
+  ; ^populate
+  mov rdi,qword [@pat]
+  re.new_pat [@s1],$01,$01,re.SUB or re.NEG
+  re.new_pat [@s2],$01,$04,re.SUB
 
   ; ^match against
-  lea rdi,qword [@pat]
+  mov rdi,qword [@pat]
   mov rsi,qword [@s0]
 
-  call re.match_pat
+  call re.match
   call eq_dbout
+
 
   ; release
   string.bdel \
+    qword [@s2],\
     qword [@s1],\
     qword [@s0]
 

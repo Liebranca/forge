@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -59,10 +59,12 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-proc.new re.new_pat
+EXESEG
+
+proc.new re.set_pat
 proc.lis re.pat self rdi
 
-macro re.new_pat.inline {
+macro re.set_pat.inline {
 
   proc.enter
 
@@ -78,24 +80,166 @@ macro re.new_pat.inline {
 }
 
   ; ^invoke and give
-  inline re.new_pat
+  inline re.set_pat
+  ret
+
+; ---   *   ---   *   ---
+; ^shorthand for adding pat
+; to array
+
+macro re.new_pat src,min,max,flg {
+
+  ; add space
+  call array.grow
+
+  ; ^write elem
+  lea rsi,src
+
+  mov qword [rax+re.pat.data],rsi
+  mov word [rax+re.pat.min],min
+  mov word [rax+re.pat.max],max
+  mov byte [rax+re.pat.type],flg
+
+}
+
+; ---   *   ---   *   ---
+; match ctx struc
+
+reg.new re.status
+
+  my .pos   dd $00
+  my .avail dd $00
+
+  my .cnt   dw $00
+
+reg.end
+
+; ---   *   ---   *   ---
+; make pattern array
+
+proc.new re.new
+macro re.new.inline {
+
+  proc.enter
+
+  ; make ice
+  mov  rsi,rdi
+  mov  rdi,sizeof.re.pat
+
+  call array.new
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline re.new
+  ret
+
+; ---   *   ---   *   ---
+; run through pattern array
+
+proc.new re.match
+
+proc.lis array.head self rdi
+proc.lis array.head sref rsi
+
+proc.stk re.status  cur
+proc.stk re.status  ctx
+
+proc.cpr rbx
+
+  proc.enter
+
+  ; clear chain status
+  mov ecx,dword [@sref.top]
+  mov dword [@ctx.avail],ecx
+  mov dword [@ctx.pos],$00
+  mov word [@ctx.cnt],$00
+
+  ; load elem struc addr
+  lea r11,[@cur]
+
+  ; load string addr
+  mov rsi,qword [@sref.buff]
+
+
+  ; get end of loop
+  .chk_size:
+
+    xor rbx,rbx
+
+    mov bx,word [@ctx.cnt]
+    mov ecx,dword [@self.top]
+
+    shl rbx,$04
+    cmp rbx,rcx
+
+    je  .skip
+
+
+  ; iter elems
+  .go_next:
+
+    ; clear elem status
+    mov ecx,dword [@ctx.avail]
+    mov dword [@cur.avail],ecx
+    mov dword [@cur.pos],$00
+    mov word [@cur.cnt],$00
+
+    ; save tmp
+    push @self
+
+    ; match against elem
+    xor  r9,r9
+    mov  rdi,qword [@self.buff]
+    mov  r9w,word [@ctx.cnt]
+    shl  r9,$04
+    add  rdi,r9
+
+    call re.match_pat
+
+    ; restore tmp
+    pop @self
+
+    ; TODO: rewind/skip conditions
+    ; stop on fail
+    or ax,$00
+    je .skip
+
+    ; update chain status
+    mov ecx,dword [@cur.pos]
+    add dword [@ctx.pos],ecx
+    sub dword [@ctx.avail],ecx
+
+    ; continue
+    inc word [@ctx.cnt]
+    jmp .chk_size
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
   ret
 
 ; ---   *   ---   *   ---
 ; match op siggy
 
 macro re.sigt.match_pat {
-  proc.lis re.pat     self rdi
-  proc.lis array.head sref rsi
+
+  proc.lis re.pat    self rdi
+  proc.lis qword     buff rsi
+
+  proc.lis re.status ctx  r11
 
 }
 
 ; ---   *   ---   *   ---
-; ^attempt (sub)pattern match
+; ^(sub)pattern match
 
 proc.new re.match_pat
-proc.cpr rbx
-
 re.sigt.match_pat
 
   proc.enter
@@ -136,13 +280,7 @@ re.sigt.match_pat
 proc.new re.match_sub
 re.sigt.match_pat
 
-proc.stk word cnt
-
   proc.enter
-
-  ; clear stk
-  mov word [@cnt],$00
-
 
   ; compare substr to src
   .repeat:
@@ -153,17 +291,20 @@ proc.stk word cnt
     mov  rdi,qword [rdi]
     mov  r9d,dword [rdi+array.head.top]
 
+    push r9
+
     xor  r8,r8
-    mov  r8w,word [@cnt]
-    imul r8w,r9w
+    mov  r8d,dword [@ctx.avail]
 
     call string.eq_n
     xor  al,$01
 
 
   ; ^chk result
+  pop  r9
   pop  @self
-  lea  rbx,[@cnt]
+  add  dword [@ctx.pos],r9d
+  sub  dword [@ctx.avail],r9d
 
   call re.chk_match
 
@@ -196,6 +337,8 @@ re.sigt.match_pat
 proc.new re.match_kls
 re.sigt.match_pat
 
+proc.lis re.status ctx r11
+
   proc.enter
 
   xor rax,rax
@@ -209,10 +352,12 @@ re.sigt.match_pat
 
 proc.new re.chk_match
 
-proc.lis re.pat self rdi
-proc.lis qword  cnt  rbx
+proc.lis re.pat    self rdi
+proc.lis re.status ctx  r11
 
   proc.enter
+
+  xor bx,bx
 
   ; get specs
   mov dl,byte [@self.type]
@@ -232,9 +377,9 @@ proc.lis qword  cnt  rbx
 
 
   ; chk cnt to [min,max]
-  mov cx,word [@cnt]
+  mov cx,word [@ctx.cnt]
   add cx,ax
-  mov word [@cnt],cx
+  mov word [@ctx.cnt],cx
 
   ; ^repeat on less than either
   mov dx,word [@self.min]
@@ -250,7 +395,7 @@ proc.lis qword  cnt  rbx
   .skip:
 
     xor    ax,ax
-    mov    dx,word [@cnt]
+    mov    dx,word [@ctx.cnt]
     mov    cx,word [@self.min]
 
     cmp    dx,cx
