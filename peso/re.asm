@@ -143,6 +143,8 @@ macro re.new.inline {
 proc.new re.match
 
 proc.lis array.head self rdi
+proc.lis re.pat     elem rdi
+
 proc.lis array.head sref rsi
 
 proc.stk re.status  cur
@@ -210,36 +212,62 @@ proc.stk qword      rew
 
     call re.match_pat
 
-    ; restore tmp
-    pop @self
-
-    ; TODO: rewind conditions
     ; stop on fail
     or  ax,$00
-    jne @f
+    jne .success
 
-    ; skip byte!
-    add dword [@ctx.pos],$01
-    sub dword [@ctx.avail],$01
+    mov r9,1
+
+  ; chk pattern specs
+  .chk_match:
+
+    xor rcx,rcx
+    mov cl,byte [@elem.type]
+    and cl,re.FLAG
+
+    ; ^return len on negative pattern
+    and cl,re.NEG
+    shr cl,$02
+    add r9,rcx
+
+  ; skip src byte
+  .step:
+
+    add dword [@ctx.pos],r9d
+    sub dword [@ctx.avail],r9d
 
     mov rsi,qword [@rew]
-    inc rsi
+    add rsi,r9
 
     mov qword [@rew],rsi
 
+    pop @self
     jmp .chk_src
 
-    @@:
 
-    ; update chain status
+  ; update chain status
+  .success:
+
     mov ecx,dword [@cur.pos]
     add dword [@ctx.pos],ecx
     sub dword [@ctx.avail],ecx
 
     mov qword [@rew],rsi
+    inc word [@ctx.cnt]
+
+
+    ; get specs
+    mov cl,byte [@elem.type]
+    and cl,re.FLAG
+
+    ; ^return len on negative pattern
+    neg r9
+    and cl,re.NEG
+    jnz .step
+
 
     ; continue
-    inc word [@ctx.cnt]
+    pop @self
     jmp .chk_src
 
 
