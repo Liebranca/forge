@@ -25,6 +25,7 @@ library.import
 
   VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
+
 ; ---   *   ---   *   ---
 ; make string from const
 

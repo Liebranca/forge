@@ -147,8 +147,7 @@ proc.lis array.head sref rsi
 
 proc.stk re.status  cur
 proc.stk re.status  ctx
-
-proc.cpr rbx
+proc.stk qword      rew
 
   proc.enter
 
@@ -163,18 +162,29 @@ proc.cpr rbx
 
   ; load string addr
   mov rsi,qword [@sref.buff]
+  mov qword [@rew],rsi
+
+
+  ; get end of string
+  .chk_src:
+
+    mov edx,dword [@ctx.avail]
+    cmp edx,$00
+
+    jg  .chk_size
+    jmp .skip
 
 
   ; get end of loop
   .chk_size:
 
-    xor rbx,rbx
+    xor rdx,rdx
 
-    mov bx,word [@ctx.cnt]
+    mov dx,word [@ctx.cnt]
     mov ecx,dword [@self.top]
 
-    shl rbx,$04
-    cmp rbx,rcx
+    shl rdx,$04
+    cmp rdx,rcx
 
     je  .skip
 
@@ -203,19 +213,34 @@ proc.cpr rbx
     ; restore tmp
     pop @self
 
-    ; TODO: rewind/skip conditions
+    ; TODO: rewind conditions
     ; stop on fail
-    or ax,$00
-    je .skip
+    or  ax,$00
+    jne @f
+
+    ; skip byte!
+    add dword [@ctx.pos],$01
+    sub dword [@ctx.avail],$01
+
+    mov rsi,qword [@rew]
+    inc rsi
+
+    mov qword [@rew],rsi
+
+    jmp .chk_src
+
+    @@:
 
     ; update chain status
     mov ecx,dword [@cur.pos]
     add dword [@ctx.pos],ecx
     sub dword [@ctx.avail],ecx
 
+    mov qword [@rew],rsi
+
     ; continue
     inc word [@ctx.cnt]
-    jmp .chk_size
+    jmp .chk_src
 
 
   ; cleanup and give

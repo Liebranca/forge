@@ -242,7 +242,7 @@ proc.stk qword pat
   proc.enter
 
   ; make ice
-  string.from "~$!",$0A
+  string.from "~~$!",$0A
   mov qword [@s0],rax
 
   string.from "~"
