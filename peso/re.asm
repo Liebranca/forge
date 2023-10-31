@@ -155,6 +155,8 @@ proc.stk qword      rew
 
   ; clear chain status
   mov ecx,dword [@sref.top]
+  dec ecx
+
   mov dword [@ctx.avail],ecx
   mov dword [@ctx.pos],$00
   mov word [@ctx.cnt],$00
@@ -346,20 +348,31 @@ re.sigt.match_pat
 
     push r9
 
+    ; read up to avail bytes
     xor  r8,r8
     mov  r8d,dword [@ctx.avail]
 
+    ; ^skip on blank
+    mov  al,$01
+    cmp  r8d,r9d
+    jl   @f
+
     call string.eq_n
-    xor  al,$01
+    jmp  .chk_match
+
+    @@:
+
+    add  rsi,r9
 
 
   ; ^chk result
-  pop  r9
-  pop  @self
-  add  dword [@ctx.pos],r9d
-  sub  dword [@ctx.avail],r9d
+  .chk_match:
 
-  call re.chk_match
+    xor  al,$01
+    pop  r9
+    pop  @self
+
+    call re.chk_match
 
   ; ^loop on signal
   cmp bx,re.REMATCH
@@ -424,9 +437,24 @@ proc.lis re.status ctx  r11
   shr   cl,$02
   xor   al,cl
 
+
+  ; go next/rewind
+  mov r8,r9
+  or  ax,$00
+  jnz @f
+
+  sub rsi,r8
+  neg r8
+
+  @@:
+
+  add dword [@ctx.pos],r8d
+  sub dword [@ctx.avail],r8d
+
+
   ; end on fail
-  or ax,$00
-  jz .skip
+  or  ax,$00
+  jz  .skip
 
 
   ; chk cnt to [min,max]

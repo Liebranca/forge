@@ -242,7 +242,7 @@ proc.stk qword pat
   proc.enter
 
   ; make ice
-  string.from "~$!",$0A
+  string.from "~$!"
   mov qword [@s0],rax
 
   string.from "~"
@@ -260,7 +260,8 @@ proc.stk qword pat
   ; ^populate
   mov rdi,qword [@pat]
   re.new_pat [@s1],$01,$01,re.SUB or re.NEG
-  re.new_pat [@s2],$01,$04,re.SUB
+  re.new_pat [@s2],$01,$02,re.SUB
+  re.new_pat [@s1],$01,$01,re.SUB or re.NEG
 
   ; ^match against
   mov rdi,qword [@pat]
