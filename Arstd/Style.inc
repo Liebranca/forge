@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -252,19 +252,58 @@ macro jmptab base,size,[item] {
 ; ---   *   ---   *   ---
 ; ^get idex from value
 
-macro lkptab name,size,A,B,[item] {
+macro lkptab name,size,[item] {
 
+  ; find [beg,end] in args
+  common
+    ._v.dA = $FFFF
+    ._v.dB = $0000
+
+  ; ^walk args
+  forward
+
+    local ok
+    local n
+
+    n  equ 0
+    ok equ 0
+
+    ; item is [key,value]
+    match key ===> value , item \{
+      ._v.n = key
+      ok equ 1
+
+    \}
+
+    ; ^item is plain idex
+    match =0 key , ok item \{
+      ._v.n = key
+
+    \}
+
+
+    ; get new [beg,end]
+    if ._v.n < ._v.dA
+      ._v.dA = ._v.n
+
+    end if
+
+    if ._v.n > ._v.dB
+      ._v.dB = ._v.n
+
+    end if
+
+
+  ; spawn table
   common
 
-    ; indirection
-    local rX
-
     ; get size-variant of A register
+    local rX
     i_sized_reg rX,a,size
 
     ; ^make getter
     macro name#.fet z \{
-      mov rX,size [name+z-A]
+      mov rX,size [name+z-._v.dA]
 
     \}
 
@@ -281,7 +320,7 @@ macro lkptab name,size,A,B,[item] {
     local y
 
     step equ sizeof.#size
-    len  equ (B-A) * step
+    len  equ ((._v.dB-._v.dA)+step) * step
     y    equ 0
 
     ; ^reserve
@@ -300,7 +339,7 @@ macro lkptab name,size,A,B,[item] {
 
     ; write special value
     match key ===> value , item \{
-      x  equ key-A
+      x  equ key-._v.dA
       dy equ value
       ok equ 1
 
@@ -308,7 +347,7 @@ macro lkptab name,size,A,B,[item] {
 
     ; ^write plain idex
     match =0 key , ok item \{
-      x  equ key-A
+      x  equ key-._v.dA
       dy equ y
 
     \}
@@ -321,8 +360,9 @@ macro lkptab name,size,A,B,[item] {
 ; ---   *   ---   *   ---
 ; ^jmp-lkp hybrid
 
-macro hybtab base,name,size,A,B,[item] {
+macro hybtab base,name,size,[item] {
 
+  ; make new list for args
   common
 
     local list
@@ -331,6 +371,8 @@ macro hybtab base,name,size,A,B,[item] {
     list equ
     len  equ 0
 
+
+  ; ^modify args and write to list
   forward
 
     local ok
@@ -348,12 +390,13 @@ macro hybtab base,name,size,A,B,[item] {
 
     ; ^no F, no good
     match =0 key , ok item \{
-      out@err 'Value-less key in ',\
-        'jmptab ',name
+      out@err 'Value-less key',key,\
+      'in jmptab ',name,
 
     \}
 
 
+  ; ^use args to make lkptab
   common
 
     ; clairvoyance [see lkptab]
@@ -374,7 +417,7 @@ macro hybtab base,name,size,A,B,[item] {
 
     ; ^spawn ROM
     match any,flat \{
-      lkptab name,size,A,B,any
+      lkptab name,size,any
 
     \}
 
