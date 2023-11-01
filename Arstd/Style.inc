@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.0b
+  VERSION   v0.01.1b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -256,8 +256,11 @@ macro lkptab name,size,[item] {
 
   ; find [beg,end] in args
   common
-    ._v.dA = $FFFF
-    ._v.dB = $0000
+
+    name#._v.dA  = $FFFF
+    name#._v.dB  = $0000
+
+    name#._v.def = $00
 
   ; ^walk args
   forward
@@ -268,28 +271,35 @@ macro lkptab name,size,[item] {
     n  equ 0
     ok equ 0
 
+    ; item is default case
+    match =def ===> value , item \{
+      name#._v.def = value
+      ok equ 1
+
+    \}
+
     ; item is [key,value]
-    match key ===> value , item \{
-      ._v.n = key
+    match =0 key ===> value , ok item \{
+      name#._v.n = key
       ok equ 1
 
     \}
 
     ; ^item is plain idex
     match =0 key , ok item \{
-      ._v.n = key
+      name#._v.n = key
 
     \}
 
 
     ; get new [beg,end]
-    if ._v.n < ._v.dA
-      ._v.dA = ._v.n
+    if name#._v.n < name#._v.dA
+      name#._v.dA = name#._v.n
 
     end if
 
-    if ._v.n > ._v.dB
-      ._v.dB = ._v.n
+    if name#._v.n > name#._v.dB
+      name#._v.dB = name#._v.n
 
     end if
 
@@ -303,7 +313,7 @@ macro lkptab name,size,[item] {
 
     ; ^make getter
     macro name#.fet z \{
-      mov rX,size [name+z-._v.dA]
+      mov rX,size [name+z-name#._v.dA]
 
     \}
 
@@ -320,12 +330,15 @@ macro lkptab name,size,[item] {
     local y
 
     step equ sizeof.#size
-    len  equ ((._v.dB-._v.dA)+step) * step
-    y    equ 0
+    len  equ \
+      (name#._v.dB-name#._v.dA+1)\
+    * step
+
+    y equ 0
 
     ; ^reserve
     name#:
-      db len dup $00
+      db len dup name#._v.def
 
 
   ; insert values in ROM
@@ -337,9 +350,16 @@ macro lkptab name,size,[item] {
 
     ok equ 0
 
+    ; write nothing for default case
+    match =def ===> value , item \{
+      x  equ
+      ok equ 1
+
+    \}
+
     ; write special value
-    match key ===> value , item \{
-      x  equ key-._v.dA
+    match =0 key ===> value , ok item \{
+      x  equ key-name#._v.dA
       dy equ value
       ok equ 1
 
@@ -347,13 +367,16 @@ macro lkptab name,size,[item] {
 
     ; ^write plain idex
     match =0 key , ok item \{
-      x  equ key-._v.dA
+      x  equ key-name#._v.dA
       dy equ y
 
     \}
 
-    store size dy at name+x
-    y equ y+1
+    match any,x \{
+      store size dy at name+x
+      y equ y+1
+
+    \}
 
 }
 
