@@ -84,14 +84,14 @@ macro proc.get_id dst,prefix,mode=global {
 
 
   ; generate global label
-  match =global , mode \{
-    proc.get_gid dst,prefix
+  match =global n , mode PROC_GET_ID \{
+    proc.get_gid dst,prefix,n
 
   \}
 
   ; ^generate local
-  match =local , mode \{
-    proc.get_lid dst,prefix,PROC_GET_ID
+  match =local n , mode PROC_GET_ID \{
+    proc.get_lid dst,prefix,n
 
   \}
 
@@ -105,7 +105,7 @@ macro proc.get_id dst,prefix,mode=global {
 
 macro proc.get_gid dst,prefix,n {
 
-  match name id,hier.cproc n \{
+  match name id , hier.cproc n \{
     dst equ name\#.#prefix\#_\#id
 
   \}
@@ -117,7 +117,7 @@ macro proc.get_gid dst,prefix,n {
 
 macro proc.get_lid dst,prefix,n {
 
-  match id , n \{
+  match name id , hier.cproc n \{
     dst equ .#prefix\#_\#id
 
   \}

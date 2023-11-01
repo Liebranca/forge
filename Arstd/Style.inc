@@ -311,19 +311,6 @@ macro lkptab name,size,[item] {
     local rX
     i_sized_reg rX,a,size
 
-    ; ^make getter
-    macro name#.fet z \{
-      mov rX,size [name+z-name#._v.dA]
-
-    \}
-
-    ; clairvoyance [see hybtab]
-    if defined name#.jmp_CVY
-      name#.jmp
-
-    end if
-
-
     ; get ROM size
     local step
     local len
@@ -336,7 +323,22 @@ macro lkptab name,size,[item] {
 
     y equ 0
 
-    ; ^reserve
+
+    ; make getter
+    macro name#.fet z \{
+      mov rX,size [((z)*step+name)\
+        -(name#._v.dA*step)]
+
+    \}
+
+    ; clairvoyance [see hybtab]
+    if defined name#.jmp_CVY
+      name#.jmp
+
+    end if
+
+
+    ; reserve N bytes
     name#:
       db len dup name#._v.def
 
@@ -359,7 +361,7 @@ macro lkptab name,size,[item] {
 
     ; write special value
     match =0 key ===> value , ok item \{
-      x  equ key-name#._v.dA
+      x  equ ((key)*step)-(name#._v.dA*step)
       dy equ value
       ok equ 1
 
@@ -367,7 +369,7 @@ macro lkptab name,size,[item] {
 
     ; ^write plain idex
     match =0 key , ok item \{
-      x  equ key-name#._v.dA
+      x  equ ((key)*step)-(name#._v.dA*step)
       dy equ y
 
     \}
@@ -383,7 +385,7 @@ macro lkptab name,size,[item] {
 ; ---   *   ---   *   ---
 ; ^jmp-lkp hybrid
 
-macro hybtab base,name,size,[item] {
+macro hybtab name,size,[item] {
 
   ; make new list for args
   common
@@ -404,7 +406,7 @@ macro hybtab base,name,size,[item] {
     ; get [base to F] distance
     match key ===> value , item \{
 
-      List.push list,key => value-base
+      List.push list,key => value-name
 
       ok  equ 1
       len equ len+1
@@ -425,7 +427,7 @@ macro hybtab base,name,size,[item] {
     ; clairvoyance [see lkptab]
     macro name#.jmp \{
       name#.fet eax
-      lea rax,[base+rax]
+      lea rax,[name+rax]
       jmp rax
 
     \}

@@ -14,7 +14,7 @@
 
   TITLE     peso.memcmp
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -56,14 +56,10 @@ proc.new memeq
     cmp r8d,$00
     jle .skip_b
 
+
   ; get branch
-  call smX.get_size
+  inline smX.get_size
 
-; ---   *   ---   *   ---
-; ^for when you want to skip
-; recalculating size!
-
-.direct:
 
   ; ^branch
   push r10
@@ -125,13 +121,8 @@ proc.stk memeq.req dst
 
   ; get branch
   proc.enter
-  call smX.get_alignment
+  inline smX.get_alignment
 
-; ---   *   ---   *   ---
-; ^for when you want to skip
-; recalculating alignment!
-
-.direct:
 
   ; save tmp
   push rbx

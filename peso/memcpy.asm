@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -41,18 +41,10 @@ proc.new memcpy
     jle .skip
 
   ; get branch
-  call smX.get_size
+  inline smX.get_size
 
-; ---   *   ---   *   ---
-; ^for when you want to skip
-; recalculating size!
-
-.direct:
-
-  ; ^branch
   push r10
-
-  cmp  dl,$04
+  cmp  al,$04
   jge  .is_struc
 
 
@@ -80,15 +72,9 @@ proc.new memcpy.struc
 
   ; get branch
   proc.enter
-  call smX.get_alignment
+  inline smX.get_alignment
 
-; ---   *   ---   *   ---
-; ^for when you want to skip
-; recalculating alignment!
-
-.direct:
-
-  ; branch accto step
+  ; ^branch accto step
   mov r10d,ecx
   shr r10d,$04
   dec r10d

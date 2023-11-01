@@ -242,7 +242,7 @@ proc.stk qword pat
   proc.enter
 
   ; make ice
-  string.from "~$!"
+  string.from "$!"
   mov qword [@s0],rax
 
   string.from "~"
@@ -253,7 +253,7 @@ proc.stk qword pat
 
   ; make pattern array
   mov    rdi,$02
-  inline re.new
+  inline re.new_array
 
   mov    qword [@pat],rax
 

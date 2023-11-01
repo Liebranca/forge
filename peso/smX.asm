@@ -327,7 +327,7 @@ macro smX.gen_tab crux,size,\
   macro inner.get_branch dst,len,name2,[n] \{
 
     forward
-      List.push dst,name2\#.b\#n
+      List.push dst,len => name2\#.b\#n
       len equ len+1
 
   \}
@@ -368,7 +368,7 @@ macro smX.gen_tab crux,size,\
 
     ; ^make table
     match tab , branch.flat \\{
-      jmptab any,size,tab
+      hybtab any,size,tab
 
     \\}
 
@@ -429,25 +429,27 @@ macro smX.sse_tab2 op,eob,args& {
 
   ; individual entry
   macro item args2& \{
-    mov edx,r10d
+    mov eax,r10d
     smX.sse_tab op,foot,args2,args
 
   \}
 
   ; ^end-of for each
   macro foot \{
-    pop rdx
+    pop rax
     eob
 
   \}
 
 
   ; branch accto alignment
-  push rdx
+  push rax
 
-  jmptab .altab,word,\
-    .adst_asrc,.udst_asrc,\
-    .adst_usrc,.udst_usrc
+  hybtab .altab,word,\
+    $00 => .adst_asrc,\
+    $01 => .udst_asrc,\
+    $02 => .adst_usrc,\
+    $03 => .udst_usrc
 
   ; ^land
   .adst_asrc:
@@ -470,106 +472,74 @@ macro smX.sse_tab2 op,eob,args& {
 EXESEG
 
 proc.new smX.get_size
+macro smX.get_size.inline {
 
   proc.enter
 
-  ; size is prim
-  cmp r8d,$10
-  jl  .is_prim
+  mov edx,r8d
+
+  ; cap [size >= $10] to $10
+  mov    eax,$0F
+  not    eax
+  and    eax,edx
+  mov    eax,$10
+  cmovnz edx,eax
+
+  ; ^get [0-4] idex for size
+  and edx,$1F
+  bsr eax,edx
 
 
-  ; struc setter
-  .is_struc:
-    mov edx,$04
-    ret
-
-
-  ; prim setter
-  .is_prim:
-
-    ; fork to highest
-    cmp r8d,sizeof.dword+3
-    jg  .is_qword
-
-    ; fork to lower
-    cmp r8d,sizeof.dword
-    jl  .is_word
-
-    ; ^do and end
-    mov edx,$02
-    ret
-
-  ; ^lower
-  .is_word:
-
-    ; fork to lowest
-    cmp r8d,sizeof.word
-    jl  .is_byte
-
-    ; ^do and end
-    mov edx,$01
-    ret
-
-
-  ; ^highest, no cmp
-  .is_qword:
-    mov edx,$03
-    ret
-
-  ; ^lowest, no cmp
-  .is_byte:
-    mov edx,$00
-    ret
-
-
-  ; void
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline smX.get_size
+  ret
 
 ; ---   *   ---   *   ---
 ; map address to step,align
 
 proc.new smX.get_alignment
+macro smX.get_alignment.inline {
 
   proc.enter
 
   ; clamp chunk size to dline
-  mov   ecx,$80
-  cmp   ecx,r8d
-  cmovg ecx,r8d
-
-  ; ^unit-align
-  and cl,$F0
+  mov   ecx,r8d
+  and   ecx,$70
+  mov   eax,$80
+  cmovz ecx,eax
 
 
-  ; clear
-  xor eax,eax
-  xor edx,edx
-  xor r10d,r10d
-
-  ; get ptrs are aligned
-  mov al,dil
+  ; clear vars
+  mov edx,$01
   mov r10b,sil
+  mov al,dil
 
-  and al,$0F
-  and r10b,$0F
-
-  ; ^1 on dst unaligned
-  mov    dl,$01
-  or     al,$00
+  ; get $01 if A unaligned
+  and    eax,$0F
   cmovnz eax,edx
 
-  ; ^2 on src unaligned
-  mov    dl,$02
-  or     r10b,$00
+  ; ^get $02 if B unaligned
+  and    r10d,$0F
   cmovnz r10d,edx
+  shl    r10b,$01
 
   ; ^combine
-  or  al,r10b
-  mov edx,eax
+  or al,r10b
 
 
-  ; cleanup and give
+  ;cleanup
   proc.leave
+
+}
+
+
+  ; ^invoke and give
+  inline smX.get_alignment
   ret
 
 ; ---   *   ---   *   ---

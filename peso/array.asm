@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -33,11 +33,9 @@ reg.new array.head
   my .buff  dq $00
 
   my .grow  dd $00
-  my .mode  dd $00
-
   my .ezy   dd $00
-  my .cap   dd $00
 
+  my .cap   dd $00
   my .top   dd $00
 
 reg.end
@@ -92,14 +90,6 @@ proc.lis array.head self rbx
   mov dword [@self.grow],eax
 
 
-  ; get idex for generic ops
-  mov  r8d,dword [@self.ezy]
-  call smX.get_size
-
-  ; ^store
-  mov dword [@self.mode],edx
-
-
   ; reset out
   mov rax,@self
 
@@ -135,12 +125,11 @@ macro array.insert_proto dst {
 
   push @self
 
-  mov  edx,dword [@self.mode]
   mov  r8d,dword [@self.ezy]
   mov  rdi,dst
   xor  r10w,r10w
 
-  call memcpy.direct
+  call memcpy
 
   ; ^grow by elem size
   pop @self
@@ -298,7 +287,6 @@ proc.lis array.head self rdi
   lea rax,[rbx+rax]
 
   ; ^get value
-  mov  edx,dword [@self.mode]
   mov  r8d,dword [@self.ezy]
   mov  rdi,rsi
   mov  rsi,rax
@@ -318,10 +306,12 @@ proc.new array.get
   proc.enter
 
   ; make table
-  jmptab .tab,byte,\
-    .get_byte,.get_word,\
-    .get_dword,.get_qword,\
-    .get_struc
+  hybtab .tab,byte,\
+    $00 => .get_byte,\
+    $01 => .get_word,\
+    $02 => .get_dword,\
+    $03 => .get_qword,\
+    $04 => .get_struc
 
   ; ^land
   .get_byte:
@@ -448,7 +438,6 @@ proc.lis array.head self rdi
   sub dword [@self.top],r8d
 
   ; read beg
-  mov  edx,dword [@self.mode]
   mov  rdi,rsi
   mov  rsi,rax
 
@@ -470,7 +459,6 @@ proc.lis array.head self rdi
   ; get [N,beg,mode]
   mov r8d,dword [@self.ezy]
   mov r9d,dword [@self.top]
-  mov edx,dword [@self.mode]
 
   ; ^get [beg,beg+N]
   mov rsi,rbx
