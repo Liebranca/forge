@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -55,7 +55,7 @@ macro smX.i_mov size,step,_nullarg& {
 
   ; get src
   local rX
-  smX.i_sized_reg rX,si,size
+  i_sized_reg rX,si,size
 
   ; deref
   push  rsi
@@ -105,15 +105,15 @@ macro smX.i_eq size,step,_nullarg& {
 
   ; get src
   local rX
-  smX.i_sized_reg rX,si,size
+  i_sized_reg rX,si,size
 
   ; get dst
   local rY
-  smX.i_sized_reg rY,di,size
+  i_sized_reg rY,di,size
 
   ; get scratch
   local rZ
-  smX.i_sized_reg rZ,b,size
+  i_sized_reg rZ,b,size
 
   ; save tmp
   push rsi
@@ -193,109 +193,7 @@ macro smX.sse_walk op,size,args& {
 
 }
 
-; ---   *   ---   *   ---
-; map size keyword to value
 
-macro smX.i_rX_proto \
-  dst,size,b8,b16,b32,b64 {
-
-  dst equ
-
-  ; 8-bit
-  match =byte , size \{
-    dst equ b8
-
-  \}
-
-  ; ^16-bit
-  match =word , size \{
-    dst equ b16
-
-  \}
-
-  ; ^32-bit
-  match =dword , size \{
-    dst equ b32
-
-  \}
-
-  ; ^64-bit
-  match =qword , size \{
-    dst equ b64
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^map to register
-; (E/R) [name] (L/X)
-
-macro smX.i_sized_reg0 dst,name,size {
-  smX.i_rX_proto dst,size,\
-    name#l,name#x,e#name#x,r#name#x
-
-}
-
-; ---   *   ---   *   ---
-; ^(R) [name] (D/W/B)
-
-macro smX.i_sized_reg1 dst,name,size {
-  smX.i_rX_proto dst,size,\
-    name#b,name#w,name#d,name
-
-}
-
-; ---   *   ---   *   ---
-; ^(E/R) [name] (L)
-
-macro smX.i_sized_reg2 dst,name,size {
-  smX.i_rX_proto dst,size,\
-    name#l,name,e#name,r#name
-
-}
-
-; ---   *   ---   *   ---
-; ^sweetcrux
-
-macro smX.i_sized_reg dst,name,size {
-
-  local ok
-  ok equ 0
-
-  ; (E/R) [name] (L/X)
-  tokin ok,name,a,b,c,d
-  match =1 , ok \{
-    smX.i_sized_reg0 dst,name,size
-    ok equ 2
-
-  \}
-
-  ; (R) [name] (D/W/B)
-  match =0 , ok \{
-    tokin ok,name,\
-      r8,r9,r10,r11,r12,r13,r14,r15
-
-  \}
-
-  match =1 , ok \{
-    smX.i_sized_reg1 dst,name,size
-    ok equ 2
-
-  \}
-
-  ; (E/R) [name] (L)
-  match =0 , ok \{
-    tokin ok,name,di,si,bp,sp
-
-  \}
-
-  match =1 , ok \{
-    smX.i_sized_reg2 dst,name,size
-
-  \}
-
-}
 
 ; ---   *   ---   *   ---
 ; (WIP) i8-64 save,call,restore
@@ -338,7 +236,7 @@ macro smX.i_scry F,arg& {
       avail equ next
       rX    equ cur
 
-      smX.i_sized_reg pX,cur,qword
+      i_sized_reg pX,cur,qword
 
     \\}
 
@@ -354,7 +252,7 @@ macro smX.i_scry F,arg& {
     ; ^handle casting+deref
     match dst =** size value , rX elem \\{
 
-      smX.i_sized_reg elem,dst,size
+      i_sized_reg elem,dst,size
       elem equ mov elem '\,' size [value]
 
       ok equ 1
@@ -364,7 +262,7 @@ macro smX.i_scry F,arg& {
     ; ^handle casting
     match =0 dst =* size value , ok rX elem \\{
 
-      smX.i_sized_reg elem,dst,size
+      i_sized_reg elem,dst,size
       elem equ mov elem '\,' value
 
       ok equ 1

@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -117,8 +117,8 @@ reg.end
 ; ---   *   ---   *   ---
 ; make pattern array
 
-proc.new re.new
-macro re.new.inline {
+proc.new re.new_array
+macro re.new_array.inline {
 
   proc.enter
 
@@ -134,7 +134,46 @@ macro re.new.inline {
 }
 
   ; ^invoke and give
-  inline re.new
+  inline re.new_array
+  ret
+
+; ---   *   ---   *   ---
+; ^sweetcrux
+
+proc.new re.new
+proc.lis array.head src rdi
+
+  proc.enter
+
+  ; get [buff,length]
+  mov rsi,[@src.buff]
+  mov r8d,[@src.top]
+
+  ; get bytes left
+  .chk_size:
+    or r8d,$00
+    jz .tail
+
+  ; pre-pattern walk
+  .walk_00:
+
+    ; take next byte
+    mov al,byte [rsi]
+
+    dec r8d
+    inc rsi
+
+    ; ^branch accto value
+    
+
+    ; continue
+    jmp .chk_size
+
+
+  ; cleanup and give
+  .tail:
+
+  proc.leave
   ret
 
 ; ---   *   ---   *   ---
