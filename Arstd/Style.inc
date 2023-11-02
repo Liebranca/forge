@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.1b
+  VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -136,6 +136,14 @@ macro i_rX_proto \
 }
 
 ; ---   *   ---   *   ---
+; ^map to data decl
+
+macro i_sized_data dst,size {
+  i_rX_proto dst,size,db,dw,dd,dq
+
+}
+
+; ---   *   ---   *   ---
 ; ^map to register
 ; (E/R) [name] (L/X)
 
@@ -250,9 +258,9 @@ macro jmptab base,size,[item] {
 }
 
 ; ---   *   ---   *   ---
-; ^get idex from value
+; get memreq of lkptab
 
-macro lkptab name,size,[item] {
+macro lkptab.get_req name,size,[item] {
 
   ; find [beg,end] in args
   common
@@ -266,9 +274,6 @@ macro lkptab name,size,[item] {
   forward
 
     local ok
-    local n
-
-    n  equ 0
     ok equ 0
 
     ; item is default case
@@ -303,6 +308,13 @@ macro lkptab name,size,[item] {
 
     end if
 
+}
+
+; ---   *   ---   *   ---
+; similar to jmptab
+; gets idex from value
+
+macro lkptab name,size,[item] {
 
   ; spawn table
   common
@@ -316,10 +328,10 @@ macro lkptab name,size,[item] {
     local len
     local y
 
+    lkptab.get_req name,size,item
+
     step equ sizeof.#size
-    len  equ \
-      (name#._v.dB-name#._v.dA+1)\
-    * step
+    len  equ name#._v.dB-name#._v.dA+1
 
     y equ 0
 
@@ -339,8 +351,11 @@ macro lkptab name,size,[item] {
 
 
     ; reserve N bytes
+    local dX
+    i_sized_data dX,size
+
     name#:
-      db len dup name#._v.def
+      dX len dup name#._v.def
 
 
   ; insert values in ROM
@@ -447,6 +462,94 @@ macro hybtab name,size,[item] {
     \}
 
     restore name#.jmp_CVY
+
+}
+
+; ---   *   ---   *   ---
+; ^lets you define branches
+; as you code them
+
+macro branchtab name {
+
+  ; begin a virtual block
+  List.new ._v.bt.#name#.keys
+
+  virtual at $00
+  ._v.bt.#name#._vmem::
+
+
+  ; adds new entry to table
+  macro name#.branch vk \{
+
+    match value ===> key , vk \\{
+
+      ; [key,value] eqv for table
+      ._v.bt.#name#.keys.push vk
+
+      ; take virtual offset
+      key = $
+
+    \\}
+
+  \}
+
+
+  ; ^terminate table
+  macro name#.end \{
+
+
+    ; get byte count
+    ._v.bt.#name#._vmem.size=$
+    end virtual
+
+    ; ^get size of table entry
+    local size
+
+    if $FF < ._v.bt.#name#._vmem.size
+      size equ word
+
+    else
+      size equ byte
+
+    end if
+
+
+    ; get jmptab branches
+    local list
+    ._v.bt.#name#.keys.cflatten list
+
+    ; ^re-calculate labels
+    macro recalc_offset [item] \\{
+
+      ; virtual offset + start of real memory
+      match value ===> key , item \\\{
+        key = ._v.bt.#name#._rmem.base + key
+
+      \\\}
+
+    \\}
+
+
+    ; ^adjust labels and paste table
+    match any args, size list \\{
+      recalc_offset args
+      hybtab .#name,any,args
+
+    \\}
+
+
+    ; ^paste ct of vmem
+    ._v.bt.#name#._rmem.base=$
+    repeat ._v.bt.#name#._vmem.size
+
+      load ._v.bt.lb from \
+        ._v.bt.#name#._vmem:%-1
+
+      db ._v.bt.lb
+
+    end repeat
+
+  \}
 
 }
 

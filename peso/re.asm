@@ -43,6 +43,53 @@ library.import
   re.REMATCH = $9E4B
 
 ; ---   *   ---   *   ---
+; spawn specifier table
+; for regex cstruc
+
+macro re.spec_tab {
+
+  ; make arg list
+  local list
+  local flat
+  local len
+  local i
+
+  list equ
+  flat equ
+  len  equ 0
+
+  ; ^regular specs and default case
+  List.push list,\
+    $20 => .spec_non,\
+\
+    $21 => .spec_neg,\
+    $23 => .spec_max,\
+    $3C => .spec_min,\
+\
+    $2A => .spec_star,\
+    $2B => .spec_plus,\
+    $3F => .spec_quest,\
+\
+    $24 => .spec_sub,\
+    $25 => .spec_rng,\
+    $26 => .spec_kls,\
+\
+    $3D => .spec_end,\
+    def => .spec_fail
+
+  len equ len+$0C
+
+
+  ; unroll args
+  List.cflatten list,len,flat
+  match args,flat \{
+    hybtab .specs,byte,args
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; pattern struc
 
 reg.new re.pat
@@ -155,7 +202,7 @@ proc.lis array.head src rdi
     jz .tail
 
   ; pre-pattern walk
-  .walk_00:
+  .specs_walk:
 
     ; take next byte
     mov al,byte [rsi]
@@ -163,8 +210,15 @@ proc.lis array.head src rdi
     dec r8d
     inc rsi
 
+"$=hello \, !$=bye"
+
     ; ^branch accto value
-    
+    re.specs_tab
+
+
+    ; ^land
+    .set_neg:
+      
 
     ; continue
     jmp .chk_size
