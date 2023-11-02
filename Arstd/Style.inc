@@ -555,6 +555,7 @@ macro branchtab name,bounded?= {
 ;   branch, ie keep an array of labels
 ;
 ; * calculate the size of the virtual block,
+;   as well as the "promised" beg of real,
 ;   then use that to adjust the offsets
 ;   so they point to real addresses
 ;

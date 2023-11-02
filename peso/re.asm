@@ -43,53 +43,6 @@ library.import
   re.REMATCH = $9E4B
 
 ; ---   *   ---   *   ---
-; spawn specifier table
-; for regex cstruc
-
-macro re.spec_tab {
-
-  ; make arg list
-  local list
-  local flat
-  local len
-  local i
-
-  list equ
-  flat equ
-  len  equ 0
-
-  ; ^regular specs and default case
-  List.push list,\
-    $20 => .spec_non,\
-\
-    $21 => .spec_neg,\
-    $23 => .spec_max,\
-    $3C => .spec_min,\
-\
-    $2A => .spec_star,\
-    $2B => .spec_plus,\
-    $3F => .spec_quest,\
-\
-    $24 => .spec_sub,\
-    $25 => .spec_rng,\
-    $26 => .spec_kls,\
-\
-    $3D => .spec_end,\
-    def => .spec_fail
-
-  len equ len+$0C
-
-
-  ; unroll args
-  List.cflatten list,len,flat
-  match args,flat \{
-    hybtab .specs,byte,args
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
 ; pattern struc
 
 reg.new re.pat
@@ -188,21 +141,48 @@ macro re.new_array.inline {
 ; ^sweetcrux
 
 proc.new re.new
-proc.lis array.head src rdi
+
+proc.lis array.head src   rdi
+proc.lis array.head stash rdi
+
+proc.stk re.pat elem
 
   proc.enter
+  xor ax,ax
 
   ; get [buff,length]
   mov rsi,[@src.buff]
   mov r8d,[@src.top]
+
+  ; ^save tmp
+  push rsi
+  push r8d
+
+
+  ; make container
+  mov    rdi,$01
+  inline re.new_array
+
+  mov    @stash,rax
+
+  ; restore tmp
+  pop r8d
+  pop rsi
+
+
+  ; set elem defaults
+  mov word [@elem.min],$01
+  mov word [@elem.max],$01
+  mov byte [@elem.type],$00
 
   ; get bytes left
   .chk_size:
     or r8d,$00
     jz .tail
 
+
   ; pre-pattern walk
-  .specs_walk:
+  .walk:
 
     ; take next byte
     mov al,byte [rsi]
@@ -210,22 +190,59 @@ proc.lis array.head src rdi
     dec r8d
     inc rsi
 
-"$=hello \, !$=bye"
 
     ; ^branch accto value
-    re.specs_tab
+    branchtab re.spec
+
+    ; pattern is negative
+    re.spec.branch $21 => .spec_neg
+      or byte [@elem.type],re.NEG
+      jmp .chk_size
+
+    ; match none or once
+    re.spec.branch $3F => .spec_quest
+      mov word [@elem.min],$00
+      jmp .chk_size
+
+    ; match none or any
+    re.spec.branch $2A => .spec_star
+      mov word [@elem.min],$00
+      mov word [@elem.max],$FFFF
+      jmp .chk_size
+
+    ; match once or any
+    re.spec.branch $2B => .spec_plus
+      mov word [@elem.max],$FFFF
+      jmp .chk_size
 
 
-    ; ^land
-    .set_neg:
-      
+    ; pattern is value range
+    re.spec.branch $23 => .spec_rng
+      or byte [@elem.type],re.RNG
+      jmp .chk_size
 
-    ; continue
-    jmp .chk_size
+    ; pattern is character class
+    re.spec.branch $25 => .spec_kls
+      or byte [@elem.type],re.KLS
+      jmp .chk_size
+
+
+    ; terminate specifier section
+    re.spec.branch $3D => .spec_end
+      jmp .tail
+
+
+    ; blank entries to avoid a
+    ; bounded table
+    re.spec.branch $00 => .spec_non
+    re.spec.branch $FF => .spec_non
+    re.spec.branch def => .spec_non
+      jmp .chk_size
 
 
   ; cleanup and give
   .tail:
+    mov qword [@elem.data],rsi
 
   proc.leave
   ret
