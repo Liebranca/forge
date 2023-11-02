@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.2b
+  VERSION   v0.01.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -337,9 +337,43 @@ macro lkptab name,size,[item] {
 
 
     ; make getter
-    macro name#.fet z \{
+    macro name#.fet z,bounded= \{
+
+      match any,bounded \\{
+
+        ; save tmp
+        push r15
+        push r14
+
+        ; ^clear
+        xor r15b,r15b
+        mov r14b,$01
+
+        ; get clamping needed
+        cmp   z,name#._v.dB
+        cmovg r15d,r14d
+        cmp   z,name#._v.dA
+        cmovl r15d,r14d
+
+        ; ^give default value if so
+        mov    r14d,name#._v.def
+        test   r15b,r15b
+        cmovnz z,r14d
+
+        ; restore tmp
+        pop r14
+        pop r15
+
+        ; skip fetch if clamped
+        jnz name#._bounded
+
+      \\}
+
+      ; unbounded fetch is 1400% better
       mov rX,size [((z)*step+name)\
         -(name#._v.dA*step)]
+
+      name#._bounded:
 
     \}
 
@@ -397,6 +431,8 @@ macro lkptab name,size,[item] {
 
 }
 
+lkptab.bounded = 0
+
 ; ---   *   ---   *   ---
 ; ^jmp-lkp hybrid
 
@@ -441,7 +477,16 @@ macro hybtab name,size,[item] {
 
     ; clairvoyance [see lkptab]
     macro name#.jmp \{
-      name#.fet eax
+
+      if lkptab.bounded = 1
+        name#.fet eax,bounded
+
+      else
+        name#.fet eax
+
+      end if
+
+
       lea rax,[name+rax]
       jmp rax
 
@@ -469,7 +514,57 @@ macro hybtab name,size,[item] {
 ; ^lets you define branches
 ; as you code them
 
-macro branchtab name {
+macro branchtab name,bounded?= {
+
+; ---   *   ---   *   ---
+; NOTE:
+;
+; bounds-checked table fetches
+; are beyond terrible in terms
+; of codesize when compared to
+; an unbounded fetch, which is a
+; single instruction
+;
+; because of this, boundschecks
+; are never on by default
+;
+; i advice you only use this feature
+; when all alternatives suck harder
+
+  ._v.bt.#name#.bounded=0
+
+  match =bounded , bounded? \{
+    ._v.bt.#name#.bounded=1
+
+  \}
+
+; ---   *   ---   *   ---
+; NOTE:
+;
+; by the grace of God, this
+; method of byte-castling
+; from virtual data was
+; made clear to me from
+; a single glance.
+;
+; * force the entirety of the
+;   code to be defined within
+;   a virtual block starting at $00
+;
+; * take note of start offset for each
+;   branch, ie keep an array of labels
+;
+; * calculate the size of the virtual block,
+;   then use that to adjust the offsets
+;   so they point to real addresses
+;
+; * paste the lkp-jmp hybrid table from
+;   the array of labels [see hybtab]
+;
+; * paste the virtual data into the file,
+;   by way of load and declare, repeat
+;   times size of block
+
 
   ; begin a virtual block
   List.new ._v.bt.#name#.keys
@@ -533,7 +628,11 @@ macro branchtab name {
     ; ^adjust labels and paste table
     match any args, size list \\{
       recalc_offset args
+
+      lkptab.bounded=._v.bt.#name#.bounded
       hybtab .#name,any,args
+
+      lkptab.bounded=0
 
     \\}
 
