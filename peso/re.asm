@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -142,9 +142,9 @@ macro re.new_array.inline {
 
 proc.new re.new
 
-proc.lis array.head src   rdi
-proc.lis array.head stash rdi
+proc.lis array.head src rdi
 
+proc.stk qword  stash
 proc.stk re.pat elem
 
   proc.enter
@@ -156,19 +156,35 @@ proc.stk re.pat elem
 
   ; ^save tmp
   push rsi
-  push r8d
+  push r8
 
 
-  ; make container
-  mov    rdi,$01
-  inline re.new_array
-
-  mov    @stash,rax
+;  ; make container
+;  mov    rdi,$01
+;  inline re.new_array
+;
+;  mov    qword [@stash],rax
 
   ; restore tmp
-  pop r8d
+  pop r8
   pop rsi
 
+
+  ; read meta
+  lea  rdi,[@elem]
+  call re.read_meta
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; fill out re.pat metadata
+; from string
+
+proc.new re.read_meta
+proc.lis re.pat elem rdi
+
+  proc.enter
 
   ; set elem defaults
   mov word [@elem.min],$01
@@ -195,49 +211,50 @@ proc.stk re.pat elem
     branchtab re.spec
 
     ; pattern is negative
-    re.spec.branch $21 => .spec_neg
+    re.spec.branch $21 => .neg
       or byte [@elem.type],re.NEG
       jmp .chk_size
 
     ; match none or once
-    re.spec.branch $3F => .spec_quest
+    re.spec.branch $3F => .quest
       mov word [@elem.min],$00
       jmp .chk_size
 
     ; match none or any
-    re.spec.branch $2A => .spec_star
+    re.spec.branch $2A => .star
       mov word [@elem.min],$00
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
     ; match once or any
-    re.spec.branch $2B => .spec_plus
+    re.spec.branch $2B => .plus
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
 
     ; pattern is value range
-    re.spec.branch $23 => .spec_rng
+    re.spec.branch $23 => .rng
       or byte [@elem.type],re.RNG
       jmp .chk_size
 
     ; pattern is character class
-    re.spec.branch $25 => .spec_kls
+    re.spec.branch $25 => .kls
       or byte [@elem.type],re.KLS
       jmp .chk_size
 
 
     ; terminate specifier section
-    re.spec.branch $3D => .spec_end
+    re.spec.branch $3D => .end
       jmp .tail
-
 
     ; blank entries to avoid a
     ; bounded table
-    re.spec.branch $00 => .spec_non
-    re.spec.branch $FF => .spec_non
-    re.spec.branch def => .spec_non
+    re.spec.branch $00 => .non
+    re.spec.branch $FF => .non
+    re.spec.branch def => .non
       jmp .chk_size
+
+    re.spec.end
 
 
   ; cleanup and give

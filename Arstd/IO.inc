@@ -14,7 +14,7 @@
 
   TITLE     Arstd.IO
 
-  VERSION   v0.00.2a
+  VERSION   v0.00.3a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -129,6 +129,32 @@ macro module_info [name] {
       \}
 
     end if
+
+}
+
+; ---   *   ---   *   ---
+; display constant in hexn
+; adapted from fasm manual ;>
+
+macro hexsay N,bits {
+
+  local ._v.d
+
+  display '$'
+  repeat (bits)/4
+
+    ._v.d = \
+      '0' + (((N) \
+      shr ((bits)-(%*4))) and $0F)
+
+    if ._v.d > '9'
+      ._v.d = ._v.d + ('A'-'9'-1)
+
+    end if
+
+    display ._v.d
+
+  end repeat
 
 }
 

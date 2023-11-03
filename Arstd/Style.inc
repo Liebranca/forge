@@ -391,6 +391,8 @@ macro lkptab name,size,[item] {
     name#:
       dX len dup name#._v.def
 
+    name#._endof:
+
 
   ; insert values in ROM
   forward
@@ -457,7 +459,7 @@ macro hybtab name,size,[item] {
     ; get [base to F] distance
     match key ===> value , item \{
 
-      List.push list,key => value-name
+      List.push list,key => value-name#._endof
 
       ok  equ 1
       len equ len+1
@@ -487,7 +489,7 @@ macro hybtab name,size,[item] {
       end if
 
 
-      lea rax,[name+rax]
+      lea rax,[name#._endof+rax]
       jmp rax
 
     \}
@@ -583,7 +585,7 @@ macro branchtab name,bounded?= {
       ._v.bt.#name#.keys.push vk
 
       ; take virtual offset
-      key = $
+      key\\#._offset = $
 
     \\}
 
@@ -619,7 +621,8 @@ macro branchtab name,bounded?= {
 
       ; virtual offset + start of real memory
       match value ===> key , item \\\{
-        key = ._v.bt.#name#._rmem.base + key
+        key = ._v.bt.#name#._rmem.base \
+        + key\\\#._offset
 
       \\\}
 
@@ -628,6 +631,7 @@ macro branchtab name,bounded?= {
 
     ; ^adjust labels and paste table
     match any args, size list \\{
+
       recalc_offset args
 
       lkptab.bounded=._v.bt.#name#.bounded
