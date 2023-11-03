@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.3b
+  VERSION   v0.01.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -551,28 +551,34 @@ macro branchtab name,bounded?= {
 ;
 ; * force the entirety of the
 ;   code to be defined within
-;   a virtual block starting at $00
+;   a virtual block starting at a
+;   "promised" (initially undefined)
+;   offset
 ;
 ; * take note of start offset for each
-;   branch, ie keep an array of labels
+;   branch, making an array of labels
 ;
-; * calculate the size of the virtual block,
-;   as well as the "promised" beg of real,
-;   then use that to adjust the offsets
-;   so they point to real addresses
+; * paste a lkp-jmp hybrid table from
+;   this array [see hybtab]
 ;
-; * paste the lkp-jmp hybrid table from
-;   the array of labels [see hybtab]
+; * this by itself calculates the
+;   "promised" offset; now calculate
+;   the size of the virtual block
 ;
 ; * paste the virtual data into the file,
 ;   by way of load and declare, repeat
 ;   times size of block
+;
+;
+; and only one day later, further
+; simplifications were also
+; made clear, l7amdullah
 
 
   ; begin a virtual block
   List.new ._v.bt.#name#.keys
 
-  virtual at $00
+  virtual at .#name#._endof
   ._v.bt.#name#._vmem::
 
 
@@ -585,7 +591,7 @@ macro branchtab name,bounded?= {
       ._v.bt.#name#.keys.push vk
 
       ; take virtual offset
-      key\\#._offset = $
+      key = $
 
     \\}
 
@@ -597,7 +603,9 @@ macro branchtab name,bounded?= {
 
 
     ; get byte count
-    ._v.bt.#name#._vmem.size=$
+    ._v.bt.#name#._vmem.size=\
+      $-.#name#._endof
+
     end virtual
 
     ; ^get size of table entry
@@ -616,23 +624,8 @@ macro branchtab name,bounded?= {
     local list
     ._v.bt.#name#.keys.cflatten list
 
-    ; ^re-calculate labels
-    macro recalc_offset [item] \\{
-
-      ; virtual offset + start of real memory
-      match value ===> key , item \\\{
-        key = ._v.bt.#name#._rmem.base \
-        + key\\\#._offset
-
-      \\\}
-
-    \\}
-
-
-    ; ^adjust labels and paste table
+    ; ^paste table
     match any args, size list \\{
-
-      recalc_offset args
 
       lkptab.bounded=._v.bt.#name#.bounded
       hybtab .#name,any,args
@@ -647,7 +640,8 @@ macro branchtab name,bounded?= {
     repeat ._v.bt.#name#._vmem.size
 
       load ._v.bt.lb from \
-        ._v.bt.#name#._vmem:%-1
+        ._v.bt.#name#._vmem:\
+        ._v.bt.#name#._rmem.base+(%-1)
 
       db ._v.bt.lb
 

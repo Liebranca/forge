@@ -148,7 +148,6 @@ proc.stk qword  stash
 proc.stk re.pat elem
 
   proc.enter
-  xor ax,ax
 
   ; get [buff,length]
   mov rsi,[@src.buff]
@@ -193,14 +192,15 @@ proc.lis re.pat elem rdi
 
   ; get bytes left
   .chk_size:
-    or r8d,$00
-    jz .tail
+    test r8d,r8d
+    jz   .tail
 
 
   ; pre-pattern walk
   .walk:
 
     ; take next byte
+    xor eax,eax
     mov al,byte [rsi]
 
     dec r8d
@@ -212,7 +212,7 @@ proc.lis re.pat elem rdi
 
     ; pattern is negative
     re.spec.branch $21 => .neg
-      or byte [@elem.type],re.NEG
+      or  byte [@elem.type],re.NEG
       jmp .chk_size
 
     ; match none or once
@@ -234,12 +234,12 @@ proc.lis re.pat elem rdi
 
     ; pattern is value range
     re.spec.branch $23 => .rng
-      or byte [@elem.type],re.RNG
+      or  byte [@elem.type],re.RNG
       jmp .chk_size
 
     ; pattern is character class
     re.spec.branch $25 => .kls
-      or byte [@elem.type],re.KLS
+      or  byte [@elem.type],re.KLS
       jmp .chk_size
 
 
