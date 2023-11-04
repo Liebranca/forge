@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -48,6 +48,7 @@ library.import
 reg.new re.pat
 
   my .data dq $00
+  my .top  dw $00
 
   my .min  dw $00
   my .max  dw $00
@@ -186,6 +187,7 @@ proc.lis re.pat elem rdi
   proc.enter
 
   ; set elem defaults
+  mov word [@elem.top],$00
   mov word [@elem.min],$01
   mov word [@elem.max],$01
   mov byte [@elem.type],$00
@@ -193,10 +195,10 @@ proc.lis re.pat elem rdi
   ; get bytes left
   .chk_size:
     test r8d,r8d
-    jz   .tail
+    jz   .skip
 
 
-  ; pre-pattern walk
+  ; ^iter until terminator
   .walk:
 
     ; take next byte
@@ -211,41 +213,41 @@ proc.lis re.pat elem rdi
     branchtab re.spec
 
     ; pattern is negative
-    re.spec.branch $21 => .neg
+    re.spec.branch '!' => .neg
       or  byte [@elem.type],re.NEG
       jmp .chk_size
 
     ; match none or once
-    re.spec.branch $3F => .quest
+    re.spec.branch '?' => .quest
       mov word [@elem.min],$00
       jmp .chk_size
 
     ; match none or any
-    re.spec.branch $2A => .star
+    re.spec.branch '*' => .star
       mov word [@elem.min],$00
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
     ; match once or any
-    re.spec.branch $2B => .plus
+    re.spec.branch '+' => .plus
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
 
     ; pattern is value range
-    re.spec.branch $23 => .rng
+    re.spec.branch '#' => .rng
       or  byte [@elem.type],re.RNG
       jmp .chk_size
 
     ; pattern is character class
-    re.spec.branch $25 => .kls
+    re.spec.branch '%' => .kls
       or  byte [@elem.type],re.KLS
       jmp .chk_size
 
 
     ; terminate specifier section
-    re.spec.branch $3D => .end
-      jmp .tail
+    re.spec.branch '=' => .end
+      jmp .skip
 
     ; blank entries to avoid a
     ; bounded table
@@ -258,8 +260,123 @@ proc.lis re.pat elem rdi
 
 
   ; cleanup and give
-  .tail:
+  .skip:
     mov qword [@elem.data],rsi
+
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^fill out string data
+; used by pattern
+
+proc.new re.read_data
+proc.lis re.pat elem rdi
+
+  proc.enter
+
+  ; get top of dst string
+  lea rax,[rdx+array.head.buff]
+  lea ecx,dword [rdx+array.head.top]
+  add rax,rcx
+
+  mov qword [@elem.data],rax
+
+
+  ; get bytes left
+  xor r9w,r9w
+  xor r10b,r10b
+  .chk_size:
+    test r8d,r8d
+    jz   .skip
+
+  ; ^iter until terminator
+  .walk:
+
+    ; take next byte
+    xor eax,eax
+    mov al,byte [rsi]
+
+    dec r8d
+    inc rsi
+
+    ; set/unset escaping
+    test al,'\'
+    jne  @f
+
+    xor  r10b,$01
+    jmp  .chk_size
+
+    @@:
+
+    ; ^check current byte escaped
+    mov  cl,al
+
+    test r10b,r10b
+    jz   .nonscap
+
+    ; ^proc escaped
+    branchtab re.scap
+    re.scap.branch 's' => .scap_ws
+      mov al,$20
+      jmp .insert
+
+    re.scap.branch 'n' => .scap_nl
+      mov al,$0A
+      jmp .insert
+
+    re.scap.branch '0' => .scap_null
+      mov al,$00
+      jmp .insert
+
+    re.scap.branch def => .scap_non
+      mov al,cl
+
+    re.scap.end
+    jmp .insert
+
+
+    ; ^proc regular
+    .nonscap:
+
+    branchtab re.nscap
+    re.nscap.branch $00 => .nscap_null
+    re.nscap.branch $20 => .nscap_ws
+      jmp .chk_size
+
+    re.nscap.branch def => .nscap_non
+    re.nscap.branch $FF => .nscap_non
+      mov al,cl
+
+    re.nscap.end
+
+
+    ; write to data string
+    .insert:
+
+      inc  r9w
+
+      push rdi
+      push rsi
+      push r8
+      push rdx
+
+      mov  rdi,rdx
+      mov  sil,al
+
+      call array.push
+
+      pop  rdx
+      pop  r8
+      pop  rsi
+      pop  rdi
+
+      jmp  .chk_size
+
+
+  ; cleanup and give
+  .skip:
+    mov word [@elem.top],r9w
 
   proc.leave
   ret
