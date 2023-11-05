@@ -284,8 +284,8 @@ proc.lis array.head dst  rdx
   proc.enter
 
   ; get top of dst string
-  lea rax,[@dst.buff]
-  lea ecx,dword [@dst.top]
+  mov rax,qword [@dst.buff]
+  mov ecx,dword [@dst.top]
   add rax,rcx
 
   mov qword [@elem.data],rax
@@ -410,7 +410,6 @@ proc.stk qword      rew
 
   ; clear chain status
   mov ecx,dword [@sref.top]
-  dec ecx
 
   mov dword [@ctx.avail],ecx
   mov dword [@ctx.pos],$00
@@ -442,6 +441,7 @@ proc.stk qword      rew
     mov dx,word [@ctx.cnt]
     mov ecx,dword [@self.top]
 
+    inc rdx
     shl rdx,$04
     cmp rdx,rcx
 
@@ -464,16 +464,17 @@ proc.stk qword      rew
     xor  r9,r9
     mov  rdi,qword [@self.buff]
     mov  r9w,word [@ctx.cnt]
+    inc  r9
     shl  r9,$04
     add  rdi,r9
 
     call re.match_pat
 
     ; stop on fail
-    or  ax,$00
-    jne .success
+    test ax,ax
+    jne  .success
 
-    mov r9,1
+    mov  r9,1
 
   ; chk pattern specs
   .chk_match:
@@ -600,6 +601,7 @@ re.sigt.match_pat
     ; clear
     xor r8,r8
     xor r9,r9
+    xor rax,rax
 
     ; read up to avail bytes
     mov  r9w,word [@self.top]
@@ -701,12 +703,12 @@ proc.lis re.status ctx  r11
 
 
   ; go next/rewind
-  mov r8,r9
-  or  ax,$00
-  jnz @f
+  mov  r8,r9
+  test ax,ax
+  jnz  @f
 
-  sub rsi,r8
-  neg r8
+  sub  rsi,r8
+  xor  r8,r8
 
   @@:
 
@@ -715,8 +717,8 @@ proc.lis re.status ctx  r11
 
 
   ; end on fail
-  or  ax,$00
-  jz  .skip
+  test ax,ax
+  jz   .skip
 
 
   ; chk cnt to [min,max]

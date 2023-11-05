@@ -14,7 +14,7 @@
 
   TITLE     peso.memcmp
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -67,7 +67,7 @@ proc.new memeq
   push rbx
 
   xor  rbx,rbx
-  cmp  dl,$04
+  cmp  al,$04
   jge  .is_struc
 
 
@@ -91,7 +91,7 @@ proc.new memeq
 
   .skip_b:
     mov    rcx,$01
-    or     rax,$00
+    test   rax,rax
     cmovnz rax,rcx
 
   proc.leave
