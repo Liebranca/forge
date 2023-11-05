@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -58,52 +58,6 @@ reg.new re.pat
 reg.end
 
 ; ---   *   ---   *   ---
-; ^cstruc
-
-EXESEG
-
-proc.new re.set_pat
-proc.lis re.pat self rdi
-
-macro re.set_pat.inline {
-
-  proc.enter
-
-  ; fill out struc
-  mov qword [@self.data],rsi
-  mov word [@self.min],r8w
-  mov word [@self.max],r9w
-  mov byte [@self.type],dl
-
-  ; cleanup
-  proc.leave
-
-}
-
-  ; ^invoke and give
-  inline re.set_pat
-  ret
-
-; ---   *   ---   *   ---
-; ^shorthand for adding pat
-; to array
-
-macro re.new_pat src,min,max,flg {
-
-  ; add space
-  call array.grow
-
-  ; ^write elem
-  lea rsi,src
-
-  mov qword [rax+re.pat.data],rsi
-  mov word [rax+re.pat.min],min
-  mov word [rax+re.pat.max],max
-  mov byte [rax+re.pat.type],flg
-
-}
-
-; ---   *   ---   *   ---
 ; match ctx struc
 
 reg.new re.status
@@ -117,6 +71,8 @@ reg.end
 
 ; ---   *   ---   *   ---
 ; make pattern array
+
+EXESEG
 
 proc.new re.new_array
 macro re.new_array.inline {
@@ -139,13 +95,15 @@ macro re.new_array.inline {
   ret
 
 ; ---   *   ---   *   ---
-; ^sweetcrux
+; cstruc
 
 proc.new re.new
 
 proc.lis array.head src rdi
 
 proc.stk qword  stash
+proc.stk qword  s0
+
 proc.stk re.pat elem
 
   proc.enter
@@ -159,21 +117,71 @@ proc.stk re.pat elem
   push r8
 
 
-;  ; make container
-;  mov    rdi,$01
-;  inline re.new_array
-;
-;  mov    qword [@stash],rax
+  ; make container
+  mov    rdi,$01
+  inline re.new_array
+
+  mov    qword [@stash],rax
+
+  ; ^dst string for pattern data
+  mov  rdi,$01
+  mov  rsi,$30
+  xor  r8,r8
+  xor  rdx,rdx
+
+  call string.new
+  mov  qword [@s0],rax
+
+  ; ^store string at array beg
+  mov  rdi,qword [@stash]
+  call array.grow
+
+  mov  rdi,qword [@s0]
+  mov  qword [rax],rdi
+
 
   ; restore tmp
   pop r8
   pop rsi
 
 
-  ; read meta
-  lea  rdi,[@elem]
-  call re.read_meta
+  ; proc elem
+  .go_next:
 
+    ; read meta
+    lea  rdi,[@elem]
+    call re.read_meta
+
+    ; ^read src data
+    mov  rdx,qword [@s0]
+    call re.read_data
+
+
+    ; save pattern
+    push r8
+    push rsi
+
+    mov  rdi,qword [@stash]
+    call array.grow
+
+    mov  rdi,rax
+    lea  rsi,[@elem]
+    mov  r8d,sizeof.re.pat
+
+    call memcpy
+
+    ; ^repeat on bytes left
+    pop  rsi
+    pop  r8
+
+    test r8d,r8d
+    jnz  .go_next
+
+
+  ; reset out
+  mov rax,qword [@stash]
+
+  ; cleanup and give
   proc.leave
   ret
 
@@ -261,7 +269,6 @@ proc.lis re.pat elem rdi
 
   ; cleanup and give
   .skip:
-    mov qword [@elem.data],rsi
 
   proc.leave
   ret
@@ -271,13 +278,14 @@ proc.lis re.pat elem rdi
 ; used by pattern
 
 proc.new re.read_data
-proc.lis re.pat elem rdi
+proc.lis re.pat     elem rdi
+proc.lis array.head dst  rdx
 
   proc.enter
 
   ; get top of dst string
-  lea rax,[rdx+array.head.buff]
-  lea ecx,dword [rdx+array.head.top]
+  lea rax,[@dst.buff]
+  lea ecx,dword [@dst.top]
   add rax,rcx
 
   mov qword [@elem.data],rax
@@ -329,6 +337,9 @@ proc.lis re.pat elem rdi
       mov al,$00
       jmp .insert
 
+    re.scap.branch ',' => .scap_term
+      jmp .skip
+
     re.scap.branch def => .scap_non
       mov al,cl
 
@@ -356,20 +367,20 @@ proc.lis re.pat elem rdi
 
       inc  r9w
 
-      push rdi
+      push @elem
       push rsi
       push r8
-      push rdx
+      push @dst
 
       mov  rdi,rdx
       mov  sil,al
 
       call array.push
 
-      pop  rdx
+      pop  @dst
       pop  r8
       pop  rsi
-      pop  rdi
+      pop  @elem
 
       jmp  .chk_size
 
@@ -586,22 +597,29 @@ re.sigt.match_pat
 
     push @self
 
+    ; clear
+    xor r8,r8
+    xor r9,r9
+
+    ; read up to avail bytes
+    mov  r9w,word [@self.top]
     mov  rdi,qword [@self.data]
-    mov  rdi,qword [rdi]
-    mov  r9d,dword [rdi+array.head.top]
+    mov  r8d,dword [@ctx.avail]
 
     push r9
 
-    ; read up to avail bytes
-    xor  r8,r8
-    mov  r8d,dword [@ctx.avail]
+    ; ^skip on less
+    mov al,$01
+    cmp r8d,r9d
+    jl  @f
 
-    ; ^skip on blank
-    mov  al,$01
-    cmp  r8d,r9d
-    jl   @f
 
-    call string.eq_n
+    ; run comparison
+    mov  r8d,r9d
+    mov  r9w,smX.CDEREF
+    mov  r10w,smX.CDEREF
+
+    call memeq
     jmp  .chk_match
 
     @@:
