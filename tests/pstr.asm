@@ -201,35 +201,6 @@ proc.stk xword s3
   ret
 
 ; ---   *   ---   *   ---
-; string match dbout
-
-proc.new eq_dbout
-
-  proc.enter
-
-  constr.new me_00,"EQUAL",$0A
-  constr.new me_01,"!EQUAL",$0A
-
-  ; A eq B
-  mov rdi,me_00
-  mov rsi,me_00.length
-
-  ; A ne B
-  or  rax,$00
-  jnz @f
-
-  mov rdi,me_01
-  mov rsi,me_01.length
-
-
-  ; ^write
-  @@:call sow
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
 
 proc.new test_04
 

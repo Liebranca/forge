@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -72,7 +72,7 @@ proc.lis array.head self rax
   pop rdx
 
   push rax
-  or   rdx,$00
+  test rdx,rdx
   jz   .skip
 
   ; ^cat to empty ;>
@@ -120,8 +120,8 @@ reg.end
 macro string.get_type {
 
   ; chk src is raw string
-  or  r8,$00
-  jnz @f
+  test r8,r8
+  jnz  @f
 
   ; ^src is array wraps
   mov r8d,dword [@other.top]
@@ -230,7 +230,7 @@ string.sigt.insert
   call string.insert_prologue
 
   ; ^seek to end
-  mov rcx,qword [@self.top]
+  mov ecx,dword [@self.top]
   mov rdi,qword [@self.buff]
   add rdi,rcx
 

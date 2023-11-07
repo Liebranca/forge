@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -66,6 +66,7 @@ reg.new re.status
   my .avail dd $00
 
   my .cnt   dw $00
+  my .min   dw $00
 
 reg.end
 
@@ -102,6 +103,8 @@ proc.new re.new
 proc.lis array.head src rdi
 
 proc.stk qword  stash
+
+proc.stk qword  s1
 proc.stk qword  s0
 
 proc.stk re.pat elem
@@ -131,13 +134,13 @@ proc.stk re.pat elem
 
   call string.new
   mov  qword [@s0],rax
+  mov  qword [@s1],$00
 
   ; ^store string at array beg
   mov  rdi,qword [@stash]
-  call array.grow
+  lea  rsi,[@s0]
 
-  mov  rdi,qword [@s0]
-  mov  qword [rax],rdi
+  call array.push
 
 
   ; restore tmp
@@ -162,13 +165,9 @@ proc.stk re.pat elem
     push rsi
 
     mov  rdi,qword [@stash]
-    call array.grow
-
-    mov  rdi,rax
     lea  rsi,[@elem]
-    mov  r8d,sizeof.re.pat
 
-    call memcpy
+    call array.push
 
     ; ^repeat on bytes left
     pop  rsi
@@ -309,7 +308,7 @@ proc.lis array.head dst  rdx
     inc rsi
 
     ; set/unset escaping
-    test al,'\'
+    cmp  al,'\'
     jne  @f
 
     xor  r10b,$01
@@ -323,8 +322,11 @@ proc.lis array.head dst  rdx
     test r10b,r10b
     jz   .nonscap
 
+
     ; ^proc escaped
+    xor       r10b,r10b
     branchtab re.scap
+
     re.scap.branch 's' => .scap_ws
       mov al,$20
       jmp .insert
@@ -413,6 +415,11 @@ proc.stk qword      rew
 
   mov dword [@ctx.avail],ecx
   mov dword [@ctx.pos],$00
+
+  mov ecx,dword [@self.top]
+  shr ecx,$04
+
+  mov word [@ctx.min],cx
   mov word [@ctx.cnt],$00
 
   ; load elem struc addr
@@ -474,6 +481,7 @@ proc.stk qword      rew
     test ax,ax
     jne  .success
 
+    mov  word [@ctx.cnt],$00
     mov  r9,1
 
   ; chk pattern specs
@@ -529,9 +537,18 @@ proc.stk qword      rew
     jmp .chk_src
 
 
-  ; cleanup and give
+  ; reset out
   .skip:
 
+    mov   edi,$00
+
+    mov   cx,word [@ctx.cnt]
+    mov   dx,word [@ctx.min]
+
+    cmp   dx,cx
+    cmovl eax,edi
+
+  ; cleanup and give
   proc.leave
   ret
 
@@ -587,7 +604,7 @@ re.sigt.match_pat
 
 ; ---   *   ---   *   ---
 ; ^substr mode
-
+ 
 proc.new re.match_sub
 re.sigt.match_pat
 

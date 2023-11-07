@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -176,7 +176,7 @@ proc.lis array.head self rdi
   push    @self
   mov     rax,qword [@self.buff]
 
-  realloc rax,rbx
+  realloc rax,rcx
 
   ; ^save new addr
   pop @self
@@ -191,7 +191,7 @@ proc.lis array.head self rdi
 
   ; ^store
   pop @self
-  mov qword [@self.cap],rax
+  mov dword [@self.cap],eax
 
 
   ; cleanup and give
