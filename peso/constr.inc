@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.constr
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 
@@ -57,7 +57,12 @@ macro constr.new name,[ct] {
   ; as peso standard requires that all
   ; strings and strucs be unit-aligned
   common
-    constr._ins align $10
+
+    constr._ins ._v.bpad = $10\
+    - (name#.length and $0F)
+
+    constr._ins db ._v.bpad dup $00
+
     constr._ins name#:
 
   ; ^paste in bytes
@@ -67,8 +72,9 @@ macro constr.new name,[ct] {
   ; ^get string length in bytes
   ; then pad buffer to unit size
   common
-    constr._ins .length=$-name
-    constr._ins .pad=$ mod $10
+    constr._ins .length = $-name
+    constr._ins .pad    = .length mod $10
+
     constr._ins db .pad dup $00
 
 }

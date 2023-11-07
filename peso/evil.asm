@@ -30,7 +30,7 @@ library.import
 
 EXESEG
 
-proc.new dbout.bool
+proc.new dbout.bool,public
 
   proc.enter
 
@@ -60,5 +60,6 @@ proc.new dbout.bool
 ; footer
 
 constr ROM
+MAM.avto
 
 ; ---   *   ---   *   ---

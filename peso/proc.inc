@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -35,7 +35,7 @@ library.import
 ; ---   *   ---   *   ---
 ; start new block
 
-macro proc.new name {
+macro proc.new name,vflag= {
 
   if proc.debug
     out@sys name
@@ -55,6 +55,25 @@ macro proc.new name {
   define name#.$proc.rpres_a
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
+
+
+  ; visibility flag, used for
+  ; object exports/imports
+  match =public,vflag \{
+    MAM.symtab.push public name
+    MAM.hedtab.push extrn  name
+
+    vflag equ
+
+  \}
+
+  ; ^lis given
+  match any,vflag \{
+    MAM.symtab.push public name as any
+    MAM.hedtab.push extrn  any  as name
+
+  \}
+
 
   ; conditionally apply alignment
   if MAM.align
@@ -151,12 +170,9 @@ macro proc.enter {
 
   ; ^paste prologue
   if n > 0
-
     push rbp
-
     mov  rbp,rsp
     sub  rsp,n
-    and  spl,$F0
 
   end if
 
@@ -227,7 +243,7 @@ macro proc.scope_paste Q {
   macro mkdef lis,value \{
 
     if proc.debug
-      out@chd lis,value
+      out@chd lis;,value
 
     end if
 
@@ -311,8 +327,11 @@ macro proc.stk sn {
 
   \}
 
+
+  ; dbout
   if proc.debug
-    out@chd 'stk',offset+$30
+    hexsay  offset,16
+    display $0A
 
   end if
 

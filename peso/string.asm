@@ -110,7 +110,7 @@ macro string.bdel [item] {
 
 reg.new string.insert_req
   my .total dq $00
-  my .head  dd $00
+  my .head  dq $00
 
 reg.end
 

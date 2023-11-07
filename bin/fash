@@ -44,7 +44,7 @@ errout(
 # ---   *   ---   *   ---
 
 my $out;
-if($m->{output} eq $NULL) {
+if($m->{output} ne $NULL) {
   $out=$m->{output};
 
 } else {
@@ -62,7 +62,7 @@ my $dst=Shb7::obj_from_src(
 
 unlink $dst if -f $dst;
 
-my @call=('fasm',$src,$dst);
+my @call=('fasm',q[-m],q[65536],$src,$dst);
 system {$call[0]} @call;
 
 die "\n^Build failed\n" unless -e $dst;
@@ -84,18 +84,36 @@ if($m->{libs} ne $NULL) {
 my $shared=$m->{shared}!=$NULL;
 if($shared) {$out=Shb7::so($out)};
 
-Shb7::olink(
-  $dst,$out,
+@call=(
 
-  flat=>1,
+  q[gcc],
 
-  shared=>$shared,
-  libs=>$libs,
+  @{$Shb7::Bk::gcc::FLATLFLG},
+  q[-Wl,--entry=crux],
+  q[-nostdlib],
+
+  -m64,
+
+  $dst,
+
+  q[-o],$out
 
 );
 
-@call=('strip',$out);
 system {$call[0]} @call;
+
+#Shb7::olink(
+#  $dst,$out,
+#
+#  flat   => 1,
+#
+#  shared => $shared,
+#  libs   => $libs,
+#
+#);
+#
+#@call=('strip',$out);
+#system {$call[0]} @call;
 
 # ---   *   ---   *   ---
 1; # ret

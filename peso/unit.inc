@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.unit
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -106,14 +106,14 @@ macro SEG MS {
   ; globals
   match =RAM , mode \{
     type equ readable writeable
-    name equ '.data'
+    name equ '.data' writeable
 
   \}
 
   ; code
   match =EXE , mode \{
     type equ readable executable
-    name equ '.text'
+    name equ '.text' executable
 
   \}
 
@@ -189,7 +189,10 @@ macro unit.proto name {
   \}
 
   macro name#.malign \{
-    align sizeof.#name
+    if MAM.align
+      align sizeof.#name
+
+    end if
 
   \}
 

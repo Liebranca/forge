@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.4b
+  VERSION   v0.01.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,13 +34,21 @@ macro MAM.head name=crux {
 
   else if MAM.xmode = 'obj'
     format ELF64
+    public name
 
   end if
 
   List.new MAM.foot
   List.new MAM.atexit
+  List.new MAM.symtab
+  List.new MAM.hedtab
 
 }
+
+; ---   *   ---   *   ---
+; TODO: paste avtohed obj stuff
+
+macro MAM.avto mode {}
 
 ; ---   *   ---   *   ---
 ; dude, what *is* a SECTION?!
@@ -459,7 +467,9 @@ macro hybtab name,size,[item] {
     ; get [base to F] distance
     match key ===> value , item \{
 
-      List.push list,key => value-name#._endof
+      value\#._offset = value-name#._endof
+
+      List.push list,key => value\#._offset
 
       ok  equ 1
       len equ len+1
