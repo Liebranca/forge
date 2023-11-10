@@ -60,6 +60,5 @@ proc.new dbout.bool,public
 ; footer
 
 constr ROM
-MAM.avto
 
 ; ---   *   ---   *   ---

@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.reg
 
-  VERSION   v0.01.3a
+  VERSION   v0.01.4a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,14 +34,12 @@ library.import
 ; ---   *   ---   *   ---
 ; beg cstruc
 
-macro reg.new name,args& {
+macro reg.new name,vflag= {
 
   hier.creg equ name
 
   define name#.$reg 1
   define name#.$reg.fields
-
-  define name#.$reg.args args
 
   ; put definition 'on hold' ;>
   virtual at $00
@@ -91,7 +89,7 @@ macro reg.end {
 ; ---   *   ---   *   ---
 ; ^make static ice
 
-macro reg.ice tn {
+macro reg.ice tn,vflag= {
 
   match type name,tn \{
 
@@ -103,6 +101,10 @@ macro reg.ice tn {
       npaste lines
 
     \\}
+
+    ; set public/private
+    local vis
+    MAM.sym_vflag vis,name,vflag
 
   \}
 

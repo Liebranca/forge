@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.01.0a
+  VERSION   v0.01.2a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -56,23 +56,9 @@ macro proc.new name,vflag= {
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
 
-
-  ; visibility flag, used for
-  ; object exports/imports
-  match =public,vflag \{
-    MAM.symtab.push public name
-    MAM.hedtab.push extrn  name
-
-    vflag equ
-
-  \}
-
-  ; ^lis given
-  match any,vflag \{
-    MAM.symtab.push public name as any
-    MAM.hedtab.push extrn  any  as name
-
-  \}
+  ; mark public/private
+  local vis
+  MAM.sym_vflag vis,name,vflag
 
 
   ; conditionally apply alignment

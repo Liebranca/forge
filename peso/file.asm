@@ -32,19 +32,18 @@ library.import
 
 RAMSEG
 
-reg.new file.buff
+file.buff.SZ   = $100
+file.buff.REPT = file.buff.SZ shr 7
 
-  my .SZ   = $100
-  my .REPT = .SZ shr 7
-
+reg.new file.buff,public
 
   ; pool
-  my .ct    db .SZ dup $00
+  my .ct    db file.buff.SZ dup $00
 
   ; bkeep
   my .fto   dw stdout
 
-  my .avail dd .SZ
+  my .avail dd file.buff.SZ
   my .ptr   dd $00
 
 reg.end
@@ -83,7 +82,7 @@ proc.new fto
 ; ---   *   ---   *   ---
 ; ^issue write
 
-proc.new sow
+proc.new sow,public
 
   proc.enter
 
@@ -104,7 +103,7 @@ proc.new sow
     call reap
 
     ; ^refresh avail
-    mov r8w,buffio.SZ
+    mov r8w,file.buff.SZ
 
 
   ; ^write next chunk
@@ -165,7 +164,7 @@ proc.cpr r11,rdi,rsi
   ; ^zero-flood
   pxor xmm0,xmm0
 
-  repeat buffio.REPT
+  repeat file.buff.REPT
 
     movdqa xword [rsi+$00],xmm0
     movdqa xword [rsi+$10],xmm0
@@ -183,7 +182,7 @@ proc.cpr r11,rdi,rsi
 
 
   ; ^reset meta
-  mov word [buffio.avail],buffio.SZ
+  mov word [buffio.avail],file.buff.SZ
   mov word [buffio.ptr],$0000
 
 

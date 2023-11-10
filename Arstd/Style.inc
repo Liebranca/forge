@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.5b
+  VERSION   v0.01.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -46,9 +46,56 @@ macro MAM.head name=crux {
 }
 
 ; ---   *   ---   *   ---
+; visibility flag, used for
+; object exports/imports
+
+macro MAM.sym_vflag dst,name,vflag= {
+
+  local ok
+  dst equ
+  ok  equ 0
+
+  match =public,vflag \{
+
+    dst equ public name
+
+    MAM.symtab.push db `extrn  # ' ' \
+      # `name '\,' $0A
+
+    ok equ 1
+
+  \}
+
+  ; ^lis given
+  match =0 any , ok vflag \{
+
+    dst equ public name as any
+
+    MAM.symtab.push db `extrn # ' ' \
+      # ' "' \# any \# '"' \
+      # ' ' # `as # ' ' # `name '\,' $0A
+
+  \}
+
+  if MAM.xmode = 'obj'
+    dst
+
+  end if;
+
+}
+
+; ---   *   ---   *   ---
 ; TODO: paste avtohed obj stuff
 
-macro MAM.avto mode {}
+macro MAM.avto {
+
+  virtual at $00 as 'preshwl'
+    MAM.hedtab
+    MAM.symtab
+
+  end virtual
+
+}
 
 ; ---   *   ---   *   ---
 ; dude, what *is* a SECTION?!
