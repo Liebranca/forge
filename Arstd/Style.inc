@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.7b
+  VERSION   v0.01.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -26,22 +26,29 @@
 ; ---   *   ---   *   ---
 ; top-level switch
 
-macro MAM.head name=crux {
+macro MAM.head name= {
 
   if MAM.xmode = 'stat'
     format ELF64 executable 3
-    entry  name
+
+    match any , name \{
+      entry any
+
+    \}
 
   else if MAM.xmode = 'obj'
     format ELF64
-    public name
+
+    match any , name \{
+      public any
+
+    \}
 
   end if
 
   List.new MAM.foot
   List.new MAM.atexit
   List.new MAM.symtab
-  List.new MAM.hedtab
 
 }
 
@@ -90,7 +97,6 @@ macro MAM.sym_vflag dst,name,vflag= {
 macro MAM.avto {
 
   virtual at $00 as 'preshwl'
-    MAM.hedtab
     MAM.symtab
 
   end virtual
