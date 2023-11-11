@@ -92,7 +92,43 @@ macro MAM.sym_vflag dst,name,vflag= {
 }
 
 ; ---   *   ---   *   ---
-; TODO: paste avtohed obj stuff
+; ^conditionally declare
+; both visibility and symbol
+
+macro MAM.sym name,vflag= {
+
+  local dst
+  MAM.sym_vflag dst,name,vflag
+
+  match any,name \{
+    any\#:
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; align to sizeof
+
+macro MAM.malign size {
+  align sizeof.#size
+
+}
+
+; ---   *   ---   *   ---
+; ^conditionally
+
+macro MAM.calign size {
+
+  if MAM.align
+    MAM.malign size
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; paste avtohed obj stuff
 
 macro MAM.avto {
 
@@ -110,22 +146,10 @@ macro MAM.segment name,type,size {
 
   if MAM.xmode = 'stat'
     segment type
-
-    if MAM.align
-      align size
-
-    end if
-
+    MAM.calign size
 
   else if MAM.xmode = 'obj'
-
-    if MAM.align
-      section name align size
-
-    else
-      section name
-
-    end if
+    section name align size
 
   end if
 

@@ -62,10 +62,7 @@ macro proc.new name,vflag= {
 
 
   ; conditionally apply alignment
-  if MAM.align
-    unit.malign
-
-  end if
+  MAM.calign unit
 
   ; add label
   name#:

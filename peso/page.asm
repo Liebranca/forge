@@ -14,6 +14,7 @@
 
 library ARPATH '/forge/'
   use '.inc' peso::proc
+  use '.inc' peso::unit
 
 library.import
 

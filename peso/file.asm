@@ -55,7 +55,7 @@ reg.ice file.buff buffio
 
 EXESEG
 
-proc.new fto
+proc.new fto,public
 
   proc.enter
 
@@ -143,7 +143,7 @@ proc.new sow,public
 ; ---   *   ---   *   ---
 ; ^write, then empty used buff
 
-proc.new reap
+proc.new reap,public
 proc.cpr r11,rdi,rsi
 
   proc.enter

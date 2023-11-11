@@ -1,15 +1,4 @@
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-MAM.xmode='stat'
-MAM.head
-
-; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
@@ -20,9 +9,9 @@ library.import
 ; ---   *   ---   *   ---
 ; crux
 
-EXESEG non
+EXESEG
 
-proc.new crux
+proc.new crux,public
 proc.stk qword p0
 
   proc.enter
@@ -45,10 +34,5 @@ proc.stk qword p0
 
   proc.leave
   exit
-
-; ---   *   ---   *   ---
-; footer
-
-MAM.foot
 
 ; ---   *   ---   *   ---

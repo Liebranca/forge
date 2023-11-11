@@ -10,6 +10,14 @@
 ; lyeb
 
 ; ---   *   ---   *   ---
+; deps
+
+library ARPATH '/forge/'
+  use '.inc' peso::proc
+
+library.import
+
+; ---   *   ---   *   ---
 ; info
 
   TITLE     Arstd.UInt
@@ -19,26 +27,20 @@
 
 ; ---   *   ---   *   ---
 
-MAM.segment '.rodata',readable,$10
-
-UInt.ROM:
-
-  .mag10 dq $CCCCCCCCCCCCCCCD
+ROMSEG UInt.MAGICO
+  .div10 dq $CCCCCCCCCCCCCCCD
 
 ; ---   *   ---   *   ---
 ; rounded-up division
 
-MAM.segment '.text',readable executable,$10
+EXESEG
 
-if MAM.align
-  align $10
+proc.new UInt.urdiv,public
+proc.cpr rcx,rdx
 
-end if
+macro UInt.urdiv.inline {
 
-UInt.urdiv:
-
-  push rcx
-  push rdx
+  proc.enter
 
   ; calc scale
   bsr rcx,rsi
@@ -61,22 +63,20 @@ UInt.urdiv:
   ; scale down
   shr rax,cl
 
+  ; cleanup
+  proc.leave
 
-  ; clean
-  pop rdx
-  pop rcx
+}
 
+  ; invoke and give
+  inline UInt.urdiv
   ret
 
 ; ---   *   ---   *   ---
 ; ^quick by-pow2 v
 
-if MAM.align
-  align $10
-
-end if
-
-UInt.urdivp2:
+proc.new UInt.urdivp2,public
+macro UInt.urdivp2.inline {
 
   ; [1] cx is exponent
   ; get 2^N thru shift
@@ -95,8 +95,13 @@ UInt.urdivp2:
   lea rax,[rdi+rax-1]
   shr rax,cl
 
+  ; cleanup
+  proc.leave
 
-  ; give
+}
+
+  ; ^invoke and give
+  inline UInt.urdivp2
   ret
 
 ; ---   *   ---   *   ---
@@ -106,8 +111,8 @@ macro UInt.urdivp2.proto size,keep=0 {
 
   match =1 , keep \{push rcx\}
 
-  mov  rcx,size
-  call UInt.urdivp2
+  mov    rcx,size
+  dpline UInt.urdivp2
 
   match =1 , keep \{pop rcx\}
 
@@ -128,36 +133,65 @@ macro UInt.align.proto size,keep=0 {
 
 macro UInt.align n,m {
 
-  mov rdi,n
-  mov rsi,m
+  mov    rdi,n
+  mov    rsi,m
 
-  call UInt.urdiv
-  mul  rsi
+  dpline UInt.urdiv
+  mul    rsi
 
 }
 
 ; ---   *   ---   *   ---
+; division by 10
 ; ty gcc ;>
 
-UInt.div10:
+proc.new UInt.div10,public
+macro UInt.div10.inline {
 
-  mov rax,qword [UInt.ROM.mag10]
+  proc.enter
+
+  ; multiply by magic number
+  mov rax,qword [UInt.MAGICO.div10]
   mul rdi
 
+  ; ^scale down
   mov rax,rdx
   shr rax,$03
 
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline UInt.div10
   ret
 
-UInt.mod10:
+; ---   *   ---   *   ---
+; ^modulo black magic
+; also ty gcc ;>
 
-  call UInt.div10
-  lea  rdx,[rax+rax*4]
+proc.new UInt.mod10,public
+macro UInt.mod10.inline {
 
+  proc.enter
+
+  ; divide by ten
+  dpline UInt.div10
+  lea    rdx,[rax+rax*4]
+
+  ; ^get rem
   mov rax,rdi
   add rdx,rdx
   sub rax,rdx
 
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline UInt.mod10
   ret
 
 ; ---   *   ---   *   ---

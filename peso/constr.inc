@@ -95,12 +95,9 @@ macro constr.new vn,[ct] {
 
     ; ^align data
     match name , dst \{
-      constr._ins ._v.bpad = $10\
-      - (name\#.length and $0F)
-
-      constr._ins db ._v.bpad dup $00
 
       ; ^paste label
+      MAM.malign unit
       constr._ins name\#:
 
     \}
@@ -115,9 +112,6 @@ macro constr.new vn,[ct] {
 
     match name , dst \{
       constr._ins .length = $-name
-      constr._ins .pad    = .length mod $10
-
-      constr._ins db .pad dup $00
 
     \}
 

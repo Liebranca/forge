@@ -13,8 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' peso::seg
   use '.inc' peso::sfield
-  use '.inc' peso::unit
 
 library.import
 
@@ -62,14 +62,6 @@ macro reg.end {
 
   match any,hier.creg \{
 
-    ; alignment wraps
-    sfield.push hier.creg,$reg.fields,\
-      unit.malign
-
-    sfield.unshift hier.creg,$reg.fields,\
-      unit.malign
-
-
     ; ^paste accum
     match lines,any\#.$reg.fields \\{
       npaste lines
@@ -77,6 +69,7 @@ macro reg.end {
     \\}
 
     ; get size after alignment
+    MAM.malign unit
     sizeof.\#any=$-any
 
   \}
@@ -93,7 +86,7 @@ macro reg.ice tn,vflag= {
 
   match type name,tn \{
 
-    unit.malign
+    MAM.calign unit
     name\#:
 
     ; ^re-paste accum on non-virtual
@@ -101,6 +94,9 @@ macro reg.ice tn,vflag= {
       npaste lines
 
     \\}
+
+    MAM.malign unit
+    sizeof.\#name=$-name
 
     ; set public/private
     local vis
@@ -124,7 +120,7 @@ macro reg.vice base,tn {
     forward
 
       ok equ 1
-      match =unit.malign,line \\{
+      match =MAM.malign,line \\{
         ok equ 0
 
       \\}
@@ -173,7 +169,7 @@ macro reg.qvice Q0,Q1,len,base,tn {
     forward
 
       ok equ 1
-      match =unit.malign,line \\{
+      match =MAM.malign,line \\{
         ok equ 0
 
       \\}
