@@ -3,13 +3,15 @@
 !/**/
 !*.*
 
+# generated
 *.tmp
 *.preshwl
 *.hed
 *.bin
 *.o
+.avto-cache
 
+# irrelevant
 mig/
 !bin/
-
 scratch.asm

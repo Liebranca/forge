@@ -52,7 +52,6 @@
 
   sizeof.dline = $0080
   sizep2.dline = $0007
-
   sizeof.qline = $0100
   sizep2.qline = $0008
 

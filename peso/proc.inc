@@ -33,17 +33,9 @@ library.import
   proc.debug=0
 
 ; ---   *   ---   *   ---
-; start new block
+; nit block ns
 
-macro proc.new name,vflag= {
-
-  if proc.debug
-    out@sys name
-
-  end if
-
-  ; reset current
-  hier.cproc equ name
+macro proc._ns_new name,vflag= {
 
   ; symbol declare/restore queues
   define name#.$proc.nsmk
@@ -55,6 +47,22 @@ macro proc.new name,vflag= {
   define name#.$proc.rpres_a
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
+
+}
+
+; ---   *   ---   *   ---
+; start new block
+
+macro proc.new name,vflag= {
+
+  if proc.debug
+    out@sys name
+
+  end if
+
+  ; reset current
+  hier.cproc equ name
+  proc._ns_new name,vflag
 
   ; mark public/private
   local vis

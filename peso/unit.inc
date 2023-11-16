@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' Arstd::UInt
+  use '.hed' Arstd::UInt
 
 library.import
 

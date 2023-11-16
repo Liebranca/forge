@@ -13,9 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-
   use '.inc' OS
-  use '.asm' peso::memcpy
+  use '.hed' peso::memcpy
 
 library.import
 
@@ -24,7 +23,7 @@ library.import
 
   TITLE     peso.file
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

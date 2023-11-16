@@ -14,21 +14,21 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::smX
+  use '.hed' peso::smX
 
 library.import
 
 ; ---   *   ---   *   ---
 ; crux
 
-proc.new memcpy
+proc.new memcpy,public
 
   proc.enter
   push r10
@@ -68,7 +68,7 @@ proc.new memcpy
 ; ^further branching accto
 ; size of struc
 
-proc.new memcpy.struc
+proc.new memcpy.struc,public
 
   ; get branch
   proc.enter

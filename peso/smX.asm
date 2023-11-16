@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -471,7 +471,7 @@ macro smX.sse_tab2 op,eob,args& {
 
 EXESEG
 
-proc.new smX.get_size
+proc.new smX.get_size,public
 macro smX.get_size.inline {
 
   proc.enter
@@ -502,7 +502,7 @@ macro smX.get_size.inline {
 ; ---   *   ---   *   ---
 ; map address to step,align
 
-proc.new smX.get_alignment
+proc.new smX.get_alignment,public
 macro smX.get_alignment.inline {
 
   proc.enter

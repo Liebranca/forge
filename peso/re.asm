@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::string
+  use '.hed' peso::string
 
 library.import
 
@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -98,7 +98,7 @@ macro re.new_array.inline {
 ; ---   *   ---   *   ---
 ; cstruc
 
-proc.new re.new
+proc.new re.new,public
 
 proc.lis array.head src rdi
 
@@ -397,7 +397,7 @@ proc.lis array.head dst  rdx
 ; ---   *   ---   *   ---
 ; run through pattern array
 
-proc.new re.match
+proc.new re.match,public
 
 proc.lis array.head self rdi
 proc.lis re.pat     elem rdi

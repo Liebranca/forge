@@ -13,8 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::array
-  use '.asm' peso::memcmp
+  use '.hed' peso::array
+  use '.hed' peso::memcmp
 
 library.import
 
@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -55,7 +55,7 @@ macro string.from ct& {
 
 EXESEG
 
-proc.new string.new
+proc.new string.new,public
 proc.lis array.head self rax
 
   proc.enter
@@ -195,7 +195,7 @@ macro string.sigt.insert {
 ; ---   *   ---   *   ---
 ; overwrite
 
-proc.new string.set
+proc.new string.set,public
 proc.lis array.head self rdi
 
 macro string.set.inline {
@@ -218,7 +218,7 @@ macro string.set.inline {
 ; ---   *   ---   *   ---
 ; add at end
 
-proc.new string.cat
+proc.new string.cat,public
 string.sigt.insert
 
   proc.enter
@@ -245,7 +245,7 @@ string.sigt.insert
 ; ---   *   ---   *   ---
 ; ^add at beg
 
-proc.new string.lcat
+proc.new string.lcat,public
 string.sigt.insert
 
   proc.enter
@@ -282,7 +282,7 @@ string.sigt.insert
 ; ---   *   ---   *   ---
 ; get A eq B
 
-proc.new string.eq
+proc.new string.eq,public
 string.sigt.insert
 
   proc.enter
@@ -318,7 +318,7 @@ string.sigt.insert
 ; ---   *   ---   *   ---
 ; get N bytes of A eq B
 
-proc.new string.eq_n
+proc.new string.eq_n,public
 string.sigt.insert
 
   proc.enter
@@ -356,7 +356,7 @@ string.sigt.insert
 ; ---   *   ---   *   ---
 ; write to selected file
 
-proc.new string.sow
+proc.new string.sow,public
 proc.lis array.head self rdi
 
 macro string.sow.inline {
@@ -401,7 +401,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^fill out
 
-proc.new string.color
+proc.new string.color,public
 
 proc.stk via.ansi.color cmd
 proc.lis array.head     self rdi
@@ -495,7 +495,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^fill out
 
-proc.new string.mvcur
+proc.new string.mvcur,public
 
 proc.stk via.ansi.mvcur cmd
 proc.lis array.head     self rdi
@@ -561,7 +561,7 @@ proc.lis array.head     self rdi
 ; ---   *   ---   *   ---
 ; bytes to decimal string
 
-proc.new btods
+proc.new btods,public
 proc.cpr rbx
 
   proc.enter

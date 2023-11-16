@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::alloc
+  use '.hed' peso::alloc
 
 library.import
 
@@ -22,13 +22,13 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; header struc
 
-reg.new array.head
+reg.new array.head,public
 
   my .buff  dq $00
 
@@ -45,7 +45,7 @@ reg.end
 
 EXESEG
 
-proc.new array.new
+proc.new array.new,public
 proc.cpr rbx
 
 proc.lis array.head self rbx
@@ -61,15 +61,16 @@ proc.lis array.head self rbx
   imul rsi
 
   ; make wrapper
-  push  rax
+  push rax
+  mov  rdi,sizeof.array.head
 
-  alloc sizeof.array.head
-  mov   @self,rax
+  call alloc
+  mov  @self,rax
 
 
   ; make buffer
-  pop   rsi
-  alloc rsi
+  pop  rdi
+  call alloc
 
   ; restore tmp
   pop rsi
@@ -100,18 +101,20 @@ proc.lis array.head self rbx
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-proc.new array.del
+proc.new array.del,public
 proc.lis array.head self rdi
 
   proc.enter
 
   ; release buffer
   push @self
-  free qword [@self.buff]
+  mov  rdi,qword [@self.buff]
+
+  call free
 
   ; ^then wraps
   pop  @self
-  free @self
+  call free
 
 
   ; cleanup and give
@@ -142,7 +145,7 @@ macro array.insert_proto dst {
 ; ---   *   ---   *   ---
 ; conditionally resize array
 
-proc.new array.resize_chk
+proc.new array.resize_chk,public
 proc.cpr rbx
 
 proc.lis array.head self rdi
@@ -173,10 +176,11 @@ proc.lis array.head self rdi
 
 
   ; resize
-  push    @self
-  mov     rax,qword [@self.buff]
+  push @self
+  mov  rdi,qword [@self.buff]
+  mov  rsi,rcx
 
-  realloc rax,rcx
+  call realloc
 
   ; ^save new addr
   pop @self
@@ -218,7 +222,7 @@ macro array.grow_proto {
 ; ---   *   ---   *   ---
 ; push without insert
 
-proc.new array.grow
+proc.new array.grow,public
 proc.lis array.head self rdi
 
   proc.enter
@@ -241,7 +245,7 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; add element at end
 
-proc.new array.push
+proc.new array.push,public
 proc.cpr rbx
 
 proc.lis array.head self rdi
@@ -267,7 +271,7 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; remove at end
 
-proc.new array.pop
+proc.new array.pop,public
 proc.cpr rbx
 
 proc.lis array.head self rdi
@@ -301,7 +305,7 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; generic get array[N]
 
-proc.new array.get
+proc.new array.get,public
 
   proc.enter
 
@@ -337,11 +341,12 @@ proc.new array.get
 
   ; cleanup
   proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; add element at beg
 
-proc.new array.unshift
+proc.new array.unshift,public
 proc.cpr rbx
 
 proc.lis array.head self rdi
@@ -378,7 +383,7 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; ^reverse walk copy
 
-proc.new array.shr
+proc.new array.shr,public
 proc.cpr rdi
 
 proc.lis array.head self rdi
@@ -399,16 +404,9 @@ proc.lis array.head self rdi
   ; src eq beg
   xchg rdi,rsi
 
-  ; ^make space from beg to beg+N
-  .iter:
-
-    ; ^copy this chunk
-    mov  r10w,smX.CDEREF
-    call memcpy
-
-    ; go next
-    or r8d,$00
-    jg .iter
+  ; ^grow
+  mov  r10w,smX.CDEREF
+  call memcpy
 
 
   ; cleanup and give
@@ -418,7 +416,7 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; remove element at beg
 
-proc.new array.shift
+proc.new array.shift,public
 proc.cpr rbx
 
 proc.lis array.head self rdi
@@ -480,89 +478,26 @@ proc.lis array.head self rdi
 ; ---   *   ---   *   ---
 ; ^forward walk copy
 
-proc.new array.shl
+proc.new array.shl,public
+proc.cpr rdi
+
+proc.lis array.head self rdi
 
   proc.enter
 
-  ; branch on ptr type
-  cmp rdx,$04
-  je  .loop_struc
+  ; size of other is shift size
+  ; own top is copy size
+  mov esi,r8d
+  mov r8d,dword [@self.top]
 
+  ; get beg,beg+N
+  mov rdi,qword [@self.buff]
+  lea rsi,[rdi+rsi]
 
-  ; get mask size
-  mov rax,$01
-  mov cl,dl
-  shl rax,cl
+  ; ^shrink
+  mov  r10w,smX.CDEREF
+  call memcpy
 
-  mov rcx,rax
-
-  ; get mask
-  mov rdx,$01
-  shl rcx,$03
-  shl rdx,cl
-  dec rdx
-
-
-  .loop_prim:
-
-    ; get first bit
-    mov rax,qword [rsi]
-    rol rax,cl
-
-    ; ^get next bit
-    mov rbx,rax
-    shr rbx,cl
-
-    ; ^exclude
-    and rbx,rdx
-    and rax,rdx
-
-    ; ^copy
-    shr rcx,$03
-    mov qword [rdi],rbx
-    mov qword [rdi+rcx],rax
-
-
-    ; go next
-    sub rdi,rcx
-    sub rsi,rcx
-    sub r9d,ecx
-    shl rcx,$03
-
-    ; end on beg reached
-    or  r9d,$00
-    jg  .loop_prim
-    jmp .skip
-
-
-  ; struc ptr
-  .loop_struc:
-
-    ; save tmp
-    push rdi
-    push rsi
-    push r8
-
-    ; ^copy B to A
-    mov  r8d,r9d
-    call memcpy.struc
-
-    ; ^restore
-    pop r8
-    pop rsi
-    pop rdi
-
-    ; go next
-    add rdi,r9
-    add rsi,r9
-    sub r9d,r8d
-
-    ; end on beg reached
-    or r9d,$00
-    jg .loop_struc
-
-  ; cleanup and give
-  .skip:
 
   proc.leave
   ret

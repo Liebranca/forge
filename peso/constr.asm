@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::file
+  use '.hed' peso::file
 
 library.import
 
@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.constr
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 
@@ -54,6 +54,28 @@ macro constr.get_vflag dst,name {
 
   match s0 s1 , vflag dst \{
     MAM.sym_vflag vis,s1,s0
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^virtual, needed for import
+
+macro constr._ns_get_vflag dst,name {
+
+  local vflag
+  local vis
+  vflag equ
+
+  match s0 s1 , name \{
+    dst   equ s1
+    vflag equ s0
+
+  \}
+
+  match , vflag \{
+    dst equ name
 
   \}
 
@@ -97,7 +119,7 @@ macro constr.new vn,[ct] {
     match name , dst \{
 
       ; ^paste label
-      MAM.malign unit
+      constr._ins MAM.malign unit
       constr._ins name\#:
 
     \}
@@ -117,17 +139,58 @@ macro constr.new vn,[ct] {
 
 }
 
+; ---   *   ---   *   ---
+; ^virtual, needed for import
+
+macro constr._ns_new vn,[ct] {
+
+  ; alignment not subject to MAM config
+  ; as peso standard requires that all
+  ; strings and strucs be unit-aligned
+  common
+
+    ; set public/private
+    local dst
+    dst equ
+
+    constr._ns_get_vflag dst,vn
+
+
+    ; ^align data
+    match name , dst \{
+
+      ; ^paste label
+      constr._ins virtual at $00
+      constr._ins MAM.malign unit
+
+    \}
+
+  ; ^paste bytes
+  forward
+    constr._ins db ct
+
+  ; ^get string length in bytes
+  ; then pad buffer to unit size
+  common
+
+    match name , dst \{
+      constr._ins name\#.length = $
+      constr._ins end virtual
+
+    \}
+
+}
 
 ; ---   *   ---   *   ---
 ; ^paste
 
-macro constr mode* {
+macro constr mode= {
 
   local type
-  type equ
+  type equ ROM
 
-  match ,mode \{
-    type equ ROM
+  match any , mode \{
+    type equ any
 
   \}
 

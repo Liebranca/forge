@@ -13,8 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::constr
-  use '.asm' peso::page
+  use '.hed' peso::constr
+  use '.hed' peso::page
 
 library.import
 
@@ -23,13 +23,15 @@ library.import
 
   TITLE     peso.mpart
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; find first free bit
 
-proc.new mpart.get_free
+EXESEG
+
+proc.new mpart.get_free,public
 
   proc.enter
 
@@ -51,7 +53,7 @@ proc.new mpart.get_free
 ; ---   *   ---   *   ---
 ; ^shift to fred
 
-proc.new mpart.shr_free
+proc.new mpart.shr_free,public
 
   proc.enter
 
@@ -80,7 +82,7 @@ proc.new mpart.shr_free
 ; ---   *   ---   *   ---
 ; ^find last occupied bit
 
-proc.new mpart.get_occu
+proc.new mpart.get_occu,public
 proc.cpr rbx
 
   proc.enter
@@ -108,7 +110,7 @@ proc.cpr rbx
 ; ---   *   ---   *   ---
 ; ^shift them out
 
-proc.new mpart.shr_occu
+proc.new mpart.shr_occu,public
 
   proc.enter
 
@@ -129,7 +131,7 @@ proc.new mpart.shr_occu
 ; ---   *   ---   *   ---
 ; get N free bits
 
-proc.new mpart.fit
+proc.new mpart.fit,public
 proc.stk qword reqm
 proc.stk qword mask
 
@@ -204,7 +206,7 @@ proc.stk qword mask
 ; ---   *   ---   *   ---
 ; maps req,lvl to bitmask
 
-proc.new mpart.qmask
+proc.new mpart.qmask,public
 proc.cpr rbx
 
   proc.enter
@@ -238,7 +240,7 @@ macro mpart.get_level.brend sz {
 ; get partition level accto
 ; block size in rdi
 
-proc.new mpart.get_level
+proc.new mpart.get_level,public
 proc.cpr rbx
 
   proc.enter

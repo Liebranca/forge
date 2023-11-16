@@ -28,7 +28,7 @@ library.import
 ; ---   *   ---   *   ---
 ; decl
 
-reg.new stk
+reg.new stk,public
   my .top  dq $00
   my .size dq $00
 
@@ -49,59 +49,6 @@ macro alloc.sigt.new type& {
   \}
 
 }
-
-; ---   *   ---   *   ---
-; ^cstruc
-
-EXESEG
-
-proc.new stk.new
-alloc.sigt.new stk
-
-macro stk.new.inline {
-
-  proc.enter
-
-  ; get hed+buff mem
-  add   @bsize,sizeof.stk
-  alloc @bsize
-
-  ; ^nit hed
-  mov qword [@self.size],@p2size
-  mov qword [@self.top],$00
-
-  proc.leave
-
-}
-
-  ; ^invoke
-  inline stk.new
-  ret
-
-
-; ---   *   ---   *   ---
-; ^dstruc
-
-proc.new stk.del
-proc.arg stk self rdi
-
-macro stk.del.inline {
-
-  proc.enter
-
-  ; [0] rdi is base addr
-  ; so load just the size
-  mov rsi,qword [@self.size]
-
-  ; ^free
-  call page.free
-  proc.leave
-
-}
-
-  ; ^invoke
-  inline stk.del
-  ret
 
 ; ---   *   ---   *   ---
 ; get buff at base+hed
@@ -129,7 +76,9 @@ macro stk.sigt.push {
 ; ---   *   ---   *   ---
 ; grow stack
 
-proc.new stk.push
+EXESEG
+
+proc.new stk.push,public
 stk.sigt.push
 
   proc.enter
@@ -152,7 +101,7 @@ stk.sigt.push
 ; ---   *   ---   *   ---
 ; ^undo
 
-proc.new stk.pop
+proc.new stk.pop,public
 stk.sigt.push
 
   proc.enter
@@ -174,7 +123,7 @@ stk.sigt.push
 ; ---   *   ---   *   ---
 ; get elem at idex
 
-proc.new stk.view
+proc.new stk.view,public
 
 proc.arg stk   self rdi
 proc.arg qword idex rsi
@@ -200,7 +149,7 @@ macro stk.view.inline {
 ; ---   *   ---   *   ---
 ; ^get top of stack
 
-proc.new stk.view_top
+proc.new stk.view_top,public
 
 proc.arg stk   self rdi
 proc.lis qword idex rsi

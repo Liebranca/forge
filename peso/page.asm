@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.page
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,7 +47,7 @@ SYS.munmap.id=$0B
 ; ---   *   ---   *   ---
 ; cstruc
 
-proc.new page.new
+proc.new page.new,public
 proc.cpr r11
 
   proc.enter
@@ -81,7 +81,7 @@ proc.cpr r11
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-proc.new page.free
+proc.new page.free,public
 macro page.free.inline {
 
   proc.enter

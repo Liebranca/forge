@@ -14,21 +14,21 @@
 
   TITLE     peso.memcmp
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::smX
+  use '.hed' peso::smX
 
 library.import
 
 ; ---   *   ---   *   ---
 ; *data eq *data
 
-proc.new memeq
+proc.new memeq,public
 
   proc.enter
 
@@ -116,7 +116,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; ^large mem proc
 
-proc.new memeq.struc
+proc.new memeq.struc,public
 proc.stk memeq.req dst
 
   ; get branch

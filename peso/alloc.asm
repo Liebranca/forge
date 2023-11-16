@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; PESO ALLOC (GUTS)
+; PESO ALLOC
 ; Hands you mem
 ;
 ; LIBRE SOFTWARE
@@ -12,17 +12,18 @@
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     peso.alloc_guts
+  TITLE     peso.alloc
 
-  VERSION   v0.01.4a
+  VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::stk
-  use '.asm' peso::memcpy
+  use '.hed' peso::mpart
+  use '.hed' peso::stk
+  use '.hed' peso::memcpy
 
 library.import
 
@@ -45,10 +46,14 @@ reg.new alloc.tab
 
 reg.end
 
-reg.ice alloc.tab alloc.main
+; ---   *   ---   *   ---
+; GBL
+
+  reg.ice alloc.tab alloc.main
+  alloc.debug=0
 
 ; ---   *   ---   *   ---
-; ^element for each subtable
+; element of each subtable
 
 reg.new alloc.chain
 
@@ -98,7 +103,7 @@ reg.end
 
 EXESEG
 
-proc.new alloc.crux
+proc.new alloc,public
 
 proc.lis alloc.tab self alloc.main
 proc.stk alloc.req ctx
@@ -142,7 +147,7 @@ proc.stk alloc.req ctx
 ; ---   *   ---   *   ---
 ; ^resize
 
-proc.new alloc.realloc
+proc.new realloc,public
 
 proc.stk qword dst
 proc.stk qword addr
@@ -156,13 +161,13 @@ proc.stk qword old_size
   mov qword [@new_size],rsi
 
   ; mark old block as fred
-  call alloc.free
+  call free
   mov  qword [@old_size],rax
 
   ; ^extend/get new block
   mov  rdi,qword [@new_size]
 
-  call alloc.crux
+  call alloc
   mov  qword [@dst],rax
 
   ; ^check addr changed
@@ -187,7 +192,7 @@ proc.stk qword old_size
 ; ---   *   ---   *   ---
 ; ^dstruc
 
-proc.new alloc.free
+proc.new free,public
 proc.cpr rbx
 
 proc.lis alloc.tab  self alloc.main
@@ -252,7 +257,7 @@ proc.arg alloc.head head rdi
 ; ---   *   ---   *   ---
 ; get usable block size
 
-proc.new alloc.get_blk_size
+proc.new alloc.get_blk_size,public
 proc.arg alloc.head head rdi
 
   proc.enter
@@ -617,7 +622,7 @@ proc.lis alloc.tab self alloc.main
 ; ---   *   ---   *   ---
 ; dstruc, called by exit
 
-proc.new alloc.del
+proc.new alloc.del,public
 proc.lis alloc.tab self alloc.main
 
   proc.enter
@@ -708,5 +713,15 @@ proc.new alloc.del_stk
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; footer
+
+macro alloc.atexit {
+  call alloc.del
+
+}
+
+MAM.atexit.push alloc.atexit
 
 ; ---   *   ---   *   ---
