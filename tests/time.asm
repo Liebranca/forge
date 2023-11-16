@@ -1,86 +1,94 @@
-format ELF64 executable 3
-entry _start
-
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
 
-  use '.asm' OS::Clock
-  use '.inc' OS
+  use '.hed' OS::Clock
+  use '.hed' peso::file
 
   use '.inc' Arstd::Lycon
 
-import
+library.import
 
 ; ---   *   ---   *   ---
+; GBL
 
-segment readable writeable
-align $10
+RAMSEG
 
 msg:
   db $1B,$5B,'999H'
 
 clkchr:
   lydu $01A9
-  db $00
+  db   $00
 
   msg_len=$-msg
   flen=400000000
 
 
-clk CLK
+reg.ice CLK gclk
 
 ; ---   *   ---   *   ---
+; the bit
 
-segment readable executable
-align $10
+EXESEG
 
-proc _start
+proc.new crux,public
+proc.stk byte cnt
+proc.lis CLK clk gclk
 
-  qword cnt
-  xor rcx,rcx
+  proc.enter
 
-.top:
+  ; setup struc
+  mov [@clk.flen],flen
 
-  ; sprite frame
-  mov byte [%cnt],cl
-  and byte [%cnt],$07
 
-  ; go to next
-  push rcx
-  call Clock.tick,clk
+  ; iter draw
+  .top:
 
-  ; fetch sprite
-  xor rax,rax
-  mov ah,$A9
-  add ah,[%cnt]
-  or  al,$C6
+    ; sprite frame
+    mov byte [@cnt],cl
+    and byte [@cnt],$07
 
-  ; draw
-  mov [clkchr],ax
-  write STDOUT,msg,msg_len
+    ; go next
+    push rcx
+    mov  rdi,@clk
+    call CLK.tick
 
-  pop rcx
 
-  ; up the counter
-  inc rcx
-  cmp rcx,8*8
-  jne .top
+    ; fetch sprite
+    xor rax,rax
+    mov ah,$A9
+    add ah,byte [@cnt]
+    or  al,$C6
 
-; ---   *   ---   *   ---
-; slap a newline at end
+    ; ^draw
+    mov  word [clkchr],ax
+    mov  rdi,msg
+    mov  rsi,msg_len
 
-  mov byte [msg+msg_len-1],$0A
-  write STDOUT,msg,msg_len
+    call sow
+    call reap
+
+
+    ; up the counter
+    pop rcx
+    inc rcx
+    cmp rcx,8*8
+    jne .top
+
+
+  ; slap a newline at end
+  mov  byte [msg+msg_len-1],$0A
+  mov  word [clkchr],ax
+  mov  rdi,msg
+  mov  rsi,msg_len
+
+  call sow
+
+  ; cleanup and give
+  proc.leave
   exit
 
-
-end_proc leave
 
 ; ---   *   ---   *   ---

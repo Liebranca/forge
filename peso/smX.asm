@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -192,8 +192,6 @@ macro smX.sse_walk op,size,args& {
   \}
 
 }
-
-
 
 ; ---   *   ---   *   ---
 ; (WIP) i8-64 save,call,restore
@@ -389,7 +387,7 @@ macro smX.sse_tab op,eob,args& {
   local entry.len
 
   List.from entry,entry.len,\
-    1,2,3,4,5,6,7,8
+    1,2,4,8
 
   ; ^make elem for each
   smX.gen_tab \
@@ -446,22 +444,14 @@ macro smX.sse_tab2 op,eob,args& {
   push rax
 
   hybtab .altab,word,\
-    $00 => .adst_asrc,\
-    $01 => .udst_asrc,\
-    $02 => .adst_usrc,\
-    $03 => .udst_usrc
+    $00 => .aligned,\
+    $01 => .unaligned
 
   ; ^land
-  .adst_asrc:
+  .aligned:
     item movdqa,movdqa
 
-  .udst_asrc:
-    item movdqu,movdqa
-
-  .adst_usrc:
-    item movdqa,movdqu
-
-  .udst_usrc:
+  .unaligned:
     item movdqu,movdqu
 
 }
@@ -526,7 +516,7 @@ macro smX.get_alignment.inline {
   ; ^get $02 if B unaligned
   and    r10d,$0F
   cmovnz r10d,edx
-  shl    r10b,$01
+;  shl    r10b,$01
 
   ; ^combine
   or al,r10b

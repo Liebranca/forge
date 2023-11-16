@@ -12,135 +12,131 @@
 ; ---   *   ---   *   ---
 ; deps
 
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
 library ARPATH '/forge/'
   use '.inc' peso::proc
 
-import
+library.import
 
 ; ---   *   ---   *   ---
 ; info
 
   TITLE     OS.Clock
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
-  CLAN      Clock
-
 ; ---   *   ---   *   ---
-; GBL
+; ROM
 
-  define SYS_SLEEP  $23
-  define SYS_TIME   $E4
+SYS.nanosleep:
+  .id     = $23
+
+SYS.clktime:
+  .id     = $E4
+  .thrcpu = $03
 
 ; ---   *   ---   *   ---
 ; used for ticking
 
-reg
+reg.new CLK,public
 
-  dq sec   $00
-  dq nan   $00
+  my .sec  dq $00
+  my .nan  dq $00
 
-  dq prev  $00
+  my .prev dq $00
+  my .flen dq $00
 
-end_reg CLK
-
-; ---   *   ---   *   ---
-; *in nanoseconds
-
-macro get_time dst* {
-
-  push rbx
-  lea rsi,[dst]
-
-  ; CLOCK_THREAD_CPUTIME_ID
-  mov rdi,$03
-  mov rax,SYS_TIME
-
-  syscall
-
-  mov rax,[rsi+CLK.sec]
-  mov rbx,1000000000
-  mul rbx
-  add rax,[rsi+CLK.nan]
-
-  pop rbx
-
-}
-
-; ---   *   ---   *   ---
-; stop what you're doing
-; for a lil while
-
-macro nsleep src*,delta* {
-
-  local redundant
-  redundant equ 0
-
-  match =rdi,src \{
-
-  \}
-
-  match =0,redundant \{
-    lea rdi,[src]
-
-  \}
-
-  mov qword [rdi+CLK.sec],$00
-  mov qword [rdi+CLK.nan],delta
-  xor rsi,rsi
-
-  mov rax,SYS_SLEEP
-  syscall
-
-}
+reg.end
 
 ; ---   *   ---   *   ---
 ; get frame delta
 ; sleep if it's small
 
-segment readable executable
-align $10
+EXESEG
 
-proc tick
+proc.new CLK.tick,public
+proc.lis CLK self rdi
 
-  qword clk
-  mov [%clk],rdi
+  proc.enter
 
-  push rbx
+  ; save beg, get end
+  push qword [@self.prev]
+  call CLK.time
 
-  mov rax,qword [rdi+CLK.prev]
-  push rax
+  ; ^overwrite end
+  mov qword [@self.prev],rax
 
-  get_time rdi
+  ; ^end-beg
+  pop rsi
+  sub rax,rsi
+  mov rsi,qword [@self.flen]
 
-  mov rdi,[%clk]
-  mov qword [rdi+CLK.prev],rax
 
-  pop rbx
-
-  sub rax,rbx
-  mov rbx,flen
-
-  cmp rax,rbx
+  ; on elapsed < frame length
+  cmp rax,rsi
   jge .skip
 
-  sub rbx,rax
-  and rbx,999999999
+  ; ^sleep if so
+  sub  rsi,rax
+  and  rsi,999999999
 
-  nsleep rdi,rbx
+  call CLK.sleep
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
+; get elapsed in nanoseconds
 
-.skip:
-  pop rbx
+proc.new CLK.time,public
+proc.lis CLK self rdi
 
-end_proc ret
+  proc.enter
+
+  ; write sec+sub to struc
+  push @self
+  lea  rsi,[@self]
+  mov  rdi,SYS.clktime.thrcpu
+  mov  rax,SYS.clktime.id
+
+  syscall
+
+
+  ; ^approx. sec to nano
+  pop  @self
+  mov  rax,[@self.sec]
+  mov  rcx,1000000000
+  imul rax,rcx
+  add  rax,[@self.nan]
+
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
-END_CLAN
+; stop what you're doing
+; for a while!
+
+proc.new CLK.sleep,public
+proc.lis CLK self rdi
+
+  proc.enter
+
+  mov qword [@self.sec],$00
+  mov qword [@self.nan],rsi
+  mov rax,SYS.nanosleep.id
+
+  xor rsi,rsi
+
+  syscall
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
