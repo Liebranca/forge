@@ -1,37 +1,41 @@
-format ELF64 executable 3
-
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-lib ARPATH '/forge/'
+library ARPATH '/forge/'
   use '.inc' OS
+  use '.hed' OS::Term
 
-import
-
-; ---   *   ---   *   ---
-
-segment readable writeable
-align $10
-
-  tc     Termios
-  tc_old Termios
+library.import
 
 ; ---   *   ---   *   ---
+; GBL
 
-segment readable executable
-align $10
+RAMSEG
+  reg.ice Termios tc_main
+  reg.ice Termios tc_old
 
-entry _start
-_start:
+; ---   *   ---   *   ---
+; the bit
 
-  get_term STDIN,tc
-  cpy_term tc_old,tc
+EXESEG
 
-  raw_term STDIN,tc
-  set_term STDIN,tc_old
+proc.new crux,public
+proc.lis Termios tc  tc_main
+proc.lis Termios old tc_old
 
-exit
+  proc.enter
+
+  mov  rdi,@tc
+  mov  rsi,stdin
+
+  call Termios.raw
+
+
+  mov  rdi,@tc
+  mov  rsi,stdin
+
+  call Termios.cook
+
+
+  ; cleanup and give
+  proc.leave
+  exit
 
 ; ---   *   ---   *   ---
