@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -516,10 +516,24 @@ macro smX.get_alignment.inline {
   ; ^get $02 if B unaligned
   and    r10d,$0F
   cmovnz r10d,edx
-;  shl    r10b,$01
 
   ; ^combine
   or al,r10b
+
+
+  ; branch accto step
+  mov r10d,ecx
+  shr r10d,$04
+  bsr r10d,r10d
+
+  ; ^adjust step
+  push r10
+  mov  ecx,r10d
+  mov  r10d,$10
+  shl  r10d,cl
+
+  mov  ecx,r10d
+  pop  r10
 
 
   ;cleanup

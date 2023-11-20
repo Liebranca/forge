@@ -74,11 +74,6 @@ proc.new memcpy.struc,public
   proc.enter
   inline smX.get_alignment
 
-  ; ^branch accto step
-  mov r10d,ecx
-  shr r10d,$04
-  dec r10d
-
 
   ; see if bytes left
   .chk_size:

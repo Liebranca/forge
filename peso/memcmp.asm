@@ -117,20 +117,14 @@ reg.end
 ; ^large mem proc
 
 proc.new memeq.struc,public
+
 proc.stk memeq.req dst
+proc.cpr rbx
 
   ; get branch
   proc.enter
   inline smX.get_alignment
 
-
-  ; save tmp
-  push rbx
-
-  ; branch accto step
-  mov r10d,ecx
-  shr r10d,$04
-  dec r10d
 
   ; stop at first inequality
   xor rbx,rbx
@@ -162,7 +156,6 @@ proc.stk memeq.req dst
   ; reset out
   .skip:
     mov rax,rbx
-    pop rbx
 
   ; cleanup and give
   proc.leave
