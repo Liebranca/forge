@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.re
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -604,7 +604,7 @@ re.sigt.match_pat
 
 ; ---   *   ---   *   ---
 ; ^substr mode
- 
+
 proc.new re.match_sub
 re.sigt.match_pat
 
@@ -668,11 +668,49 @@ re.sigt.match_pat
 ; ^character range (placeholder)
 
 proc.new re.match_rng
+proc.cpr rbx
+
 re.sigt.match_pat
 
   proc.enter
 
-  xor rax,rax
+  ; compare char to range
+  .repeat:
+
+    ; clear
+    xor rax,rax
+    xor r10,r10
+
+    ; set step
+    mov r9w,word [@self.top]
+    mov r8d,dword [@ctx.avail]
+
+    ; load byte and range
+    push @self
+
+    mov  bl,byte [@buff]
+    mov  rdi,qword [@self.data]
+    mov  cl,byte [rdi+$00]
+    mov  dl,byte [rdi+$01]
+
+    mov  r10b,$01
+    pop  @self
+
+
+    ; ^chk result
+    cmp    bl,dl
+    cmovle eax,r10d
+
+    and    r10b,al
+    cmp    bl,cl
+    cmovge eax,r10d
+
+    call   re.chk_match
+
+    ; ^loop on signal
+    cmp bx,re.REMATCH
+    je  .repeat
+
 
   ; cleanup and give
   proc.leave
