@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.hed' peso::constr
+  use '.inc' OS
   use '.hed' peso::page
 
 library.import
@@ -314,11 +314,9 @@ proc.cpr rbx
   ; ^no fit
   .throw:
 
-    constr.new mpart.throw_bpart,\
+    OS.throw FATAL,\
       "Request exceeds maximum ",\
       "partition size",$0A
-
-    constr.errout mpart.throw_bpart,FATAL
 
 
   ; cleanup and give

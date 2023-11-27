@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -351,30 +351,6 @@ string.sigt.insert
   .skip:
 
   proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; write to selected file
-
-proc.new string.sow,public
-proc.lis array.head self rdi
-
-macro string.sow.inline {
-
-  proc.enter
-
-  mov  rsi,qword [@self.top]
-  mov  rdi,qword [@self.buff]
-
-  call sow
-
-  ; cleanup
-  proc.leave
-
-}
-
-  ; ^invoke and give
-  inline string.sow
   ret
 
 ; ---   *   ---   *   ---

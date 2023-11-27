@@ -13,7 +13,6 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::reg
   use '.hed' peso::alloc
 
 library.import

@@ -13,8 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' OS
-  use '.hed' peso::memcpy
+  use '.hed' peso::bin
 
 library.import
 
@@ -23,7 +22,7 @@ library.import
 
   TITLE     peso.file
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -31,8 +30,7 @@ library.import
 
 RAMSEG
 
-file.buff.SZ   = $100
-file.buff.REPT = file.buff.SZ shr 7
+file.buff.SZ=$100
 
 reg.new file.buff,public
 
@@ -50,9 +48,45 @@ reg.end
 reg.ice file.buff buffio
 
 ; ---   *   ---   *   ---
-; set fhandle
+; flush buff
 
 EXESEG
+
+proc.new reap,public
+proc.cpr r11,rdi,rsi
+
+macro reap.inline {
+
+  proc.enter
+
+  ; clear registers
+  xor rdi,rdi
+  xor rdx,rdx
+
+  ; ^commit buffer to file
+  mov di,word [buffio.fto]
+  mov rsi,buffio.ct
+  mov dx,word [buffio.ptr]
+
+  mov rax,SYS.write.id
+  syscall
+
+  ; ^reset meta
+  mov word [buffio.avail],file.buff.SZ
+  mov word [buffio.ptr],$0000
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline reap
+  ret
+
+; ---   *   ---   *   ---
+; set fhandle
 
 proc.new fto,public
 
@@ -64,19 +98,18 @@ proc.new fto,public
 
   ; ^skip if so
   cmp rax,rdi
-  je  .skip
+  je  @f
 
   ; ^else flush, then swap
-  call reap
-  mov  word [buffio.fto],di
+  inline reap
+  mov    word [buffio.fto],di
 
+
+  @@:
 
   ; cleanup and give
-  .skip:
-
   proc.leave
   ret
-
 
 ; ---   *   ---   *   ---
 ; ^issue write
@@ -97,9 +130,10 @@ proc.new sow,public
     mov r8d,dword [buffio.avail]
 
     ; ^clear on below chunk
-    cmp  r8d,sizeof.unit
-    jge  .go_next
-    call reap
+    cmp    r8d,sizeof.unit
+    jge    .go_next
+
+    inline reap
 
     ; ^refresh avail
     mov r8w,file.buff.SZ
@@ -138,56 +172,79 @@ proc.new sow,public
   proc.leave
   ret
 
-
 ; ---   *   ---   *   ---
-; ^write, then empty used buff
+; write string to selected file
 
-proc.new reap,public
-proc.cpr r11,rdi,rsi
+proc.new string.sow,public
+proc.lis array.head self rdi
+
+macro string.sow.inline {
 
   proc.enter
 
-  ; clear registers
-  xor rdi,rdi
-  xor rdx,rdx
+  mov  rsi,qword [@self.top]
+  mov  rdi,qword [@self.buff]
 
-  ; ^commit buffer to file
-  mov di,word [buffio.fto]
-  mov rsi,buffio.ct
-  mov dx,word [buffio.ptr]
+  call sow
 
-  mov rax,SYS.write.id
-  syscall
-
-
-  ; ^zero-flood
-  pxor xmm0,xmm0
-
-  repeat file.buff.REPT
-
-    movdqa xword [rsi+$00],xmm0
-    movdqa xword [rsi+$10],xmm0
-    movdqa xword [rsi+$20],xmm0
-    movdqa xword [rsi+$30],xmm0
-
-    movdqa xword [rsi+$40],xmm0
-    movdqa xword [rsi+$50],xmm0
-    movdqa xword [rsi+$60],xmm0
-    movdqa xword [rsi+$70],xmm0
-
-    add    rsi,$80
-
-  end repeat
-
-
-  ; ^reset meta
-  mov word [buffio.avail],file.buff.SZ
-  mov word [buffio.ptr],$0000
-
-
-  ; cleanup and give
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline string.sow
   ret
+
+; ---   *   ---   *   ---
+; ^const
+
+macro constr.sow name {
+
+  mov  rdi,name
+  mov  rsi,name#.length
+
+  call sow
+
+}
+
+; ---   *   ---   *   ---
+; ^errout
+
+macro constr.errout name,code {
+
+  ; switch file
+  mov  rdi,stderr
+  call fto
+
+  ; ^write
+  constr.sow tag.#code
+  constr.sow name
+
+  match =FATAL,code \{
+    call reap
+    exit -1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^all-in-one sugar
+
+macro constr.throw code,[ct] {
+
+  local name
+
+  proc.get_id name,code#_errme
+
+  match any,name \{
+    constr.new    any,ct
+    constr.errout any,code
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; footer

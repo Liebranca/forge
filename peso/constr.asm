@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.hed' peso::file
+  use '.inc' peso::proc
 
 library.import
 
@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.constr
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 
@@ -215,42 +215,11 @@ macro constr mode= {
 }
 
 ; ---   *   ---   *   ---
-; ^invoke sys
+; footer
 
-macro constr.sow name {
+FATAL.num=-1
 
-  mov rdi,name
-  mov rsi,name#.length
-
-  call sow
-
-}
-
-; ---   *   ---   *   ---
-; ^errout
-
-macro constr.errout name,code {
-
-  ; switch file
-  mov  rdi,stderr
-  call fto
-
-  ; ^write
-  constr.sow tag.#code
-  constr.sow name
-
-  match =FATAL,code \{
-    call reap
-    exit -1
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ROM II
-
-constr.new public tag.FATAL, \
+constr.new public FATAL.tag, \
   $1B,$5B,'37;1m<',\
   $1B,$5B,'31;1mFATAL',\
   $1B,$5B,'37;1m> ',\
