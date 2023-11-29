@@ -37,6 +37,8 @@ library.import
 
 macro proc._ns_new name,vflag= {
 
+  hier.cproc equ name
+
   ; symbol declare/restore queues
   define name#.$proc.nsmk
   define name#.$proc.nsrm
@@ -61,7 +63,6 @@ macro proc.new name,vflag= {
   end if
 
   ; reset current
-  hier.cproc equ name
   proc._ns_new name,vflag
 
   ; mark public/private

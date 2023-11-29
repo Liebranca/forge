@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; PESO FILE
+; PESO I/O
 ; Sow buffio!
 ;
 ; LIBRE SOFTWARE
@@ -13,17 +13,34 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.hed' peso::bin
+
+  use '.inc' OS
+
+  use '.inc' peso::proc
+  use '.hed' peso::memcpy
 
 library.import
 
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     peso.file
+  TITLE     peso.io
 
   VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; ROM
+
+SYS.write:
+
+  .id=$01
+
+  ; stdfd are all global
+  ; deal with it
+  stdin  = $00
+  stdout = $01
+  stderr = $02
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -171,80 +188,6 @@ proc.new sow,public
   ; cleanup and give
   proc.leave
   ret
-
-; ---   *   ---   *   ---
-; write string to selected file
-
-proc.new string.sow,public
-proc.lis array.head self rdi
-
-macro string.sow.inline {
-
-  proc.enter
-
-  mov  rsi,qword [@self.top]
-  mov  rdi,qword [@self.buff]
-
-  call sow
-
-  ; cleanup
-  proc.leave
-
-}
-
-  ; ^invoke and give
-  inline string.sow
-  ret
-
-; ---   *   ---   *   ---
-; ^const
-
-macro constr.sow name {
-
-  mov  rdi,name
-  mov  rsi,name#.length
-
-  call sow
-
-}
-
-; ---   *   ---   *   ---
-; ^errout
-
-macro constr.errout name,code {
-
-  ; switch file
-  mov  rdi,stderr
-  call fto
-
-  ; ^write
-  constr.sow tag.#code
-  constr.sow name
-
-  match =FATAL,code \{
-    call reap
-    exit -1
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^all-in-one sugar
-
-macro constr.throw code,[ct] {
-
-  local name
-
-  proc.get_id name,code#_errme
-
-  match any,name \{
-    constr.new    any,ct
-    constr.errout any,code
-
-  \}
-
-}
 
 ; ---   *   ---   *   ---
 ; footer

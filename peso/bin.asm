@@ -13,6 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.hed' peso::io
   use '.hed' peso::string
 
 library.import
@@ -22,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -46,7 +47,7 @@ SYS.open:
   .nblock = $0800
 
   ; disable r/w protections
-  .new.mode = 0x180
+  .new.mode = $180
 
 
   ; nothing further
@@ -60,6 +61,8 @@ reg.new bin,public
   my .fd    dd $00
   my .flags dd $00
 
+  my .state dd $00
+
   my .path  dq $00
   my .sig   dq $00
 
@@ -68,15 +71,19 @@ reg.new bin,public
 reg.end
 
 ; ---   *   ---   *   ---
+; ^status flags
+
+  bin.opened=$01
+
+; ---   *   ---   *   ---
 ; cstruc
 
-proc.new bin.open_prologue
+proc.new bin.new,public
 
   proc.enter
 
   ; save tmp
   push rdi
-  push rsi
 
   ; ensure nullterm (cstrs be damned ;>)
   xor  rsi,rsi
@@ -88,7 +95,6 @@ proc.new bin.open_prologue
 
 
   ; restore tmp
-  pop rsi
   pop rdi
 
   ; clear yet unknown values
@@ -104,95 +110,153 @@ proc.new bin.open_prologue
   ret
 
 ; ---   *   ---   *   ---
-; repeating bit
+; ^sugar
 
-macro bin.open_or_die [errme] { common
+macro bin.from dst,path {
+
+  ; make dynamic from const
+  string.from path
+
+  ; ^make container
+  mov  rdi,rax
+  call bin.new
+
+  ; ^save
+  mov dst,rax
+
+}
+
+; ---   *   ---   *   ---
+; throws on fail
+
+proc.new bin.open_or_die,public
+proc.lis bin self rdi
+
+  proc.enter
 
   ; get/make file
-  mov rdi,qword [rdi+array.head.buff]
-  mov rax,SYS.open.id
+  push @self
+
+  mov  rdi,qword [@self.path]
+  mov  rdi,qword [rdi+array.head.buff]
+  mov  rax,SYS.open.id
 
   syscall
+
 
   ; ^errchk
   cmp rax,$00
   jge .fdok
 
-  OS.throw FATAL,errme
+  constr.throw MESS,"Cannot open file <"
+  call string.sow
+
+  constr.throw FATAL,">",$0A
 
 
   ; nothing broke ;>
   .fdok:
 
     ; ^copy fd
-    mov rcx,qword [@out]
-    mov dword [rcx+bin.fd],eax
+    pop @self
+    mov dword [@self.fd],eax
+    or  dword [@self.state],bin.opened
 
-    ; ^reset out
-    mov rax,rcx
 
-}
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; ^make/clear
 
-proc.new bin.new,public
-proc.stk qword out
+proc.new bin.open_new,public
+proc.lis bin self rdi
+
+macro bin.open_new.inline {
 
   proc.enter
 
-  ; get container
-  call bin.open_prologue
-  mov  qword [@out],rax
-
-  ; ^set flags
-  xor rdx,rdx
-  or  esi,SYS.open.new
-  or  esi,SYS.open.trunc
-  mov dword [rax+bin.flags],esi
-
-
-  ; commit
+  ; set flags and make syscall+errchk
+  or  esi,SYS.open.new or SYS.open.trunc
   mov rdx,SYS.open.new.mode
-  bin.open_or_die "Cannot make new file",$0A
+  mov dword [@self.flags],esi
 
-  ; cleanup and give
+  call bin.open_or_die
+
+
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.open_new
   ret
 
 ; ---   *   ---   *   ---
 ; ^load
 
 proc.new bin.open,public
-proc.stk qword out
+proc.lis bin self rdi
+
+macro bin.open.inline {
 
   proc.enter
 
-  ; save tmp
-  push rdx
+  ; set flags and make syscall+errchk
+  or   esi,edx
+  mov  dword [@self.flags],esi
 
-  ; get container
-  call bin.open_prologue
-  mov  qword [@out],rax
-
-  ; ^set flags
-  pop rdx
-
-  or  esi,edx
-  mov dword [rax+bin.flags],esi
+  call bin.open_or_die
 
 
-  ; commit
-  bin.open_or_die "Cannot open file",$0A
+  ; cleanup
+  proc.leave
 
-  ; cleanup and give
+}
+
+  ; ^invoke and give
+  inline bin.open
+  ret
+
+; ---   *   ---   *   ---
+; ^selfex
+
+proc.new bin.close,public
+proc.lis bin self rdi
+
+  proc.enter
+
+  ; skip on file already closed
+  mov  eax,dword [@self.state]
+  mov  ecx,bin.opened
+
+  test eax,ecx
+  jz   @f
+
+
+  ; update state flags
+  not ecx
+  and dword [@self.state],ecx
+
+  ; ^close fd
+  mov edi,dword [@self.fd]
+  mov rax,SYS.close.id
+
+  syscall
+
+
+  ; ^cleanup and give
+  @@:
+
   proc.leave
   ret
 
 ; ---   *   ---   *   ---
-; ^free
+; dstruc
 
-proc.new bin.close,public
+proc.new bin.del,public
 
 proc.lis bin   self rdi
 
@@ -202,15 +266,12 @@ proc.stk qword path
   proc.enter
 
   ; save tmp
-  mov rax,qword [@self.path]
-  mov qword [@head],rdi
-  mov qword [@path],rax
+  mov  rax,qword [@self.path]
+  mov  qword [@head],rdi
+  mov  qword [@path],rax
 
-  ; close fd
-  mov edi,dword [@self.fd]
-  mov rax,SYS.close.id
-
-  syscall
+  ; close if opened
+  call bin.close
 
 
   ; ^release string
@@ -224,6 +285,28 @@ proc.stk qword path
 
   ; cleanup and give
   proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; set file as write dst
+
+proc.new bin.fto
+proc.lis bin self rdi
+
+macro bin.fto.inline {
+
+  proc.enter
+
+  mov  edi,[@self.fd]
+  call fto
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.fto
   ret
 
 ; ---   *   ---   *   ---

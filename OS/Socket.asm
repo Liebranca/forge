@@ -134,7 +134,7 @@ proc.stk qword out
     jge .sockok
 
     ; ^errme
-    OS.throw FATAL,\
+    constr.throw FATAL,\
       "Failed to create new socket",$0A
 
 

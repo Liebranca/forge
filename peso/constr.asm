@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' peso::proc
+  use '.hed' peso::io
 
 library.import
 
@@ -215,14 +215,69 @@ macro constr mode= {
 }
 
 ; ---   *   ---   *   ---
+; ^const
+
+macro constr.sow name {
+
+  mov  rdi,name
+  mov  rsi,name#.length
+
+  call sow
+
+}
+
+; ---   *   ---   *   ---
+; ^errout
+
+macro constr.errout name,code {
+
+  ; switch file
+  mov  rdi,stderr
+  call fto
+
+  ; ^write
+  constr.sow code#.tag
+  constr.sow name
+
+  match =FATAL,code \{
+    call reap
+    exit code#.num
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^all-in-one sugar
+
+macro constr.throw code,[ct] {
+
+  local name
+
+  proc.get_id name,code#_errme
+
+  match any,name \{
+    constr.new    any,ct
+    constr.errout any,code
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; footer
 
-FATAL.num=-1
+FATAL.num = -1
+MESS.num  = 1
 
 constr.new public FATAL.tag, \
   $1B,$5B,'37;1m<',\
   $1B,$5B,'31;1mFATAL',\
   $1B,$5B,'37;1m> ',\
+  $1B,$5B,'0m'
+
+constr.new public MESS.tag, \
+  $1B,$5B,'37;1m::',\
   $1B,$5B,'0m'
 
 constr ROM
