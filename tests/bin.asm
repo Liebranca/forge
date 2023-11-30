@@ -34,15 +34,11 @@ proc.stk qword s0
 
   mov qword [@s0],rax
 
-  ; ^set file as out
+  ; ^cat string at end
   mov    rdi,qword [@f0]
-  inline bin.fto
+  mov    rsi,qword [@s0]
 
-  ; ^write string to buffio
-  mov    rdi,qword [@s0]
-
-  inline string.sow
-  call   reap
+  inline bin.append
 
 
   ; close and free

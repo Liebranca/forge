@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -54,6 +54,18 @@ SYS.open:
   SYS.close.id=$03
 
 ; ---   *   ---   *   ---
+; ^further calls
+
+SYS.lseek:
+
+  .id  = $08
+
+  ; mode
+  .set = $00
+  .cur = $01
+  .end = $02
+
+; ---   *   ---   *   ---
 ; base struc
 
 reg.new bin,public
@@ -63,10 +75,12 @@ reg.new bin,public
 
   my .state dd $00
 
+  my .hsz   dd $00
+  my .fsz   dd $00
+  my .ptr   dd $00
+
   my .path  dq $00
   my .sig   dq $00
-
-  my .ptr   dq $00
 
 reg.end
 
@@ -98,7 +112,10 @@ proc.new bin.new,public
   pop rdi
 
   ; clear yet unknown values
-  and qword [rax+bin.ptr],$00
+  and dword [rax+bin.state],$00
+  and dword [rax+bin.ptr],$00
+  and dword [rax+bin.hsz],$00
+  and dword [rax+bin.fsz],$00
   and qword [rax+bin.sig],$00
 
   ; ^fill out struc
@@ -161,6 +178,9 @@ proc.lis bin self rdi
     pop @self
     mov dword [@self.fd],eax
     or  dword [@self.state],bin.opened
+
+    ; calc filesize, no stat
+    call bin._get_fsz
 
 
   ; cleanup and give
@@ -288,6 +308,156 @@ proc.stk qword path
   ret
 
 ; ---   *   ---   *   ---
+; adjust ptr, guts v
+
+proc.new bin._seek
+proc.lis bin self rdi
+
+macro bin._seek.inline {
+
+  proc.enter
+
+  ; save tmp
+  push @self
+
+  ; move ptr
+  mov edi,[@self.fd]
+  mov rax,SYS.lseek.id
+
+  syscall
+
+  ; ^save value
+  pop @self
+  mov dword [@self.ptr],eax
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin._seek
+  ret
+
+; ---   *   ---   *   ---
+; ^iface iceof
+; seek from cur
+
+proc.new bin.seek
+proc.lis bin self rdi
+
+macro bin.seek.inline {
+
+  proc.enter
+
+  ; offset eq cur+esi
+  mov    rdx,SYS.lseek.cur
+  dpline bin._seek
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.seek
+  ret
+
+; ---   *   ---   *   ---
+; ^seek to beg
+
+proc.new bin.rewind,public
+proc.lis bin self rdi
+
+macro bin.rewind.inline {
+
+  proc.enter
+
+  ; offset eq 0+esi+(header size)
+  add    esi,dword [@self.hsz]
+  mov    rdx,SYS.lseek.set
+
+  dpline bin._seek
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.rewind
+  ret
+
+; ---   *   ---   *   ---
+; ^seek to end
+
+proc.new bin.fastfwd,public
+proc.lis bin self rdi
+
+macro bin.fastfwd.inline {
+
+  proc.enter
+
+  ; offset eq end-esi
+  neg    rsi
+  mov    rdx,SYS.lseek.end
+
+  dpline bin._seek
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.fastfwd
+  ret
+
+; ---   *   ---   *   ---
+; ^get size of file, guts v
+
+proc.new bin._get_fsz
+proc.lis bin self rdi
+
+  proc.enter
+
+  xor    rsi,rsi
+  inline bin.fastfwd
+
+  mov    dword [@self.fsz],eax
+  inline bin.rewind
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^iface
+
+proc.new bin.get_fsz,public
+proc.lis bin self rdi
+
+macro bin.get_fsz.inline {
+
+  proc.enter
+  mov eax,dword [@self.fsz]
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.get_fsz
+  ret
+
+; ---   *   ---   *   ---
 ; set file as write dst
 
 proc.new bin.fto
@@ -307,6 +477,162 @@ macro bin.fto.inline {
 
   ; ^invoke and give
   inline bin.fto
+  ret
+
+; ---   *   ---   *   ---
+; update meta after write
+
+macro bin.write_epilogue {
+
+  ; get [step,bin]
+  pop rdx
+  pop @self
+
+  ; save tmp
+  push rax
+
+  ; update ptr
+  add dword [@self.ptr],edx
+
+  ; ^get [ptr,fsz]
+  mov ecx,dword [@self.ptr]
+  mov eax,dword [@self.fsz]
+
+
+  ; get ptr > fsz
+  sub   ecx,eax
+  xor   eax,eax
+  cmp   ecx,$00
+  cmovl edx,eax
+
+  ; ^update fsz by diff
+  add dword [@self.fsz],edx
+  pop rax
+
+}
+
+; ---   *   ---   *   ---
+; buffered write
+
+proc.new bin.sow,public
+
+proc.lis bin        self rdi
+proc.lis array.head src  rsi
+
+  proc.enter
+
+  ; save tmp
+  push @self
+  push qword [@src.top]
+
+  ; set file as out
+  call bin.fto
+
+  ; ^write to buffio
+  mov    rdi,@src
+  inline string.sow
+
+
+  ; update meta
+  bin.write_epilogue
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^unbuffered write
+
+proc.new bin.write,public
+
+proc.lis bin        self rdi
+proc.lis array.head src  rsi
+
+  proc.enter
+
+  ; save tmp
+  push @self
+
+  ; direct syscall
+  mov  edi,dword [@self.fd]
+  mov  edx,dword [@src.top]
+  mov  rsi,qword [@src.buff]
+
+  push rdx
+  mov  rax,SYS.write.id
+
+  syscall
+
+
+  ; update meta
+  bin.write_epilogue
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^at end
+
+proc.new bin.append,public
+
+proc.lis bin        self rdi
+proc.lis array.head src  rsi
+
+macro bin.append.inline {
+
+  proc.enter
+
+  ; go to end
+  push   @src
+  xor    rsi,rsi
+
+  dpline bin.fastfwd
+
+  ; ^make write
+  pop  @src
+  call bin.write
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.append
+  ret
+
+; ---   *   ---   *   ---
+; ^buffered
+
+proc.new bin.append_sow,public
+
+proc.lis bin        self rdi
+proc.lis array.head src  rsi
+
+macro bin.append_sow.inline {
+
+  proc.enter
+
+  ; go to end
+  push   @src
+  xor    rsi,rsi
+
+  dpline bin.fastfwd
+
+  ; ^make write
+  pop  @src
+  call bin.sow
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.append_sow
   ret
 
 ; ---   *   ---   *   ---
