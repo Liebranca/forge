@@ -12,8 +12,11 @@ library.import
 EXESEG
 
 proc.new crux,public
+
 proc.stk qword f0
+
 proc.stk qword s0
+proc.stk qword s1
 
   proc.enter
 
@@ -25,7 +28,7 @@ proc.stk qword s0
   mov    rsi,SYS.open.write
   xor    rdx,rdx
 
-  inline bin.open
+  inline bin.open_new
 
 
   ; make junk data
@@ -41,12 +44,42 @@ proc.stk qword s0
   inline bin.append
 
 
+  ; close file
+  mov  rdi,qword [@f0]
+  call bin.close
+
+  ; ^re-open for read
+  mov    rdi,qword [@f0]
+  mov    rsi,SYS.open.read
+  xor    rdx,rdx
+
+  inline bin.open
+
+  ; make buff
+  mov  rdi,$01
+  mov  rsi,$30
+  xor  r8,r8
+  xor  rdx,rdx
+
+  call string.new
+  mov  qword [@s1],rax
+
+  ; ^read to
+  mov  rdi,qword [@f0]
+  mov  rsi,rax
+  mov  rdx,$10
+  mov  r10w,SYS.read.over
+
+  call bin.read
+
+
   ; close and free
   mov  rdi,qword [@f0]
   call bin.del
 
-  mov  rdi,qword [@s0]
-  call string.del
+  string.bdel \
+    qword [@s0],\
+    qword [@s1]
 
 
   ; cleanup and give

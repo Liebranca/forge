@@ -51,10 +51,20 @@ SYS.open:
 
 
   ; nothing further
-  SYS.close.id=$03
+  SYS.close.id = $03
 
 ; ---   *   ---   *   ---
 ; ^further calls
+
+SYS.read:
+
+  .id  = $00
+
+  ; custom flag for bin.read
+  .over = $00
+  .seek = $01
+  .ecat = $02
+
 
 SYS.lseek:
 
@@ -90,6 +100,18 @@ reg.end
   bin.opened=$01
 
 ; ---   *   ---   *   ---
+; clear file meta
+
+macro bin.clear_meta src {
+
+  and dword [src+bin.state],$00
+  and dword [src+bin.ptr],$00
+  and dword [src+bin.hsz],$00
+  and dword [src+bin.fsz],$00
+
+}
+
+; ---   *   ---   *   ---
 ; cstruc
 
 proc.new bin.new,public
@@ -111,15 +133,10 @@ proc.new bin.new,public
   ; restore tmp
   pop rdi
 
-  ; clear yet unknown values
-  and dword [rax+bin.state],$00
-  and dword [rax+bin.ptr],$00
-  and dword [rax+bin.hsz],$00
-  and dword [rax+bin.fsz],$00
-  and qword [rax+bin.sig],$00
-
-  ; ^fill out struc
+  ; ^save path && clear signature
+  ; (bin is generic so no sigchk ;>)
   mov qword [rax+bin.path],rdi
+  and qword [rax+bin.sig],$00
 
 
   ; cleanup and give
@@ -180,7 +197,7 @@ proc.lis bin self rdi
     or  dword [@self.state],bin.opened
 
     ; calc filesize, no stat
-    call bin._get_fsz
+    call bin.get_fsz
 
 
   ; cleanup and give
@@ -196,6 +213,7 @@ proc.lis bin self rdi
 macro bin.open_new.inline {
 
   proc.enter
+  bin.clear_meta @self
 
   ; set flags and make syscall+errchk
   or  esi,SYS.open.new or SYS.open.trunc
@@ -223,6 +241,7 @@ proc.lis bin self rdi
 macro bin.open.inline {
 
   proc.enter
+  bin.clear_meta @self
 
   ; set flags and make syscall+errchk
   or   esi,edx
@@ -418,9 +437,9 @@ macro bin.fastfwd.inline {
   ret
 
 ; ---   *   ---   *   ---
-; ^get size of file, guts v
+; recalc size of file
 
-proc.new bin._get_fsz
+proc.new bin.get_fsz,public
 proc.lis bin self rdi
 
   proc.enter
@@ -437,24 +456,95 @@ proc.lis bin self rdi
   ret
 
 ; ---   *   ---   *   ---
-; ^iface
+; read N bytes to string
 
-proc.new bin.get_fsz,public
-proc.lis bin self rdi
+proc.new bin.read,public
 
-macro bin.get_fsz.inline {
+proc.lis bin        self rdi
+proc.lis array.head src  rsi
 
   proc.enter
-  mov eax,dword [@self.fsz]
+
+  ; get read cap (fsz-ptr)
+  mov ecx,dword [@self.fsz]
+  sub ecx,dword [@self.ptr]
+
+  ; ^apply if req > cap
+  cmp   edx,ecx
+  cmovg edx,ecx
 
 
-  ; cleanup
+  ; save tmp
+  push @self
+  push rdx
+
+  ; proc dst options
+  xor       rax,rax
+  mov       ax,r10w
+  branchtab get_mode
+
+
+  ; cat read bytes at end of dst
+  get_mode.branch SYS.read.ecat => .ecat
+    mov r8d,dword [@src.top]
+    mov ecx,edx
+    jmp .apply_offset
+
+  ; overwrite dst in full
+  get_mode.branch SYS.read.over => .over
+    xor r8d,r8d
+    mov ecx,edx
+    jmp .apply_offset
+
+
+  ; overwrite starting at given position
+  ; adjust length accordingly
+  get_mode.branch SYS.read.seek => .seek
+
+    ; get [top,(write end)]
+    mov eax,dword [@src.top]
+    add ecx,r8d
+
+    ; ^grow on (write end) > top
+    sub   ecx,eax
+    xor   eax,eax
+    cmp   ecx,$00
+    cmovl ecx,eax
+
+    jmp .apply_offset
+
+
+  get_mode.end
+
+  ; ^tail-of
+  .apply_offset:
+
+    ; resize buff if need
+    push @src
+
+    mov  rdi,rsi
+    mov  esi,r8d
+
+    call array.resize_chk
+
+    ; ^get buff+offset
+    pop @src
+
+    mov rsi,[@src.buff]
+    add rsi,r8
+
+
+  ; make syscall
+  pop rdx
+  pop @self
+  mov edi,dword [@self.fd]
+  mov rax,SYS.read.id
+
+  syscall
+
+
+  ; cleanup and give
   proc.leave
-
-}
-
-  ; ^invoke and give
-  inline bin.get_fsz
   ret
 
 ; ---   *   ---   *   ---
