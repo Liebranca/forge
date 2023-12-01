@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -296,34 +296,30 @@ proc.lis bin self rdi
 ; dstruc
 
 proc.new bin.del,public
+proc.lis bin self rdi
 
-proc.lis bin   self rdi
-
-proc.stk qword head
-proc.stk qword path
+macro bin.del.inline {
 
   proc.enter
 
   ; save tmp
-  mov  rax,qword [@self.path]
-  mov  qword [@head],rdi
-  mov  qword [@path],rax
+  push rdi
 
   ; close if opened
   call bin.close
 
-
-  ; ^release string
-  mov  rdi,qword [@path]
-  call string.del
-
   ; ^release mem
-  mov  rdi,qword [@head]
+  pop  rdi
   call free
 
 
-  ; cleanup and give
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.del
   ret
 
 ; ---   *   ---   *   ---
@@ -548,6 +544,55 @@ proc.lis array.head src  rsi
   ret
 
 ; ---   *   ---   *   ---
+; ^open,read,close
+
+proc.new orc,public
+
+proc.lis array.head path rdi
+
+proc.stk qword f0
+proc.stk qword s0
+
+  proc.enter
+
+
+  ; make container
+  call bin.new
+  mov  qword [@f0],rax
+
+  ; ^open file
+  mov    rdi,rax
+  mov    rsi,SYS.open.read
+  xor    rdx,rdx
+
+  inline bin.open
+
+
+  ; make dst buff
+  string.blank byte
+  mov qword [@s0],rax
+
+  ; ^read to
+  mov  rdi,qword [@f0]
+  mov  rsi,rax
+  mov  edx,$7FFFFFFF
+  mov  r10w,SYS.read.over
+
+  call bin.read
+
+  ; ^release container
+  mov    rdi,qword [@f0]
+  inline bin.del
+
+
+  ; reset out
+  mov rax,qword [@s0]
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
 ; set file as write dst
 
 proc.new bin.fto
@@ -723,6 +768,48 @@ macro bin.append_sow.inline {
 
   ; ^invoke and give
   inline bin.append_sow
+  ret
+
+; ---   *   ---   *   ---
+; ^open,write,close
+
+proc.new owc,public
+
+proc.lis array.head path rdi
+proc.lis array.head buff rsi
+
+proc.stk qword f0
+
+  proc.enter
+
+
+  ; make container
+  push rsi
+
+  call bin.new
+  mov  qword [@f0],rax
+
+  ; ^open file
+  mov    rdi,rax
+  mov    rsi,SYS.open.write
+  xor    rdx,rdx
+
+  inline bin.open_new
+
+
+  ; ^write to
+  mov  rdi,qword [@f0]
+  pop  rsi
+
+  call bin.write
+
+  ; ^release container
+  mov    rdi,qword [@f0]
+  inline bin.del
+
+
+  ; cleanup and give
+  proc.leave
   ret
 
 ; ---   *   ---   *   ---

@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -88,6 +88,20 @@ proc.lis array.head self rax
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; ^quick nit
+
+macro string.blank ezy=byte,cap=$30 {
+
+  mov  rdi,sizeof.#ezy
+  mov  rsi,cap
+  xor  r8,r8
+  xor  rdx,rdx
+
+  call string.new
+
+}
 
 ; ---   *   ---   *   ---
 ; ^dstruc alias
