@@ -134,7 +134,7 @@ proc.lis array.head path rsi
   push @self
 
   ; copy path
-  lea  rdi,[@self.addr]
+  lea  rdi,[@self.addr+$02]
   mov  r8d,dword [@path.top]
   mov  rsi,qword [@path.buff]
   mov  r10w,smX.CDEREF
@@ -165,6 +165,14 @@ proc.lis array.head path rsi
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; r/w aliases
+
+socket.write  = bin.write
+socket.read   = bin.read
+socket.dread  = bin.dread
+socket.dwrite = bin.dwrite
 
 ; ---   *   ---   *   ---
 ; footer

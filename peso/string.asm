@@ -23,8 +23,13 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.01.0b
+  VERSION   v0.01.1b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; GBL
+
+  List.new string._fcat_EXE
 
 ; ---   *   ---   *   ---
 ; make string from const
@@ -390,6 +395,143 @@ macro string.sow.inline {
   ; ^invoke and give
   inline string.sow
   ret
+
+; ---   *   ---   *   ---
+; composes one string from
+; a multitude of dynamic and
+; constant strings
+
+macro string.fcat dst,[item] {
+
+  common
+
+    local Q
+    local CQ
+    local cnt
+    local blkname
+
+    Q   equ
+    CQ  equ
+    F   equ hier.cproc
+    cnt equ 0
+
+
+    ; make dst
+    string.blank
+    mov dst,rax
+
+    macro inner.open blkname2 \{
+
+      hier.cproc equ F
+      proc.open_scope F
+
+      match any , blkname2 \\{
+        any\\#:
+
+      \\}
+
+    \}
+
+    ; ^open virtual
+    proc.get_id blkname,_fcat
+    commacat CQ,inner.open blkname
+
+
+    ; append dynamic
+    macro inner.dynstr src2 \{
+
+      ; empty Q
+      inner.qpaste
+
+      ; write ins
+      mov  rdi,dst
+      mov  rsi,src2
+      xor  r8d,r8d
+
+      call string.cat
+
+    \}
+
+    ; ^append constant
+    macro inner.constr uname \{
+
+      mov  rdi,dst
+      mov  rsi,uname
+      mov  r8d,uname\#.length
+
+      call string.cat
+
+    \}
+
+
+    ; join accum constants
+    macro inner.qpaste \{
+
+      local name
+
+      ; make constant from args
+      match any , Q \\{
+        proc.get_id name,_fcat_constr
+        constr.new  name,any
+
+        ; ^write ins
+        match uname , name \\\{
+          commacat CQ,inner.constr uname
+
+        \\\}
+
+        cnt equ cnt+1
+
+      \\}
+
+      Q equ
+
+    \}
+
+
+  ; proc args
+  forward
+
+    local ok
+    ok equ 0
+
+    ; dynamic
+    match =string src , item \{
+      commacat CQ,inner.dynstr src
+      ok equ 1
+
+    \}
+
+    ; ^constant
+    match =0 , ok \{
+      commacat Q,item
+
+    \}
+
+
+  ; close virtual and register
+  common
+
+    ; empty Q
+    inner.qpaste
+
+    ; end virtual/make call
+    macro inner.close \{
+
+      proc.close_scope F
+      restore hier.cproc
+
+      ret
+
+    \}
+
+    commacat CQ,inner.close
+    call blkname
+
+    ; add blkname to footer
+    string._fcat_EXE.push npaste CQ
+
+}
 
 ; ---   *   ---   *   ---
 ; color request struc

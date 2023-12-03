@@ -14,7 +14,7 @@
 
   TITLE     peso.smX
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -74,6 +74,33 @@ macro smX.i_mov size,step,_nullarg& {
   pop rsi
 
   add rsi,step
+  sub r8d,step
+
+}
+
+; ---   *   ---   *   ---
+; sse clear dst
+
+macro smX.sse_clr \
+  rX,rY,offset,fdst,fsrc,_nullarg& {
+
+  match =$00 , offset \{
+    pxor xmm8,xmm8
+
+  \}
+
+  fdst xword [rdi+offset],xmm8
+
+}
+
+; ---   *   ---   *   ---
+; i8-64 clear dst
+
+macro smX.i_clr size,step,_nullarg& {
+
+  mov size [rdi],$00
+
+  add rdi,step
   sub r8d,step
 
 }

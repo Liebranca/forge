@@ -739,6 +739,56 @@ macro branchtab name,bounded?= {
 }
 
 ; ---   *   ---   *   ---
+; open/close virtual "promise" paste
+
+macro virblk.beg blkname {
+
+  match any , blkname \{
+    virtual at any
+    virblk.\#any\#._vmem.beg=$
+    virblk.\#any\#._vmem::
+
+  \}
+
+}
+
+macro virblk.end blkname {
+
+  match any , blkname \{
+
+    virblk.\#any\#._vmem.size=\
+      $-virblk.\#any\#._vmem.beg
+
+    end virtual
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^perform paste
+
+macro virblk.paste blkname {
+
+  match any , blkname \{
+
+    any\#:
+
+    repeat virblk.\#any\#._vmem.size
+
+      load virblk.lb from \
+        virblk.\#any\#._vmem:\
+        virblk.\#any\#._vmem.beg+(%-1)
+
+      db virblk.lb
+
+    end repeat
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; pastes comma separated as lines
 
 macro npaste [line] {forward line}
@@ -797,22 +847,47 @@ macro fnpaste2 pro,list {
 }
 
 ; ---   *   ---   *   ---
-; space cats at end
+; cat A B C
 
-macro spacecat s,token {
-
-  match any,s \{s equ s token\}
-  match ,s \{s equ token\}
+macro protocat dst,token,sep= {
+  match any , dst \{dst equ dst sep token\}
+  match     , dst \{dst equ token\}
 
 }
 
 ; ---   *   ---   *   ---
-; ^space cats at beg
+; ^C B A
 
-macro r_spacecat s,token {
+macro lprotocat dst,token,sep= {
+  match any , dst \{dst equ token sep dst\}
+  match     , dst \{dst equ token\}
 
-  match any,s \{s equ token s\}
-  match ,s \{s equ token\}
+}
+
+; ---   *   ---   *   ---
+; ^sep is space
+
+macro spacecat  dst,token {protocat  dst,token}
+macro lspacecat dst,token {lprotocat dst,token}
+
+; ---   *   ---   *   ---
+; ^comma
+
+macro commacat  dst,token {
+
+  local sep
+  sep equ ,
+
+  protocat dst,token,sep
+
+}
+
+macro lcommacat dst,token {
+
+  local sep
+  sep equ ,
+
+  lprotocat dst,token,sep
 
 }
 

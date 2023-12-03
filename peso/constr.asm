@@ -253,7 +253,6 @@ macro constr.errout name,code {
 macro constr.throw code,[ct] {
 
   local name
-
   proc.get_id name,code#_errme
 
   match any,name \{

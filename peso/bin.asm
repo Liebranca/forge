@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -544,7 +544,39 @@ proc.lis array.head src  rsi
   ret
 
 ; ---   *   ---   *   ---
-; ^open,read,close
+; ^raw version
+
+proc.new bin.dread,public
+proc.lis bin self rdi
+
+  proc.enter
+
+;  ; save tmp
+;  push rdx
+;
+;  ; write from [rsi] to [rsi+rdx]
+;  mov  edi,dword [@self.fd]
+;  mov  rax,SYS.write.id
+;
+;  syscall
+;
+;  ; ^errchk
+;  pop rdx
+;  cmp rax,rdx
+;  je  @f
+;
+;  constr.throw FATAL,\
+;    "Direct read failed",$0A
+;
+;
+;  @@:
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; open,read,close
 
 proc.new orc,public
 
@@ -707,7 +739,46 @@ proc.lis array.head src  rsi
   ret
 
 ; ---   *   ---   *   ---
-; ^at end
+; ^raw version
+
+proc.new bin.dwrite,public
+proc.lis bin self rdi
+
+  proc.enter
+
+  ; save tmp
+  push rdx
+  push rdi
+
+  ; write from [rsi] to [rsi+rdx]
+  mov  edi,dword [@self.fd]
+  mov  rax,SYS.write.id
+
+  syscall
+
+
+  ; ^errchk
+  pop rdi
+  pop rdx
+  cmp rax,rdx
+  je  @f
+
+  ; ^errme
+  mov    rdi,qword [@self.path]
+  inline string.sow
+
+  constr.throw FATAL,\
+    ": direct write failed",$0A
+
+
+  @@:
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; unbuffered write at end
 
 proc.new bin.append,public
 
