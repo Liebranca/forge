@@ -44,8 +44,3 @@ proc.stk qword sock
   exit
 
 ; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
-; ---   *   ---   *   ---

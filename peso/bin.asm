@@ -883,9 +883,4 @@ proc.stk qword f0
   proc.leave
   ret
 
-; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
 ; ---   *   ---   *   --

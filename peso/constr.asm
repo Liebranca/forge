@@ -279,6 +279,19 @@ constr.new public MESS.tag, \
   $1B,$5B,'37;1m::',\
   $1B,$5B,'0m'
 
-constr ROM
+; ---   *   ---   *   ---
+; ^if not explicitly called,
+; then paste constants on ROM
+
+macro constr._gen_footer {
+
+  match any , constr.data \{
+    constr ROM
+
+  \}
+
+}
+
+MAM.foot.push constr._gen_footer
 
 ; ---   *   ---   *   ---

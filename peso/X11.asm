@@ -113,8 +113,3 @@ X11.sigt.mess nit
   ret
 
 ; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
-; ---   *   ---   *   ---

@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.01.1b
+  VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -397,94 +397,181 @@ macro string.sow.inline {
   ret
 
 ; ---   *   ---   *   ---
+; append constant to fcat
+
+macro string.fcat.constr dst,src {
+
+  mov  rdi,dst
+  mov  rsi,src
+  mov  r8d,src#.length
+
+  call string.cat
+
+}
+
+macro string.fsow.constr dst,src {
+  constr.sow src
+
+}
+
+macro string.ferr.constr dst,src {
+  string.fsow.constr dst,src
+
+}
+
+; ---   *   ---   *   ---
+; ^dynamic
+
+macro string.fcat.dynstr dst,src {
+
+  mov  rdi,dst
+  mov  rsi,src
+  xor  r8d,r8d
+
+  call string.cat
+
+}
+
+macro string.fsow.dynstr dst,src {
+  mov    rdi,src
+  dpline string.sow
+
+}
+
+macro string.ferr.dynstr dst,src {
+  string.fsow.dynstr dst,src
+
+}
+
+; ---   *   ---   *   ---
+; ^begof
+
+macro string.fcat.beg code= {}
+macro string.fsow.beg code= {}
+
+macro string.ferr.beg code=FATAL {
+
+  string.fsow.beg
+
+  mov  rdi,stderr
+  call fto
+
+  constr.sow code#.tag
+
+}
+
+; ---   *   ---   *   ---
+; ^endof
+
+macro string.fcat.end code= {}
+macro string.fsow.end code= {call reap}
+
+macro string.ferr.end code=FATAL{
+
+  string.fsow.end
+
+  match =FATAL , code \{
+    exit code#.num
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^join accum constants
+
+macro string.fproto.qpaste blk2,Q,CQ {
+
+  local name
+
+  ; make constant from args
+  match any , Q \{
+    proc.get_id name,_fcat_constr
+    constr.new  name,any
+
+    ; ^write ins
+    match uname , name \\{
+      commacat CQ,blk2\#.constr uname
+
+    \\}
+
+  \}
+
+  Q equ
+
+}
+
+; ---   *   ---   *   ---
 ; composes one string from
 ; a multitude of dynamic and
 ; constant strings
 
-macro string.fcat dst,[item] {
+macro string.fproto dst,fam,code,[item] {
 
   common
 
     local Q
     local CQ
-    local cnt
+    local use_dst
     local blkname
 
-    Q   equ
-    CQ  equ
-    F   equ hier.cproc
-    cnt equ 0
+    Q       equ
+    CQ      equ
+    F       equ hier.cproc
+
+    use_dst equ 1
 
 
-    ; make dst
-    string.blank
-    mov dst,rax
-
-    macro inner.open blkname2 \{
-
-      hier.cproc equ F
-      proc.open_scope F
-
-      match any , blkname2 \\{
-        any\\#:
-
-      \\}
+    ; get argdis passed
+    match =_ , dst \{
+      use_dst equ 0
 
     \}
+
+    ; ^make dst if not
+    match =1 , use_dst \{
+      string.blank
+      mov dst,rax
+
+    \}
+
 
     ; ^open virtual
     proc.get_id blkname,_fcat
-    commacat CQ,inner.open blkname
 
+    match blk2 , blkname \{
 
-    ; append dynamic
-    macro inner.dynstr src2 \{
+      macro blk2\#.open \\{
 
-      ; empty Q
-      inner.qpaste
+        hier.cproc equ F
+        proc.open_scope F
 
-      ; write ins
-      mov  rdi,dst
-      mov  rsi,src2
-      xor  r8d,r8d
+        blk2\\#:
 
-      call string.cat
-
-    \}
-
-    ; ^append constant
-    macro inner.constr uname \{
-
-      mov  rdi,dst
-      mov  rsi,uname
-      mov  r8d,uname\#.length
-
-      call string.cat
-
-    \}
-
-
-    ; join accum constants
-    macro inner.qpaste \{
-
-      local name
-
-      ; make constant from args
-      match any , Q \\{
-        proc.get_id name,_fcat_constr
-        constr.new  name,any
-
-        ; ^write ins
-        match uname , name \\\{
-          commacat CQ,inner.constr uname
-
-        \\\}
-
-        cnt equ cnt+1
+        string.#fam#.beg code
 
       \\}
 
-      Q equ
+      commacat CQ,blk2\#.open
+
+
+      ; paste constants
+      macro blk2\#.qpaste \\{
+        string.fproto.qpaste blk2,Q,CQ
+
+      \\}
+
+      ; ^append constant
+      macro blk2\#.constr src \\{
+        string.#fam#.constr dst,src
+
+      \\}
+
+      ; ^append dynamic
+      macro blk2\#.dynstr src \\{
+        string.#fam#.dynstr dst,src
+
+      \\}
 
     \}
 
@@ -495,16 +582,21 @@ macro string.fcat dst,[item] {
     local ok
     ok equ 0
 
-    ; dynamic
-    match =string src , item \{
-      commacat CQ,inner.dynstr src
-      ok equ 1
 
-    \}
+    match blk2 , blkname \{
 
-    ; ^constant
-    match =0 , ok \{
-      commacat Q,item
+      ; append dynamic
+      match =string src , item \\{
+        commacat CQ,blk2\#.dynstr src
+        ok equ 1
+
+      \\}
+
+      ; ^append constant
+      match =0 , ok \\{
+        commacat Q,item
+
+      \\}
 
     \}
 
@@ -512,24 +604,48 @@ macro string.fcat dst,[item] {
   ; close virtual and register
   common
 
-    ; empty Q
-    inner.qpaste
-
     ; end virtual/make call
-    macro inner.close \{
+    match blk2 , blkname \{
 
-      proc.close_scope F
-      restore hier.cproc
+      ; empty Q
+      blk2\#.qpaste
 
-      ret
+      macro blk2\#.close \\{
+
+        string.#fam#.end code
+
+        proc.close_scope F
+        restore hier.cproc
+
+        ret
+
+      \\}
+
+      commacat CQ,blk2\#.close
+      call blkname
 
     \}
 
-    commacat CQ,inner.close
-    call blkname
-
     ; add blkname to footer
     string._fcat_EXE.push npaste CQ
+
+}
+
+; ---   *   ---   *   ---
+; ^iceof
+
+macro string.fcat dst,item& {
+  string.fproto dst,fcat,_,item
+
+}
+
+macro string.fsow item& {
+  string.fproto _,fsow,_,item
+
+}
+
+macro string.ferr code,item& {
+  string.fproto _,ferr,code,item
 
 }
 
@@ -787,5 +903,21 @@ proc.cpr rbx
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; footer
+
+macro string._gen_footer {
+
+  match any , string._fcat_EXE.m_list \{
+
+    EXESEG
+    string._fcat_EXE
+
+  \}
+
+}
+
+MAM.foot.push string._gen_footer
 
 ; ---   *   ---   *   ---

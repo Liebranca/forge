@@ -175,8 +175,3 @@ socket.dread  = bin.dread
 socket.dwrite = bin.dwrite
 
 ; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
-; ---   *   ---   *   ---

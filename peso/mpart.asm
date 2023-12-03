@@ -329,8 +329,3 @@ proc.cpr rbx
   ret
 
 ; ---   *   ---   *   ---
-; ROM II
-
-constr ROM
-
-; ---   *   ---   *   ---

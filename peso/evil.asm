@@ -58,8 +58,3 @@ proc.new dbout.bool,public
   ret
 
 ; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
-; ---   *   ---   *   ---

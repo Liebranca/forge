@@ -54,8 +54,3 @@ proc.stk qword s1
   exit
 
 ; ---   *   ---   *   ---
-; footer
-
-constr ROM
-
-; ---   *   ---   *   ---

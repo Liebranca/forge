@@ -1,15 +1,4 @@
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-MAM.xmode='stat'
-MAM.head
-
-; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
@@ -271,11 +260,5 @@ proc.new crux
   ; cleanup and give
   proc.leave
   exit
-
-; ---   *   ---   *   ---
-; footer
-
-constr ROM
-MAM.foot
 
 ; ---   *   ---   *   ---
