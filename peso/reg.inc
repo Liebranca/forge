@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.reg
 
-  VERSION   v0.01.4a
+  VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -52,6 +52,20 @@ macro reg.new name,vflag= {
 
 macro my decl {
   sfield.push hier.creg,$reg.fields,decl
+
+}
+
+; ---   *   ---   *   ---
+; ^add inherit
+
+macro reg.beq type {
+
+  ; mark start of inherited block
+  my .beq.#type = $
+
+  ; ^push fields
+  macro inner [decl] \{forward my decl\}
+  match lines,type#.$reg.fields \{inner lines\}
 
 }
 
