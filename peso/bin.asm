@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -164,7 +164,9 @@ macro bin.from dst,path {
 ; throws on fail
 
 proc.new bin.open_or_die,public
-proc.lis bin self rdi
+
+proc.lis bin   self rdi
+proc.stk qword path
 
   proc.enter
 
@@ -172,6 +174,7 @@ proc.lis bin self rdi
   push @self
 
   mov  rdi,qword [@self.path]
+  mov  qword [@path],rdi
   mov  rdi,qword [rdi+array.head.buff]
   mov  rax,SYS.open.id
 
@@ -182,10 +185,10 @@ proc.lis bin self rdi
   cmp rax,$00
   jge .fdok
 
-  constr.throw MESS,"Cannot open file <"
-  call string.sow
-
-  constr.throw FATAL,">",$0A
+  string.ferr FATAL,\
+    "Cannot open file [",\
+    string qword [@path],\
+    "]",$0A
 
 
   ; nothing broke ;>
@@ -547,29 +550,40 @@ proc.lis array.head src  rsi
 ; ^raw version
 
 proc.new bin.dread,public
-proc.lis bin self rdi
+
+proc.lis bin   self rdi
+proc.stk qword path
 
   proc.enter
 
-;  ; save tmp
-;  push rdx
-;
-;  ; write from [rsi] to [rsi+rdx]
-;  mov  edi,dword [@self.fd]
-;  mov  rax,SYS.write.id
-;
-;  syscall
-;
-;  ; ^errchk
-;  pop rdx
-;  cmp rax,rdx
-;  je  @f
-;
-;  constr.throw FATAL,\
-;    "Direct read failed",$0A
-;
-;
-;  @@:
+  ; save tmp
+  push rdx
+  push @self
+
+  ; write from [rsi] to [rsi+rdx]
+  mov  edi,dword [@self.fd]
+  mov  rax,SYS.read.id
+
+  syscall
+
+
+  ; ^errchk
+  pop @self
+  pop rdx
+  cmp rax,rdx
+  je  @f
+
+  ; ^errme
+  mov rax,qword [@self.path]
+  mov qword [@path],rax
+
+  string.ferr FATAL,\
+    "Direct read from [",\
+    string qword [@path],\
+    "] failed",$0A
+
+
+  @@:
 
   ; cleanup and give
   proc.leave
@@ -742,13 +756,15 @@ proc.lis array.head src  rsi
 ; ^raw version
 
 proc.new bin.dwrite,public
-proc.lis bin self rdi
+
+proc.lis bin   self rdi
+proc.stk qword path
 
   proc.enter
 
   ; save tmp
   push rdx
-  push rdi
+  push @self
 
   ; write from [rsi] to [rsi+rdx]
   mov  edi,dword [@self.fd]
@@ -758,17 +774,19 @@ proc.lis bin self rdi
 
 
   ; ^errchk
-  pop rdi
+  pop @self
   pop rdx
   cmp rax,rdx
   je  @f
 
   ; ^errme
-  mov    rdi,qword [@self.path]
-  inline string.sow
+  mov rax,qword [@self.path]
+  mov qword [@path],rax
 
-  constr.throw FATAL,\
-    ": direct write failed",$0A
+  string.ferr FATAL,\
+    "Direct write to [",\
+    string qword [@path],\
+    "] failed",$0A
 
 
   @@:

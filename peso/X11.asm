@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.X11
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

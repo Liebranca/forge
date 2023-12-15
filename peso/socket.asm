@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.socket
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -51,6 +51,9 @@ SYS.socket:
 
   ; further calls
   SYS.connect.id = $2A
+  SYS.accept.id  = $2B
+  SYS.bind.id    = $31
+  SYS.listen.id  = $32
 
 ; ---   *   ---   *   ---
 ; base struc
@@ -121,9 +124,9 @@ socket.close = bin.close
 socket.del   = bin.del
 
 ; ---   *   ---   *   ---
-; also known as 'open' ;>
+; set sockpath and connect/bind
 
-proc.new socket.unix.connect,public
+proc.new socket.unix.open,public
 
 proc.lis socket     self rdi
 proc.lis array.head path rsi
@@ -131,6 +134,7 @@ proc.lis array.head path rsi
   proc.enter
 
   ; save tmp
+  push rax
   push @self
 
   ; copy path
@@ -148,7 +152,7 @@ proc.lis array.head path rsi
   mov edx,dword [@self.addrsz]
   mov edi,dword [@self.fd]
 
-  mov rax,SYS.connect.id
+  pop rax
   syscall
 
   ; ^errchk
@@ -156,14 +160,55 @@ proc.lis array.head path rsi
   jz   @f
 
   constr.throw FATAL,\
-    "Failed to connect unix socket",$0A
+    "Failed to open unix socket",$0A
 
 
   @@:
 
-
   ; cleanup and give
   proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^client
+
+proc.new socket.unix.connect,public
+macro socket.unix.connect.inline {
+
+  proc.enter
+
+  ; make syscalls
+  mov  rax,SYS.connect.id
+  call socket.unix.open
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline socket.unix.connect
+  ret
+
+; ---   *   ---   *   ---
+; ^server-side
+
+proc.new socket.unix.bind,public
+macro socket.unix.bind.inline {
+
+  proc.enter
+
+  ; make syscalls
+  mov  rax,SYS.bind.id
+  call socket.unix.open
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline socket.unix.bind
   ret
 
 ; ---   *   ---   *   ---

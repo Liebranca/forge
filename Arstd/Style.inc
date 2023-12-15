@@ -100,7 +100,7 @@ macro MAM.sym name,vflag= {
   local dst
   MAM.sym_vflag dst,name,vflag
 
-  match any,name \{
+  match any , name \{
     any\#:
 
   \}

@@ -14,7 +14,7 @@
 
   TITLE     peso.memcmp
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -42,11 +42,11 @@ proc.new memeq,public
   ; stop at first inequality
   .chk_eq:
 
-    mov rax,rbx
-    pop rbx
+    mov  rax,rbx
+    pop  rbx
 
-    or  rax,$00
-    jnz .skip_a
+    test rax,rax
+    jnz  .skip_a
 
   ; see if bytes left
   .chk_size:

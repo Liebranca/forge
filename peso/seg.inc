@@ -14,7 +14,7 @@
 
   TITLE     peso.seg
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -69,6 +69,12 @@
 
   sizeof.dpage = $2000
   sizep2.dpage = $000D
+
+; ---   *   ---   *   ---
+; GBL
+
+  define SEG.name
+  define SEG.vflag
 
 ; ---   *   ---   *   ---
 ; make aligned segment of type
@@ -157,6 +163,10 @@ macro SEG.ice NS,vflag,type {
 
   ; ^put label if any
   match any,name \{
+
+    SEG.name  equ any
+    SEG.vflag equ vflag
+
     MAM.sym any,vflag
 
   \}
@@ -169,5 +179,18 @@ macro SEG.ice NS,vflag,type {
 macro ROMSEG NS=,vflag= {SEG.ice NS,vflag,ROM}
 macro RAMSEG NS=,vflag= {SEG.ice NS,vflag,RAM}
 macro EXESEG NS=,vflag= {SEG.ice NS,vflag,EXE}
+
+; ---   *   ---   *   ---
+; register offset within segment
+
+macro segptr NC {
+
+  match pre name ct , SEG.name NC \{
+    MAM.sym pre\#.\#name,SEG.vflag
+    ct
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
