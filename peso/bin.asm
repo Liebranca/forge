@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -50,8 +50,9 @@ SYS.open:
   .new.mode = $180
 
 
-  ; nothing further
-  SYS.close.id = $03
+  ; further calls
+  SYS.close.id  = $03
+  SYS.unlink.id = $57
 
 ; ---   *   ---   *   ---
 ; ^further calls
@@ -323,6 +324,40 @@ macro bin.del.inline {
 
   ; ^invoke and give
   inline bin.del
+  ret
+
+; ---   *   ---   *   ---
+; dstruc
+
+proc.new bin.unlink,public
+proc.lis bin self rdi
+
+macro bin.unlink.inline {
+
+  proc.enter
+
+  ; save tmp
+  push @self
+
+  ; close if opened
+  call bin.close
+
+  ; ^delete file
+  pop @self
+  mov rdi,qword [@self.path]
+  mov rdi,qword [rdi+array.head.buff]
+  mov rax,SYS.unlink.id
+
+  syscall
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.unlink
   ret
 
 ; ---   *   ---   *   ---

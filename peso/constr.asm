@@ -194,7 +194,12 @@ macro constr mode= {
 
   \}
 
-  match T,type \{
+  match ='PASTE' , type \{
+    type equ
+
+  \}
+
+  match T , type \{
     T\#SEG
 
   \}

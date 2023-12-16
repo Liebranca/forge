@@ -15,7 +15,6 @@
 library ARPATH '/forge/'
 
   use '.inc' OS
-
   use '.hed' peso::constr
   use '.hed' peso::memcmp
 
@@ -26,7 +25,7 @@ library.import
 
   TITLE     peso.env
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,6 +46,9 @@ macro env.keygen name {
   \}
 
 }
+
+; ---   *   ---   *   ---
+; ^lookup shorthand
 
 macro env.getv name {
 
@@ -83,7 +85,7 @@ reg.end
 ; ---   *   ---   *   ---
 ; ROM
 
-ROMSEG env.CON
+ROMSEG env.CON,public
 
   .MASK_Z0 dq $7F7F7F7F7F7F7F7F
   .MASK_Z1 dq $0101010101010101
@@ -132,7 +134,9 @@ proc.new env.nit,public
 ; get environ
 
 proc.new env.get,public
-proc.lis env.lkp dst r11
+
+proc.lis env.lkp dst  r11
+proc.stk qword   path
 
   proc.enter
 
@@ -141,14 +145,14 @@ proc.lis env.lkp dst r11
 
   ; get begof buff
   mov rax,qword [env.state.envp]
-  mov qword [@dst.base],rax
+  mov qword [@path],rax
 
 
   ; compare entry to key
   .go_next:
 
     mov  rdi,qword [@dst.key]
-    mov  rsi,qword [@dst.base]
+    mov  rsi,qword [@path]
     mov  r8,qword [@dst.klen]
     mov  r8d,dword [r8]
 
@@ -163,11 +167,11 @@ proc.lis env.lkp dst r11
 
 
   ; ^nope, go next
-  mov  rdi,qword [@dst.base]
+  mov  rdi,qword [@path]
   mov  rsi,$01
 
   call cstr.skip
-  mov  qword [@dst.base],rdi
+  mov  qword [@path],rdi
 
 
   ; ^errchk endof buff
@@ -185,7 +189,8 @@ proc.lis env.lkp dst r11
   .found:
 
     inc  rsi
-    mov  qword [@dst.base],rsi
+    mov  rax,qword [@dst.base]
+    mov  qword [rax],rsi
     mov  rdi,rsi
 
     call cstr.length
@@ -292,5 +297,11 @@ proc.new cstr.skip,public
 
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; footer
+
+constr.new public env.path.MEM,"/.mem/"
+constr.new public env.path.CACHE,"/.cache/"
 
 ; ---   *   ---   *   ---

@@ -120,8 +120,9 @@ proc.lis socket self rax
 ; ---   *   ---   *   ---
 ; ^dstruc lis
 
-socket.close = bin.close
-socket.del   = bin.del
+define socket.close  bin.close
+define socket.del    bin.del
+define socket.unlink bin.unlink
 
 ; ---   *   ---   *   ---
 ; set sockpath and connect/bind
@@ -137,6 +138,7 @@ proc.lis array.head path rsi
   push rax
   push @self
 
+
   ; copy path
   lea  rdi,[@self.addr+$02]
   mov  r8d,dword [@path.top]
@@ -147,13 +149,15 @@ proc.lis array.head path rsi
 
 
   ; ^make conx
-  pop @self
-  lea rsi,[@self.addr]
-  mov edx,dword [@self.addrsz]
-  mov edi,dword [@self.fd]
+  pop  @self
+  lea  rsi,[@self.addr]
+  mov  edx,dword [@self.addrsz]
+  mov  edi,dword [@self.fd]
 
-  pop rax
+  pop  rax
+
   syscall
+
 
   ; ^errchk
   test rax,rax
@@ -173,9 +177,17 @@ proc.lis array.head path rsi
 ; ^client
 
 proc.new socket.unix.connect,public
+proc.lis socket     self rdi
+proc.lis array.head path rsi
+
 macro socket.unix.connect.inline {
 
   proc.enter
+
+  ; mark bin open...
+  ; if it fails, we die!
+  mov qword [@self.path],@path
+  or  dword [@self.state],bin.opened
 
   ; make syscalls
   mov  rax,SYS.connect.id
@@ -194,29 +206,101 @@ macro socket.unix.connect.inline {
 ; ^server-side
 
 proc.new socket.unix.bind,public
-macro socket.unix.bind.inline {
+
+proc.lis socket     self rdi
+proc.lis array.head path rsi
+
+proc.stk qword self_sv
 
   proc.enter
 
-  ; make syscalls
+  ; save tmp
+  mov  qword [@self_sv],@self
+  push rsi
+
+
+  ; safety rm
+  mov  qword [@self.path],@path
+  call socket.unlink
+
+  ; ^then mark bin open ;>
+  or dword [@self.state],bin.opened
+
+
+  ; ^open fd
+  mov  @self,qword [@self_sv]
+  pop  rsi
   mov  rax,SYS.bind.id
+
   call socket.unix.open
+
+
+  ; ^mark as passive
+  mov @self,qword [@self_sv]
+  mov rsi,$01
+  mov edi,dword [@self.fd]
+  mov rax,SYS.listen.id
+
+  syscall
+
 
   ; cleanup
   proc.leave
-
-}
-
-  ; ^invoke and give
-  inline socket.unix.bind
   ret
 
 ; ---   *   ---   *   ---
 ; r/w aliases
 
-socket.write  = bin.write
-socket.read   = bin.read
-socket.dread  = bin.dread
-socket.dwrite = bin.dwrite
+define socket.write  bin.write
+define socket.read   bin.read
+define socket.dread  bin.dread
+define socket.dwrite bin.dwrite
+
+; ---   *   ---   *   ---
+; put server on hold
+
+proc.new socket.unix.accept,public
+
+proc.lis socket self rdi
+proc.stk qword  peer
+
+  proc.enter
+
+  ; save tmp
+  push @self
+
+  ; nit mem for peer
+  call socket.unix.new
+  mov  qword [@peer],rax
+
+
+  ; block til input
+  pop @self
+  mov edi,dword [@self.fd]
+  xor rsi,rsi
+  xor rdx,rdx
+
+  mov rax,SYS.accept.id
+
+  syscall
+
+  ; ^errchk
+  cmp rax,$00
+  jg  @f
+
+  constr.throw FATAL,\
+    "Failed to open peer socket",$0A
+
+
+  @@:
+
+
+  ; cleanup and give
+  mov rdi,qword [@peer]
+  mov dword [rdi+socket.fd],eax
+  mov rax,rdi
+
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
