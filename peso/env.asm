@@ -15,6 +15,8 @@
 library ARPATH '/forge/'
 
   use '.inc' OS
+
+  use '.hed' peso::cstring
   use '.hed' peso::constr
   use '.hed' peso::memcmp
 
@@ -25,7 +27,7 @@ library.import
 
   TITLE     peso.env
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -83,15 +85,6 @@ reg.new env.lkp,public
 reg.end
 
 ; ---   *   ---   *   ---
-; ROM
-
-ROMSEG env.CON,public
-
-  .MASK_Z0 dq $7F7F7F7F7F7F7F7F
-  .MASK_Z1 dq $0101010101010101
-  .MASK_Z2 dq $8080808080808080
-
-; ---   *   ---   *   ---
 ; GBL
 
 RAMSEG env.state,public
@@ -122,7 +115,7 @@ proc.new env.nit,public
   mov qword [env.state.argv],rax
 
   ; ^get addrof envp
-  call cstr.skip
+  call cstring.skip
   mov  qword [env.state.envp],rax
 
 
@@ -170,7 +163,7 @@ proc.stk qword   path
   mov  rdi,qword [@path]
   mov  rsi,$01
 
-  call cstr.skip
+  call cstring.skip
   mov  qword [@path],rdi
 
 
@@ -193,108 +186,13 @@ proc.stk qword   path
     mov  qword [rax],rsi
     mov  rdi,rsi
 
-    call cstr.length
+    call cstring.length
 
     mov  rdx,[@dst.length]
     mov  dword [rdx],eax
 
 
   ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; gives 0 or 1+nullidex
-
-proc.new cstr.ziw,public
-macro cstr.ziw.inline {
-
-  proc.enter
-  xor rcx,rcx
-
-  ; convert 00 to 80 && 01-7E to 00 ;>
-  xor rsi,qword [env.CON.MASK_Z0]
-  add rsi,qword [env.CON.MASK_Z1]
-  and rsi,qword [env.CON.MASK_Z2]
-
-  je  .ziw_skip
-
-  ; get first null byte (80)+1
-  bsf rcx,rsi
-  shr rcx,$03
-  inc rcx
-
-
-  ; cleanup
-  .ziw_skip:
-  proc.leave
-
-}
-
-  ; ^invoke and give
-  inline cstr.ziw
-  ret
-
-; ---   *   ---   *   ---
-; length of cstr if chars
-; are in 00-7E range, else bogus
-
-proc.new cstr.length,public
-proc.cpr rdi,rsi
-
-  proc.enter
-  xor rax,rax
-
-  .top:
-
-    ; get null in qword
-    mov    rsi,qword [rdi]
-    inline cstr.ziw
-
-    ; ^end reached
-    test  rcx,rcx
-    jnz   .bot
-
-    ; ^else increase
-    add   rax,8
-    add   rdi,8
-    jmp   .top
-
-  ; sum final length
-  .bot:
-    dec   rcx
-    sub   rdi,rax
-    add   rax,rcx
-
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; walk cstr buff
-
-proc.new cstr.skip,public
-
-  proc.enter
-
-  ; get N strings skipped
-  .top:
-    test rsi,rsi
-    jz   .skip
-
-  ; ^walk next string
-  call cstr.length
-
-  dec  rsi
-  lea  rdi,[rdi+rax+1]
-  jmp  .top
-
-
-  ; cleanup and give
-  .skip:
-    mov rax,rdi
-
   proc.leave
   ret
 

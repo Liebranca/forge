@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.string
 
-  VERSION   v0.01.2b
+  VERSION   v0.01.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -420,9 +420,36 @@ macro string.ferr.constr dst,src {
 }
 
 ; ---   *   ---   *   ---
+; ^C
+
+macro string.fcat.cstring dst,src {
+
+  mov  rdi,src
+  mov  rsi,dst
+
+  call cstring.length
+  mov  r8d,eax
+
+  xchg rdi,rsi
+  call string.cat
+
+}
+
+macro string.fsow.cstring dst,src {
+  mov    rdi,src
+  dpline cstring.sow
+
+}
+
+macro string.ferr.cstring dst,src {
+  string.fsow.cstring dst,src
+
+}
+
+; ---   *   ---   *   ---
 ; ^dynamic
 
-macro string.fcat.dynstr dst,src {
+macro string.fcat.string dst,src {
 
   mov  rdi,dst
   mov  rsi,src
@@ -432,14 +459,14 @@ macro string.fcat.dynstr dst,src {
 
 }
 
-macro string.fsow.dynstr dst,src {
+macro string.fsow.string dst,src {
   mov    rdi,src
   dpline string.sow
 
 }
 
-macro string.ferr.dynstr dst,src {
-  string.fsow.dynstr dst,src
+macro string.ferr.string dst,src {
+  string.fsow.string dst,src
 
 }
 
@@ -567,9 +594,15 @@ macro string.fproto dst,fam,code,[item] {
 
       \\}
 
+      ; ^append raw C
+      macro blk2\#.cstring src \\{
+        string.#fam#.cstring dst,src
+
+      \\}
+
       ; ^append dynamic
-      macro blk2\#.dynstr src \\{
-        string.#fam#.dynstr dst,src
+      macro blk2\#.string src \\{
+        string.#fam#.string dst,src
 
       \\}
 
@@ -587,12 +620,26 @@ macro string.fproto dst,fam,code,[item] {
 
       ; append dynamic
       match =string src , item \\{
-        commacat CQ,blk2\#.dynstr src
+        commacat CQ,blk2\#.string src
         ok equ 1
 
       \\}
 
-      ; ^append constant
+      ; ^append raw C
+      match =cstring src , item \\{
+        commacat CQ,blk2\#.cstring src
+        ok equ 1
+
+      \\}
+
+      ; ^append existing constant
+      match =constr src , item \\{
+        commacat CQ,blk2\#.constr src
+        ok equ 1
+
+      \\}
+
+      ; ^make new constant
       match =0 , ok \\{
         commacat Q,item
 

@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -65,6 +65,7 @@ SYS.read:
   .over = $00
   .seek = $01
   .ecat = $02
+  .ucap = $04
 
 
 SYS.lseek:
@@ -490,27 +491,37 @@ proc.lis bin self rdi
   ret
 
 ; ---   *   ---   *   ---
-; read N bytes to string
+; process dst options for
+; bin.read
 
-proc.new bin.read,public
+proc.new bin.reader_mode,public
 
 proc.lis bin        self rdi
-proc.lis array.head src  rsi
+proc.lis array.head dst  rsi
 
   proc.enter
 
-  ; get read cap (fsz-ptr)
-  mov ecx,dword [@self.fsz]
-  sub ecx,dword [@self.ptr]
+  ; skip on uncapped read
+  test r10w,SYS.read.ucap
+  jnz  @f
+
+  ; ^get read cap (fsz-ptr)
+  mov  ecx,dword [@self.fsz]
+  sub  ecx,dword [@self.ptr]
 
   ; ^apply if req > cap
   cmp   edx,ecx
   cmovg edx,ecx
 
 
+  ; ^clear unrelated flags
+  @@:
+  and r10w,not SYS.read.ucap
+
   ; save tmp
   push @self
   push rdx
+
 
   ; proc dst options
   xor       rax,rax
@@ -520,13 +531,14 @@ proc.lis array.head src  rsi
 
   ; cat read bytes at end of dst
   get_mode.branch SYS.read.ecat => .ecat
-    mov r8d,dword [@src.top]
+    mov r8d,dword [@dst.top]
     mov ecx,edx
     jmp .apply_offset
 
   ; overwrite dst in full
   get_mode.branch SYS.read.over => .over
     xor r8d,r8d
+    mov dword [@dst.top],$00
     mov ecx,edx
     jmp .apply_offset
 
@@ -536,7 +548,7 @@ proc.lis array.head src  rsi
   get_mode.branch SYS.read.seek => .seek
 
     ; get [top,(write end)]
-    mov eax,dword [@src.top]
+    mov eax,dword [@dst.top]
     add ecx,r8d
 
     ; ^grow on (write end) > top
@@ -554,31 +566,59 @@ proc.lis array.head src  rsi
   .apply_offset:
 
     ; resize buff if need
-    push @src
-
+    push @dst
+    push rcx
     mov  rdi,rsi
     mov  esi,r8d
 
     call array.resize_chk
 
     ; ^get buff+offset
-    pop @src
+    pop rcx
+    pop @dst
 
-    mov rsi,[@src.buff]
+    add dword [@dst.top],ecx
+    mov rsi,[@dst.buff]
     add rsi,r8
 
 
-  ; make syscall
+  ; restore tmp
   pop rdx
   pop @self
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; read N bytes to string
+
+proc.new bin.read,public
+
+proc.lis bin        self rdi
+proc.lis array.head dst  rsi
+
+macro bin.read.inline {
+
+  proc.enter
+
+  ; config dst
+  call bin.reader_mode
+
+  ; ^make syscall
   mov edi,dword [@self.fd]
   mov rax,SYS.read.id
 
   syscall
 
 
-  ; cleanup and give
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.read
   ret
 
 ; ---   *   ---   *   ---
@@ -595,7 +635,7 @@ proc.stk qword path
   push rdx
   push @self
 
-  ; write from [rsi] to [rsi+rdx]
+  ; read in from [rdi.top] to [rdi.top+rdx]
   mov  edi,dword [@self.fd]
   mov  rax,SYS.read.id
 
