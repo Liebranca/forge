@@ -79,6 +79,11 @@ SYS.lseek:
   .end = $02
 
 ; ---   *   ---   *   ---
+; GBL
+
+  List.new bin.FILES
+
+; ---   *   ---   *   ---
 ; base struc
 
 reg.new bin,public
@@ -155,6 +160,55 @@ macro bin.from dst,path {
 
   ; ^save
   mov dst,rax
+
+}
+
+; ---   *   ---   *   ---
+; ^higher sugar, guts v
+
+macro bin._from2 dst,VN,fpath& {
+
+  local name
+  local vflag
+
+  name  equ VN
+  vflag equ
+  dst   equ
+
+  match type any , VN \{
+    vflag equ type
+    name  equ any
+
+  \}
+
+  match any , name \{
+
+    bin.FILES.push any        dq $00
+    bin.FILES.push any\#.path dq $00
+
+    MAM.sym_vflag dst,any,vflag
+    MAM.sym_vflag dst,any\#.path,vflag
+
+    ; ^save fpath to RAM
+    string.fcat qword [any\#.path],fpath
+    dst equ any
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^borderline diabetes
+
+macro bin.static VN,fpath& {
+
+  ; promise symbols to RAM
+  local dst
+  bin._from2 dst,VN,fpath
+
+  ; ^make ice and backup
+  dpline bin.new
+  mov    qword [dst],rax
 
 }
 
@@ -354,11 +408,17 @@ macro bin.trunc.inline {
 
   proc.enter
 
-  mov rdi,qword [@self.path]
-  mov rdi,qword [rdi+string.buff]
-  mov rax,SYS.trunc.id
+  ; set size
+  push @self
+  mov  rdi,qword [@self.path]
+  mov  rdi,qword [rdi+string.buff]
+  mov  rax,SYS.trunc.id
 
   syscall
+
+  ; ^register
+  pop  @self
+  call bin.get_fsz
 
 
   ; cleanup
@@ -1020,5 +1080,21 @@ proc.stk qword f0
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; footer
+
+macro bin._gen_footer {
+
+  match any , bin.FILES.m_list \{
+
+    RAMSEG
+    bin.FILES
+
+  \}
+
+}
+
+MAM.foot.push bin._gen_footer
 
 ; ---   *   ---   *   --

@@ -125,6 +125,91 @@ define socket.del    bin.del
 define socket.unlink bin.unlink
 
 ; ---   *   ---   *   ---
+; server-side cstruc sugar
+
+macro server.static TVN,fpath& {
+
+  local dst
+
+  match type VN , TVN \{
+
+    ; promise symbols to RAM
+    bin._from2 dst,VN,fpath
+
+    ; ^make ice and back
+    call socket.\#type\#.new
+    mov  qword [dst],rax
+
+    ; ^nit ice
+    match name , dst \\{
+
+      mov  rdi,rax
+      mov  rsi,qword [name\\#.path]
+
+      call socket.\#type\#.bind
+
+      ; ^prepare undo
+      macro name\\#.free \\\{
+
+        mov  rdi,qword [name]
+        call socket.unlink
+
+        mov  rdi,qword [name]
+        call socket.del
+
+        mov  rdi,qword [name\\#.path]
+        call string.del
+
+      \\\}
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^client-side
+
+macro client.static TVN,fpath& {
+
+  local dst
+
+  match type VN , TVN \{
+
+    ; promise symbols to RAM
+    bin._from2 dst,VN,fpath
+
+    ; ^make ice and back
+    call socket.\#type\#.new
+    mov  qword [dst],rax
+
+    ; ^nit ice
+    match name , dst \\{
+
+      mov  rdi,rax
+      mov  rsi,qword [name\\#.path]
+
+      call socket.\#type\#.connect
+
+      ; ^prepare undo
+      macro name\\#.free \\\{
+
+        mov  rdi,qword [name]
+        call socket.del
+
+        mov  rdi,qword [name\\#.path]
+        call string.del
+
+      \\\}
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; set sockpath and connect/bind
 
 proc.new socket.unix.open,public
