@@ -37,7 +37,8 @@ SYS.mmap:
   .proto_rw  = $03
   .proto_rx  = $05
 
-  .anon_priv = $22
+  .anon      = $22
+  .shared    = $01
 
   .nofd      = -1
 
@@ -62,7 +63,7 @@ proc.cpr r11
 
   ; linux boilerpaste
   mov rdx,SYS.mmap.proto_rw
-  mov r10,SYS.mmap.anon_priv
+  mov r10,SYS.mmap.anon
   mov r8 ,SYS.mmap.nofd
 
   xor rdi,rdi

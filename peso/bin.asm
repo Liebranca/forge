@@ -52,6 +52,7 @@ SYS.open:
 
   ; further calls
   SYS.close.id  = $03
+  SYS.trunc.id  = $4C
   SYS.unlink.id = $57
 
 ; ---   *   ---   *   ---
@@ -118,31 +119,26 @@ macro bin.clear_meta src {
 
 proc.new bin.new,public
 
+macro bin.new.inline {
+
   proc.enter
 
-  ; save tmp
-  push rdi
-
-  ; ensure nullterm (cstrs be damned ;>)
-  xor  rsi,rsi
-  call array.push
-
-  ; ^now get mem
+  ; get mem
   mov  rdi,sizeof.bin
   call alloc
 
-
-  ; restore tmp
-  pop rdi
-
-  ; ^save path && clear signature
+  ; ^clear signature
   ; (bin is generic so no sigchk ;>)
-  mov qword [rax+bin.path],rdi
-  and qword [rax+bin.sig],$00
+  mov qword [rax+bin.sig],$00
 
 
-  ; cleanup and give
+  ; cleanup
   proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.new
   ret
 
 ; ---   *   ---   *   ---
@@ -154,8 +150,8 @@ macro bin.from dst,path {
   string.from path
 
   ; ^make container
-  mov  rdi,rax
-  call bin.new
+  mov    rdi,rax
+  dpline bin.new
 
   ; ^save
   mov dst,rax
@@ -167,17 +163,34 @@ macro bin.from dst,path {
 
 proc.new bin.open_or_die,public
 
-proc.lis bin   self rdi
-proc.stk qword path
+proc.lis bin    self rdi
+proc.lis string path rsi
+
+proc.stk qword  path_sv
+proc.stk qword  self_sv
 
   proc.enter
 
-  ; get/make file
-  push @self
+  ; save tmp
+  push rdx
+  push r8
+  mov  qword [@self_sv],@self
+  mov  qword [@self.path],@path
 
+  ; ensure nullterm (cstrs be damned ;>)
+  mov  rdi,@path
+  xor  rsi,rsi
+
+  call array.push
+
+  ; get/make file
+  pop  rdx
+  pop  rsi
+
+  mov  @self,qword [@self_sv]
   mov  rdi,qword [@self.path]
-  mov  qword [@path],rdi
-  mov  rdi,qword [rdi+array.head.buff]
+  mov  qword [@path_sv],rdi
+  mov  rdi,qword [rdi+string.buff]
   mov  rax,SYS.open.id
 
   syscall
@@ -189,7 +202,7 @@ proc.stk qword path
 
   string.ferr FATAL,\
     "Cannot open file [",\
-    string qword [@path],\
+    string qword [@path_sv],\
     "]",$0A
 
 
@@ -197,7 +210,7 @@ proc.stk qword path
   .fdok:
 
     ; ^copy fd
-    pop @self
+    mov @self,qword [@self_sv]
     mov dword [@self.fd],eax
     or  dword [@self.state],bin.opened
 
@@ -213,7 +226,9 @@ proc.stk qword path
 ; ^make/clear
 
 proc.new bin.open_new,public
-proc.lis bin self rdi
+
+proc.lis bin    self rdi
+proc.lis string path rsi
 
 macro bin.open_new.inline {
 
@@ -221,9 +236,9 @@ macro bin.open_new.inline {
   bin.clear_meta @self
 
   ; set flags and make syscall+errchk
-  or  esi,SYS.open.new or SYS.open.trunc
-  mov rdx,SYS.open.new.mode
-  mov dword [@self.flags],esi
+  or  edx,SYS.open.new or SYS.open.trunc
+  mov r8,SYS.open.new.mode
+  mov dword [@self.flags],edx
 
   call bin.open_or_die
 
@@ -241,7 +256,9 @@ macro bin.open_new.inline {
 ; ^load
 
 proc.new bin.open,public
-proc.lis bin self rdi
+
+proc.lis bin    self rdi
+proc.lis string path rsi
 
 macro bin.open.inline {
 
@@ -249,8 +266,8 @@ macro bin.open.inline {
   bin.clear_meta @self
 
   ; set flags and make syscall+errchk
-  or   esi,edx
-  mov  dword [@self.flags],esi
+  or   edx,r8d
+  mov  dword [@self.flags],edx
 
   call bin.open_or_die
 
@@ -328,7 +345,32 @@ macro bin.del.inline {
   ret
 
 ; ---   *   ---   *   ---
-; dstruc
+; set file to size
+
+proc.new bin.trunc,public
+proc.lis bin self rdi
+
+macro bin.trunc.inline {
+
+  proc.enter
+
+  mov rdi,qword [@self.path]
+  mov rdi,qword [rdi+string.buff]
+  mov rax,SYS.trunc.id
+
+  syscall
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  ret
+
+; ---   *   ---   *   ---
+; erase from disk
 
 proc.new bin.unlink,public
 proc.lis bin self rdi
@@ -346,7 +388,7 @@ macro bin.unlink.inline {
   ; ^delete file
   pop @self
   mov rdi,qword [@self.path]
-  mov rdi,qword [rdi+array.head.buff]
+  mov rdi,qword [rdi+string.buff]
   mov rax,SYS.unlink.id
 
   syscall
@@ -496,8 +538,8 @@ proc.lis bin self rdi
 
 proc.new bin.reader_mode,public
 
-proc.lis bin        self rdi
-proc.lis array.head dst  rsi
+proc.lis bin    self rdi
+proc.lis string dst  rsi
 
   proc.enter
 
@@ -595,8 +637,8 @@ proc.lis array.head dst  rsi
 
 proc.new bin.read,public
 
-proc.lis bin        self rdi
-proc.lis array.head dst  rsi
+proc.lis bin    self rdi
+proc.lis string dst  rsi
 
 macro bin.read.inline {
 
@@ -669,7 +711,7 @@ proc.stk qword path
 
 proc.new orc,public
 
-proc.lis array.head path rdi
+proc.lis string path rdi
 
 proc.stk qword f0
 proc.stk qword s0
@@ -678,13 +720,16 @@ proc.stk qword s0
 
 
   ; make container
+  push @path
+
   call bin.new
   mov  qword [@f0],rax
 
   ; ^open file
   mov    rdi,rax
-  mov    rsi,SYS.open.read
-  xor    rdx,rdx
+  pop    rsi
+  mov    rdx,SYS.open.read
+  xor    r8,r8
 
   inline bin.open
 
@@ -772,8 +817,8 @@ macro bin.write_epilogue {
 
 proc.new bin.sow,public
 
-proc.lis bin        self rdi
-proc.lis array.head src  rsi
+proc.lis bin    self rdi
+proc.lis string src  rsi
 
   proc.enter
 
@@ -801,8 +846,8 @@ proc.lis array.head src  rsi
 
 proc.new bin.write,public
 
-proc.lis bin        self rdi
-proc.lis array.head src  rsi
+proc.lis bin    self rdi
+proc.lis string src  rsi
 
   proc.enter
 
@@ -875,8 +920,8 @@ proc.stk qword path
 
 proc.new bin.append,public
 
-proc.lis bin        self rdi
-proc.lis array.head src  rsi
+proc.lis bin    self rdi
+proc.lis string src  rsi
 
 macro bin.append.inline {
 
@@ -907,8 +952,8 @@ macro bin.append.inline {
 
 proc.new bin.append_sow,public
 
-proc.lis bin        self rdi
-proc.lis array.head src  rsi
+proc.lis bin    self rdi
+proc.lis string src  rsi
 
 macro bin.append_sow.inline {
 
@@ -939,8 +984,8 @@ macro bin.append_sow.inline {
 
 proc.new owc,public
 
-proc.lis array.head path rdi
-proc.lis array.head buff rsi
+proc.lis string path rdi
+proc.lis string buff rsi
 
 proc.stk qword f0
 
@@ -948,23 +993,23 @@ proc.stk qword f0
 
 
   ; make container
-  push rsi
+  push @buff
+  push @path
 
   call bin.new
   mov  qword [@f0],rax
 
   ; ^open file
+  pop    rsi
   mov    rdi,rax
-  mov    rsi,SYS.open.write
-  xor    rdx,rdx
+  mov    rdx,SYS.open.write
+  xor    r8,r8
 
   inline bin.open_new
 
 
   ; ^write to
-  mov  rdi,qword [@f0]
-  pop  rsi
-
+  pop  @buff
   call bin.write
 
   ; ^release container

@@ -32,6 +32,14 @@ library.import
   List.new string._fcat_EXE
 
 ; ---   *   ---   *   ---
+; struc alias
+
+reg.new string,public
+reg.beq array.head
+
+reg.end
+
+; ---   *   ---   *   ---
 ; make string from const
 
 macro string.from ct& {
@@ -61,7 +69,7 @@ macro string.from ct& {
 EXESEG
 
 proc.new string.new,public
-proc.lis array.head self rax
+proc.lis string self rax
 
   proc.enter
 
@@ -160,8 +168,8 @@ macro string.get_type {
 
 proc.new string.insert_prologue
 
-proc.lis array.head self  rdi
-proc.lis array.head other rsi
+proc.lis string self  rdi
+proc.lis string other rsi
 
 proc.lis string.insert_req ctx r11
 
@@ -206,8 +214,8 @@ macro string.sigt.insert {
 
   proc.stk string.insert_req ctx
 
-  proc.lis array.head self  rdi
-  proc.lis array.head other rsi
+  proc.lis string self  rdi
+  proc.lis string other rsi
 
 }
 
@@ -215,7 +223,7 @@ macro string.sigt.insert {
 ; overwrite
 
 proc.new string.set,public
-proc.lis array.head self rdi
+proc.lis string self rdi
 
 macro string.set.inline {
 
@@ -376,7 +384,7 @@ string.sigt.insert
 ; write string to selected file
 
 proc.new string.sow,public
-proc.lis array.head self rdi
+proc.lis string self rdi
 
 macro string.sow.inline {
 
@@ -723,7 +731,7 @@ reg.end
 proc.new string.color,public
 
 proc.stk via.ansi.color cmd
-proc.lis array.head     self rdi
+proc.lis string self rdi
 
   proc.enter
 
@@ -817,7 +825,7 @@ reg.end
 proc.new string.mvcur,public
 
 proc.stk via.ansi.mvcur cmd
-proc.lis array.head     self rdi
+proc.lis string self rdi
 
   proc.enter
 
