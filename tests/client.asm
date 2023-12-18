@@ -29,10 +29,16 @@ proc.stk qword   buff
   env.getv ARPATH
 
   ; connect to servo
-  client.static unix public client,\
+  client.static unix public servo,\
     cstring qword [env.state.ARPATH],\
     constr  env.path.MEM,\
     "scratch-00"
+
+  ; ^get servo mem
+  client.shmem public servo.mem,\
+    cstring qword [env.state.ARPATH],\
+    constr  env.path.MEM,\
+    "shmem-00"
 
 
   ; make read buff
@@ -40,7 +46,7 @@ proc.stk qword   buff
   mov qword [@buff],rax
 
   ; ^read in response
-  mov    rdi,qword [client]
+  mov    rdi,qword [servo]
   mov    rsi,qword [@buff]
   mov    rdx,$08
   mov    r10w,SYS.read.over or SYS.read.ucap
@@ -54,11 +60,28 @@ proc.stk qword   buff
   call   reap
 
 
+  ; ^write back to servo! ;>
+  mov    rdi,qword [servo]
+  inline bin.fto
+
+  string.fsow "$$$$$$$$"
+  call reap
+
+  ; ^wait shutdown
+  mov  rdi,qword [servo]
+  mov  rsi,qword [@buff]
+  mov  rsi,qword [rsi+string.buff]
+  mov  rdx,$04
+
+  call socket.dread
+
+
   ; cleanup and give
   mov  rdi,qword [@buff]
   call string.del
 
-  client.free
+  servo.mem.free
+  servo.free
 
   proc.leave
   exit

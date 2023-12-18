@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.shmem
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -235,5 +235,74 @@ proc.lis shmem self rdi
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; server-side cstruc sugar
+
+macro server.shmem SVN,fpath& {
+
+  local dst
+
+  match size VN , SVN \{
+
+    ; promise symbols to RAM
+    bin._from2 dst,VN,fpath
+
+    match name , dst \\{
+
+      ; ^make ice and back
+      mov  rdi,qword [name\\#.path]
+      mov  rsi,size
+
+      call shmem.new
+      mov  qword [dst],rax
+
+      ; ^prepare undo
+      macro name\\#.free \\\{
+        mov  rdi,qword [name]
+        call shmem.del
+
+        mov  rdi,qword [name\\#.path]
+        call string.del
+
+      \\\}
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^client-side
+
+macro client.shmem VN,fpath& {
+
+  local dst
+
+  ; promise symbols to RAM
+  bin._from2 dst,VN,fpath
+
+  match name , dst \{
+
+    ; ^make ice and back
+    mov  rdi,qword [name\#.path]
+
+    call shmem.open
+    mov  qword [dst],rax
+
+    ; ^prepare undo
+    macro name\#.free \\{
+      mov  rdi,qword [name]
+      call shmem.close
+
+      mov  rdi,qword [name\#.path]
+      call string.del
+
+    \\}
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---

@@ -499,11 +499,12 @@ macro string.ferr.beg code=FATAL {
 ; ^endof
 
 macro string.fcat.end code= {}
-macro string.fsow.end code= {call reap}
+macro string.fsow.end code= {}
 
 macro string.ferr.end code=FATAL{
 
   string.fsow.end
+  call reap
 
   match =FATAL , code \{
     exit code#.num
@@ -628,6 +629,7 @@ macro string.fproto dst,fam,code,[item] {
 
       ; append dynamic
       match =string src , item \\{
+        blk2\#.qpaste
         commacat CQ,blk2\#.string src
         ok equ 1
 
@@ -635,6 +637,7 @@ macro string.fproto dst,fam,code,[item] {
 
       ; ^append raw C
       match =cstring src , item \\{
+        blk2\#.qpaste
         commacat CQ,blk2\#.cstring src
         ok equ 1
 
@@ -642,6 +645,7 @@ macro string.fproto dst,fam,code,[item] {
 
       ; ^append existing constant
       match =constr src , item \\{
+        blk2\#.qpaste
         commacat CQ,blk2\#.constr src
         ok equ 1
 

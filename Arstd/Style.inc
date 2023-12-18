@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.01.8b
+  VERSION   v0.01.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -295,6 +295,61 @@ macro i_sized_reg dst,name,size {
     i_sized_reg2 dst,name,size
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; conditionally load register
+
+macro i_ldX dst,src {
+
+  local ok
+  local rX
+
+  ok equ 0
+  rX equ
+
+  tokin ok,dst,src
+
+  if ~ok
+
+    ok equ 0
+
+    ; nothing passed!
+    match , src \{
+      ok equ 1
+
+    \}
+
+
+    ; src is address
+    match =0 =ptr any , ok src \{
+
+      i_sized_reg rX,dst,qword
+
+      lea rX,[any]
+      ok equ 1
+
+    \}
+
+    ; ^src is sized deref
+    match =0 size =ptr any , ok src \{
+
+      i_sized_reg rX,dst,size
+
+      mov rX,size [any]
+      ok  equ 1
+
+    \}
+
+    ; ^src is raw value
+    match =0 , ok \{
+      i_sized_reg rX,dst,qword
+      mov rX,src
+
+    \}
+
+  end if
 
 }
 

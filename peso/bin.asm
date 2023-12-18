@@ -13,7 +13,9 @@
 ; deps
 
 library ARPATH '/forge/'
+
   use '.hed' peso::io
+  use '.hed' peso::ioctl
   use '.hed' peso::string
 
 library.import
@@ -23,7 +25,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -461,6 +463,58 @@ macro bin.unlink.inline {
 
   ; ^invoke and give
   inline bin.unlink
+  ret
+
+; ---   *   ---   *   ---
+; set blocking io
+
+proc.new bin.block,public
+
+proc.lis bin   self rdi
+proc.stk qword mode
+proc.cpr rdi
+
+macro bin.block.inline {
+
+  proc.enter
+
+  mov   qword [@mode],$00
+  ioctl bin @self,SYS.ioctl.fionbio,ptr @mode
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.block
+  ret
+
+; ---   *   ---   *   ---
+; ^unset
+
+proc.new bin.unblock,public
+
+proc.lis bin   self rdi
+proc.stk qword mode
+proc.cpr rdi
+
+macro bin.unblock.inline {
+
+  proc.enter
+
+  mov   qword [@mode],$01
+  ioctl bin @self,SYS.ioctl.fionbio,ptr @mode
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.unblock
   ret
 
 ; ---   *   ---   *   ---

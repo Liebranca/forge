@@ -14,6 +14,7 @@
 
 library ARPATH '/forge/'
   use '.hed' peso::alloc
+  use '.hed' peso::ioctl
 
 library.import
 
@@ -22,27 +23,8 @@ library.import
 
   TITLE     OS.Term
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; ROM
-
-SYS.ioctl:
-
-  .id      = $10
-
-  .tcgets  = $5401
-  .tcsets  = $5402
-  .tcsetsf = $5404
-
-  ;KDSKBMODE
-  .kbmode  = $4B45
-  .kbxlate = $01
-
-  ; actually medium raw
-  ; but we never use the other ;>
-  .kbraw   = $02
 
 ; ---   *   ---   *   ---
 ; struct copied verbatim from termios
@@ -78,29 +60,15 @@ reg.new Termios,public
 reg.end
 
 ; ---   *   ---   *   ---
-; syscall proto
-
-macro ioctl buff,fd,mode {
-
-  mov rdx,buff
-  mov rdi,fd
-  mov rsi,mode
-
-  mov rax,SYS.ioctl.id
-  syscall
-
-}
-
-; ---   *   ---   *   ---
 ; ^ice-of
 
-macro Termios.get buff,fd {
-  ioctl buff,fd,SYS.ioctl.tcgets
+macro Termios.get dst,src {
+  ioctl dst,SYS.ioctl.tcgets,src
 
 }
 
-macro Termios.set buff,fd {
-  ioctl buff,fd,SYS.ioctl.tcsetsf
+macro Termios.set dst,src {
+  ioctl dst,SYS.ioctl.tcsetsf,src
 
 }
 
@@ -149,7 +117,7 @@ proc.lis Termios self rdi
 
   ; ^eff keyboard
   pop   rsi
-  ioctl SYS.ioctl.kbraw,rsi,SYS.ioctl.kbmode
+  ioctl rsi,SYS.ioctl.kbmode,SYS.ioctl.kbraw
 
 
   ; cleanup and give
@@ -192,7 +160,7 @@ proc.lis Termios self rdi
 
   ; ^uneff keyboard
   pop   rsi
-  ioctl SYS.ioctl.kbxlate,rsi,SYS.ioctl.kbmode
+  ioctl rsi,SYS.ioctl.kbmode,SYS.ioctl.kbxlate
 
 
   ; cleanup and give

@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.socket
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -112,6 +112,14 @@ proc.lis socket self rax
   pop @self
 
   mov dword [@self.fd],ecx
+
+  ; ^set blocking reads
+  mov    rdi,@self
+  inline bin.block
+
+
+  ; reset out
+  mov rax,rdi
 
   ; cleanup and give
   proc.leave

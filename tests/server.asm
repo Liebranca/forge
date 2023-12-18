@@ -2,10 +2,19 @@
 ; deps
 
 library ARPATH '/forge/'
+
+  use '.hed' OS::Clock
+
   use '.hed' peso::shmem
   use '.hed' peso::env
 
 library.import
+
+; ---   *   ---   *   ---
+; GBL
+
+RAMSEG
+reg.ice CLK gclk
 
 ; ---   *   ---   *   ---
 ; crux
@@ -13,6 +22,8 @@ library.import
 EXESEG
 
 proc.new crux,public
+
+proc.lis CLK clk gclk
 
 proc.stk env.lkp env0
 proc.stk qword   peer
@@ -34,6 +45,12 @@ proc.stk qword   peer
     constr  env.path.MEM,\
     "scratch-00"
 
+  ; ^make servo mem
+  server.shmem $1000 public servo.mem,\
+    cstring qword [env.state.ARPATH],\
+    constr  env.path.MEM,\
+    "shmem-00"
+
 
   ; put server on block
   mov  rdi,qword [servo]
@@ -45,26 +62,58 @@ proc.stk qword   peer
   mov    rdi,qword [@peer]
   inline bin.fto
 
-  constr.new mess,"HLOWRLD!"
-  constr.sow mess
-
+  string.fsow "HLOWRLD!"
   call reap
 
 
-  ; ^get rid of peer
+  ; ^wait for close
   mov  rdi,qword [@peer]
-  call socket.del
+  mov  rsi,qword [servo.mem]
+  mov  rsi,qword [rsi+shmem.buff]
+  mov  rdx,$08
 
+  call socket.dread
+
+
+  ; ^notify tty
   mov  rdi,stdout
   call fto
 
-  constr.new succ,"DONE",$0A
-  constr.sow succ
+  mov  rdi,qword [servo.mem]
+  mov  rdi,qword [rdi+shmem.buff]
+  mov  rsi,$08
+
+  call sow
+
+  string.fsow $0A,\
+    "SERVER SHUTDOWN [",\
+    string qword [servo.path],\
+    ']',$0A
 
   call reap
 
 
+  ; ^notify peer
+  mov    rdi,qword [@peer]
+  inline bin.fto
+
+  string.fsow "BYE!"
+  call reap
+
+  ; ^get rid of em!
+  mov  rdi,qword [@peer]
+  call socket.del
+
+
+  ; timeout and die
+  mov  rdi,@clk
+  xor  rsi,$1000
+  xor  rdx,rdx
+
+  call CLK.sleep
+
   ; cleanup and give
+  servo.mem.free
   servo.free
 
   proc.leave

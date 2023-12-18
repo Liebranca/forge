@@ -79,6 +79,7 @@ proc.lis CLK self rdi
   ; ^sleep if so
   sub  rsi,rax
   and  rsi,999999999
+  xor  rdx,rdx
 
   call CLK.sleep
 
@@ -127,7 +128,7 @@ proc.lis CLK self rdi
 
   proc.enter
 
-  mov qword [@self.sec],$00
+  mov qword [@self.sec],rdx
   mov qword [@self.nan],rsi
   mov rax,SYS.nanosleep.id
 
