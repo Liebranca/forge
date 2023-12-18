@@ -13,9 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-
-  use '.hed' OS::Clock
   use '.hed' peso::socket
+  use '.hed' peso::lock
 
 library.import
 
@@ -24,7 +23,7 @@ library.import
 
   TITLE     peso.shmem
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,7 +31,8 @@ library.import
 
 reg.new shmem,public
 reg.beq bin
-  my .buff   dq $00
+  my .buff dq $00
+  my .lock dq $00
 
 reg.end
 
@@ -122,7 +122,7 @@ proc.stk qword self_sv
 
   ; free mem
   mov    esi,dword [@self.fsz]
-  mov    rdi,qword [@self.buff]
+  mov    rdi,qword [@self.lock]
   shr    esi,sizep2.page
 
   inline page.free
@@ -185,7 +185,7 @@ proc.lis shmem self rdi
 
   ; free mem
   mov    esi,dword [@self.fsz]
-  mov    rdi,qword [@self.buff]
+  mov    rdi,qword [@self.lock]
   shr    esi,sizep2.page
 
   inline page.free
@@ -228,6 +228,9 @@ proc.lis shmem self rdi
 
   ; ^save to ice
   pop @self
+  mov qword [@self.lock],rax
+
+  add rax,sizeof.dword
   mov qword [@self.buff],rax
 
   ; ^reset out
@@ -237,6 +240,31 @@ proc.lis shmem self rdi
   ; cleanup and give
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; universal sugar
+
+macro shmem._gen_methods name {
+
+  ; locking shorthand
+  macro name#.lock \{
+    mov  rdi,qword [name]
+    mov  rdi,qword [rdi+shmem.lock]
+
+    call peso.lock
+
+  \}
+
+  ; ^undo
+  macro name#.unlock \{
+    mov  rdi,qword [name]
+    mov  rdi,qword [rdi+shmem.lock]
+
+    call peso.unlock
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; server-side cstruc sugar
@@ -268,6 +296,8 @@ macro server.shmem SVN,fpath& {
         call string.del
 
       \\\}
+
+      shmem._gen_methods name
 
     \\}
 
@@ -303,74 +333,10 @@ macro client.shmem VN,fpath& {
 
     \\}
 
+    shmem._gen_methods name
+
   \}
 
 }
-
-; ---   *   ---   *   ---
-; lock memory
-
-proc.new shmem.lock,public
-
-proc.lis shmem self rdi
-proc.stk CLK   clk
-
-
-  proc.enter
-
-  ; get mem in use
-  @@:
-
-  mov  rax,qword [@self.buff]
-  mov  ax,word [rax]
-  test ax,ax
-
-  jz   @f
-
-  ; ^it is, wait around
-  push @self
-  mov  rdi,qword [@clk]
-  mov  rsi,$0A
-  xor  rdx,rdx
-
-  call CLK.sleep
-  pop  @self
-
-  jmp  @b
-
-
-  ; ^restrict until call to unlock
-  @@:
-
-  mov  rax,qword [@self.buff]
-  lock inc word [rax]
-
-
-  ; cleanup and give
-  proc.leave
-  ret
-
-; ---   *   ---   *   ---
-; ^iv
-
-proc.new shmem.unlock,public
-proc.lis shmem self rdi
-
-macro shmem.unlock.inline {
-
-  proc.enter
-
-  mov  rax,qword [@self.buff]
-  lock dec word [rax]
-
-
-  ; cleanup
-  proc.leave
-
-}
-
-  ; ^invoke and give
-  inline shmem.unlock
-  ret
 
 ; ---   *   ---   *   ---

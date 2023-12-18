@@ -53,8 +53,7 @@ proc.stk qword   peer
 
 
   ; put server on block
-  mov  rdi,qword [servo.mem]
-  call shmem.lock
+  servo.mem.lock 
 
   mov  rdi,qword [servo]
 
@@ -73,12 +72,6 @@ proc.stk qword   peer
   mov  rdi,stdout
   call fto
 
-  mov  rdi,qword [servo.mem]
-  mov  rdi,qword [rdi+shmem.buff]
-  mov  rsi,$08
-
-  call sow
-
   string.fsow $0A,\
     "SERVER SHUTDOWN [",\
     string qword [servo.path],\
@@ -90,12 +83,9 @@ proc.stk qword   peer
   ; ^notify peer
   mov  rdi,qword [servo.mem]
   mov  rdi,qword [rdi+shmem.buff]
-  add  rdi,$02
   mov  dword [rdi],$0A2424
 
-  ; ^let em read
-  mov    rdi,qword [servo.mem]
-  inline shmem.unlock
+  servo.mem.unlock
 
   ; ^get rid of em!
   mov  rdi,qword [@peer]
@@ -103,7 +93,7 @@ proc.stk qword   peer
 
   ; timeout and die
   mov  rdi,@clk
-  mov  rsi,$1000 
+  mov  rsi,$1000
   xor  rdx,rdx
 
   call CLK.sleep

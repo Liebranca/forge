@@ -61,25 +61,23 @@ proc.stk qword   buff
 
 
   ; ^wait for close
-  mov    rdi,qword [servo.mem]
-  call   shmem.lock
+  servo.mem.lock
 
+  mov    rdi,qword [servo.mem]
   mov    rdi,qword [rdi+shmem.buff]
-  add    rdi,$02
   mov    rsi,$04
 
   call   sow
   call   reap
 
-  mov    rdi,qword [servo.mem]
-  inline shmem.unlock
+  servo.mem.unlock
 
 
   ; cleanup and give
   mov  rdi,qword [@buff]
   call string.del
 
-  servo.mem.free 
+  servo.mem.free
   servo.free
 
   proc.leave
