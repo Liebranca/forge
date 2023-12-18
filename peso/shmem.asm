@@ -13,6 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
+
+  use '.hed' OS::Clock
   use '.hed' peso::socket
 
 library.import
@@ -22,7 +24,7 @@ library.import
 
   TITLE     peso.shmem
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -30,7 +32,7 @@ library.import
 
 reg.new shmem,public
 reg.beq bin
-  my .buff dq $00
+  my .buff   dq $00
 
 reg.end
 
@@ -304,5 +306,71 @@ macro client.shmem VN,fpath& {
   \}
 
 }
+
+; ---   *   ---   *   ---
+; lock memory
+
+proc.new shmem.lock,public
+
+proc.lis shmem self rdi
+proc.stk CLK   clk
+
+
+  proc.enter
+
+  ; get mem in use
+  @@:
+
+  mov  rax,qword [@self.buff]
+  mov  ax,word [rax]
+  test ax,ax
+
+  jz   @f
+
+  ; ^it is, wait around
+  push @self
+  mov  rdi,qword [@clk]
+  mov  rsi,$0A
+  xor  rdx,rdx
+
+  call CLK.sleep
+  pop  @self
+
+  jmp  @b
+
+
+  ; ^restrict until call to unlock
+  @@:
+
+  mov  rax,qword [@self.buff]
+  lock inc word [rax]
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^iv
+
+proc.new shmem.unlock,public
+proc.lis shmem self rdi
+
+macro shmem.unlock.inline {
+
+  proc.enter
+
+  mov  rax,qword [@self.buff]
+  lock dec word [rax]
+
+
+  ; cleanup
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline shmem.unlock
+  ret
 
 ; ---   *   ---   *   ---

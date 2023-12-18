@@ -60,27 +60,26 @@ proc.stk qword   buff
   call   reap
 
 
-  ; ^write back to servo! ;>
-  mov    rdi,qword [servo]
-  inline bin.fto
+  ; ^wait for close
+  mov    rdi,qword [servo.mem]
+  call   shmem.lock
 
-  string.fsow "$$$$$$$$"
-  call reap
+  mov    rdi,qword [rdi+shmem.buff]
+  add    rdi,$02
+  mov    rsi,$04
 
-  ; ^wait shutdown
-  mov  rdi,qword [servo]
-  mov  rsi,qword [@buff]
-  mov  rsi,qword [rsi+string.buff]
-  mov  rdx,$04
+  call   sow
+  call   reap
 
-  call socket.dread
+  mov    rdi,qword [servo.mem]
+  inline shmem.unlock
 
 
   ; cleanup and give
   mov  rdi,qword [@buff]
   call string.del
 
-  servo.mem.free
+  servo.mem.free 
   servo.free
 
   proc.leave

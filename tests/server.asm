@@ -53,6 +53,9 @@ proc.stk qword   peer
 
 
   ; put server on block
+  mov  rdi,qword [servo.mem]
+  call shmem.lock
+
   mov  rdi,qword [servo]
 
   call socket.unix.accept
@@ -66,16 +69,7 @@ proc.stk qword   peer
   call reap
 
 
-  ; ^wait for close
-  mov  rdi,qword [@peer]
-  mov  rsi,qword [servo.mem]
-  mov  rsi,qword [rsi+shmem.buff]
-  mov  rdx,$08
-
-  call socket.dread
-
-
-  ; ^notify tty
+  ; ^notify tty of close
   mov  rdi,stdout
   call fto
 
@@ -94,20 +88,22 @@ proc.stk qword   peer
 
 
   ; ^notify peer
-  mov    rdi,qword [@peer]
-  inline bin.fto
+  mov  rdi,qword [servo.mem]
+  mov  rdi,qword [rdi+shmem.buff]
+  add  rdi,$02
+  mov  dword [rdi],$0A2424
 
-  string.fsow "BYE!"
-  call reap
+  ; ^let em read
+  mov    rdi,qword [servo.mem]
+  inline shmem.unlock
 
   ; ^get rid of em!
   mov  rdi,qword [@peer]
   call socket.del
 
-
   ; timeout and die
   mov  rdi,@clk
-  xor  rsi,$1000
+  mov  rsi,$1000 
   xor  rdx,rdx
 
   call CLK.sleep

@@ -185,8 +185,11 @@ macro bin._from2 dst,VN,fpath& {
 
   match any , name \{
 
-    bin.FILES.push any        dq $00
-    bin.FILES.push any\#.path dq $00
+    if ~ used any
+      bin.FILES.push any        dq $00
+      bin.FILES.push any\#.path dq $00
+
+    end if
 
     MAM.sym_vflag dst,any,vflag
     MAM.sym_vflag dst,any\#.path,vflag
