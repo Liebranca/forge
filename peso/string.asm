@@ -548,6 +548,8 @@ macro string.fproto dst,fam,code,[item] {
 
     local Q
     local CQ
+    local F
+
     local use_dst
     local blkname
 
@@ -582,7 +584,7 @@ macro string.fproto dst,fam,code,[item] {
         hier.cproc equ F
         proc.open_scope F
 
-        blk2\\#:
+        blk2\#:
 
         string.#fam#.beg code
 
@@ -681,7 +683,7 @@ macro string.fproto dst,fam,code,[item] {
       \\}
 
       commacat CQ,blk2\#.close
-      call blkname
+      call blk2
 
     \}
 
@@ -975,8 +977,10 @@ macro string._gen_footer {
 
   \}
 
+  string._fcat_EXE.clear
+
 }
 
-MAM.foot.push string._gen_footer
+MAM.xfoot string
 
 ; ---   *   ---   *   ---

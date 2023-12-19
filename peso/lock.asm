@@ -37,7 +37,7 @@ SYS.futex:
   .wake = $01
 
 ; ---   *   ---   *   ---
-; close latch on free
+; take on free
 ; wait on unav
 
 EXESEG

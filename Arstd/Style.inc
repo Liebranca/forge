@@ -53,6 +53,31 @@ macro MAM.head name= {
 }
 
 ; ---   *   ---   *   ---
+; footer push proto
+
+macro MAM.xfoot name {
+
+  local flat
+  local have
+
+  have equ 0
+
+  ; detect duplicate entry
+  MAM.foot.cflatten flat
+  match any,flat \{
+    tokin have,name\#._gen_footer,any
+
+  \}
+
+  ; ^add non-duplicate
+  match =0 , have \{
+    MAM.foot.unshift name\#._gen_footer
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; visibility flag, used for
 ; object exports/imports
 
@@ -157,7 +182,7 @@ macro MAM.segment name,type,size {
 
 ; ---   *   ---   *   ---
 ; inneficient way of finding
-; a symbol within a list
+; a symbol within a common list
 
 macro tokin dst,N,[item] {
 

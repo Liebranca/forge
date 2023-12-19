@@ -53,7 +53,7 @@ proc.stk qword   peer
 
 
   ; put server on block
-  servo.mem.lock 
+  servo.mem.lock
 
   mov  rdi,qword [servo]
 

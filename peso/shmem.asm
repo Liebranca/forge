@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.hed' peso::socket
+  use '.hed' peso::bin
   use '.hed' peso::lock
 
 library.import

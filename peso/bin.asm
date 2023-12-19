@@ -1150,8 +1150,10 @@ macro bin._gen_footer {
 
   \}
 
+  bin.FILES.clear
+
 }
 
-MAM.foot.push bin._gen_footer
+MAM.xfoot bin
 
 ; ---   *   ---   *   --

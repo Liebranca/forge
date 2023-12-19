@@ -297,6 +297,6 @@ macro constr._gen_footer {
 
 }
 
-MAM.foot.push constr._gen_footer
+MAM.xfoot constr
 
 ; ---   *   ---   *   ---
