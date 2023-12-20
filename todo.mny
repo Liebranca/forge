@@ -1,44 +1,33 @@
->Runtime v0.00.1b
+>peso v0.01.6a
 
-*>Allocator
-~ block headers
-~ memcpy
-~ free
 
-*>Strings
-x length
-x alloc
-~ cat
+*>AR/Via implementation
 
-*>Misc
-~ Proc pointers
-x kbdmode ioctls
-x tc set/get attr
-x Subdivide OS
-x ^ Mem
-x ^ Clock
-x ^ Term
+~ partitioning shared memory
+  .
+~ \-->client specific blocks
+~ \-->locking of individual blocks
+  .
+~ \-->table of [peer=>address] entries
+  .  .
+~ .  \-->assign name to peer
+~ .  \-->fetch peer requests
+~ .  .  \-->validate passed peer name
+~ .  .  \-->locate peer address
+~ .  .  \-->write address back to client
 
->Environment v0.00.1b
 
-*>Imp
-x Allow blank env for absolute paths when importing
-x Ditch the %open/^close syntax, it's horrible
-
-*>Proc
-x Auto-size Proc@$enter
-x Align stack allocations
-x Nested blocks
-~ Specify nihil/stark/signal on decl
-~ Args on stack
-
-*>Reg
-~ Apply peso rules to St
-x ^Alignment
-~ ^Proc linking
-
-~ Stack allocation
-
-*>Conditionals
-x on && off statements
-~ ^ nested
+~ I/O segments in client partitions
+  .
+~ \-->traffic control
+  .  .
+~ .  \-->client to client
+~ .  .  \-->buff lock checks
+~ .  .  \-->retry checks
+  .  .
+  .  .
+~ .  \-->client to server
+~ .  .  \-->buff lock checks
+~ .  .  \-->retry checks
+  .  .
+~ .  \-->server to client
