@@ -48,7 +48,7 @@ proc.stk qword  self
 
   ; make container
   lea  rdi,[@self]
-  rsi  sizeof.client
+  mov  rsi,sizeof.client
 
   call client.alloc
 

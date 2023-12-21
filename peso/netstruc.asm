@@ -22,8 +22,8 @@ library.import
 ; ---   *   ---   *   ---
 ; GBL
 
-  List.new server.icebox
-  List.new server.icecode
+  List.new netstruc.icebox
+  List.new netstruc.icecode
 
 ; ---   *   ---   *   ---
 ; base struc (client beqs)
@@ -39,7 +39,7 @@ reg.end
 
 EXESEG
 
-proc.new netstruc.alloc
+proc.new netstruc.alloc,public
 proc.lis netstruc dst rdi
 
   proc.enter
@@ -67,12 +67,12 @@ proc.lis netstruc dst rdi
 ; ---   *   ---   *   ---
 ; cstruc generator for beqers
 
-macro netstruc.icemaker type,VN,size,path& {
+macro netstruc.icemaker type,VN,path& {
 
   ; ensure environs are fetched
   if ~ defined AR.nestruc.NIT
-    define AR.nestruc.NIT 1
-    call   AR.nestruc.nit
+    define AR.netstruc.NIT 1
+    call   AR.netstruc.nit
 
   end if
 
@@ -126,6 +126,8 @@ macro netstruc.icemaker type,VN,size,path& {
       mov  rbp,rsp
       sub  rsp,$10
 
+      push rdx
+
       ; ^save strings to stack
       string.fcat qword [rbp-$08],\
         path,\`#any
@@ -137,7 +139,7 @@ macro netstruc.icemaker type,VN,size,path& {
       ; make ice
       mov  rdi,qword [rbp-$08]
       mov  rsi,qword [rbp-$10]
-      mov  rdx,size
+      pop  rdx
 
       call type#.new
       mov  qword [any\#._addr],rax
@@ -189,8 +191,8 @@ macro netstruc.icemaker type,VN,size,path& {
 
     \\}
 
-    server.icebox.push  any\#._gen_addr
-    server.icecode.push any\#._gen_proc
+    netstruc.icebox.push  any\#._gen_addr
+    netstruc.icecode.push any\#._gen_proc
 
     call any\#.ice
 
@@ -202,6 +204,8 @@ macro netstruc.icemaker type,VN,size,path& {
 ; get common environs
 
 proc.new AR.netstruc.nit,public
+proc.cpr rdx
+
 proc.stk env.lkp env0
 
   proc.enter
@@ -221,10 +225,10 @@ macro netstruc._gen_footer {
   match any , netstruc.icebox.m_list \{
 
     RAMSEG
-    server.icebox
+    netstruc.icebox
 
     EXESEG
-    server.icecode
+    netstruc.icecode
 
   \}
 

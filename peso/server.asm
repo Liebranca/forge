@@ -18,10 +18,26 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; big struc used to touch
+; cstruc settings
+
+reg.new server.config,public
+
+  ; peertab elem
+  my .peer.ezy   dw $00
+  my .peer.cnt   dw $00
+  my .peer.outsz dd $00
+  my .peer.qcap  dw $00
+
+reg.end
+
+; ---   *   ---   *   ---
 ; base struc
 
 reg.new server,public
 reg.beq netstruc
+
+  my .peer dq $00
 
 reg.end
 
@@ -35,14 +51,16 @@ proc.cpr rbx
 
 proc.lis string sockpath rdi
 proc.lis string mempath  rsi
-proc.lis qword  memsz    rdx
 
-proc.stk qword  self
+proc.lis server.config config rdx
+
+proc.stk qword self
+proc.stk qword config_sv
 
   proc.enter
 
   ; save tmp
-  push @memsz
+  mov  qword [@config_sv],@config
   push @mempath
   push @sockpath
 
@@ -60,18 +78,45 @@ proc.stk qword  self
 
   ; ^get mem
   pop  rdi
-  pop  rsi
+  mov  @config,qword [@config_sv]
+
+  xor  rsi,rsi
+  mov  si,word [@config.peer.ezy]
+  imul si,word [@config.peer.cnt]
+  shl  esi,sizep2.page
 
   call shmem.new
   mov  qword [rbx+server.mem],rax
 
+
+  ; reset out
+  mov rax,rbx
 
   ; cleanup and leave
   proc.leave
   ret
 
 ; ---   *   ---   *   ---
-; ^dstruc
+; sets config struc defaults
+
+proc.new server.config.defaults,public
+proc.lis server.config config rdi
+
+  proc.enter
+
+  ; peer defaults
+  mov word [@config.peer.ezy],$01
+  mov word [@config.peer.cnt],$04
+  mov dword [@config.peer.outsz],$0F
+  mov word [@config.peer.qcap],$08
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; dstruc
 
 proc.new server.del,public
 proc.lis server self rdi
@@ -121,9 +166,9 @@ proc.cpr rbx
 ; ---   *   ---   *   ---
 ; ^sugar ;>
 
-macro AR.server VN,size {
+macro AR.server VN {
 
-  netstruc.icemaker server,VN,size,\
+  netstruc.icemaker server,VN,\
     cstring qword [env.state.ARPATH],\
     constr  env.path.MEM
 
