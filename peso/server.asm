@@ -18,6 +18,14 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; info
+
+  TITLE     peso.server
+
+  VERSION   v0.00.3b
+  AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
 ; big struc used to touch
 ; cstruc settings
 
@@ -100,7 +108,7 @@ proc.stk qword config_sv
 ; sets config struc defaults
 
 proc.new server.config.defaults,public
-proc.lis server.config config rdi
+proc.lis server.config config rdx
 
   proc.enter
 
@@ -166,8 +174,9 @@ proc.cpr rbx
 ; ---   *   ---   *   ---
 ; ^sugar ;>
 
-macro AR.server VN {
+macro AR.server VN,opt& {
 
+  netstruc.setconfig server,opt
   netstruc.icemaker server,VN,\
     cstring qword [env.state.ARPATH],\
     constr  env.path.MEM

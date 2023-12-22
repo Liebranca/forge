@@ -20,10 +20,20 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; info
+
+  TITLE     peso.netstruc
+
+  VERSION   v0.00.3b
+  AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
 ; GBL
 
   List.new netstruc.icebox
   List.new netstruc.icecode
+
+  define nestruc.config
 
 ; ---   *   ---   *   ---
 ; base struc (client beqs)
@@ -63,6 +73,50 @@ proc.lis netstruc dst rdi
   ; cleanup and leave
   proc.leave
   ret
+
+; ---   *   ---   *   ---
+; config generator for beqers
+
+macro netstruc.setconfig type,opt& {
+
+  local blkname
+  blkname equ
+
+  ; make codegen ID
+  proc.get_id blkname,netstruc.config_set
+  match blk , blkname \{
+
+    macro blk\#._gen [item] \\{
+
+      ; reserve stack
+      ; then set defaults
+      common
+        sub  rsp,sizeof.#type#.config
+        lea  rdx,[rbp-$10-sizeof.#type#.config]
+
+        call type#.config.defaults
+
+      ; ^go through list of settings
+      forward
+
+        match key ===> size value , item \\\{
+          mov size [rdx+type#.config.\\\#key],\
+            value
+
+        \\\}
+
+      ; erase gen after exec
+      common
+        netstruc.config equ
+
+    \\}
+
+    ; ^save generator
+    netstruc.config equ blk\#._gen opt
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; cstruc generator for beqers
@@ -126,7 +180,12 @@ macro netstruc.icemaker type,VN,path& {
       mov  rbp,rsp
       sub  rsp,$10
 
-      push rdx
+      ; run config
+      match cmd args , netstruc.config \\\{
+        cmd  args
+        push rdx
+
+      \\\}
 
       ; ^save strings to stack
       string.fcat qword [rbp-$08],\

@@ -18,6 +18,14 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; info
+
+  TITLE     peso.client
+
+  VERSION   v0.00.3b
+  AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
 ; struc alias
 
 reg.new client,public
