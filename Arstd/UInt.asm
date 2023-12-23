@@ -86,7 +86,7 @@ macro UInt.urdivp2.inline {
   ; [0] rdi is X to align
   ; ensure non-zero
   mov   rdx,$01
-  or    rdi,$00
+  test  rdi,rdi
   cmove rdi,rdx
 
 

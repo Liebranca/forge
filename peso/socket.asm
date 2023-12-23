@@ -317,11 +317,11 @@ proc.stk qword self_sv
   call socket.unlink
 
   ; ^then mark bin open ;>
-  or dword [@self.state],bin.opened
+  mov rdi,qword [@self_sv]
+  or  dword [@self.state],bin.opened
 
 
   ; ^open fd
-  mov  @self,qword [@self_sv]
   pop  rsi
   mov  rax,SYS.bind.id
 

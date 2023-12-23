@@ -25,7 +25,7 @@ library.import
 
   TITLE     peso.bin
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -58,11 +58,11 @@ SYS.open:
   SYS.unlink.id = $57
 
 ; ---   *   ---   *   ---
-; ^further calls
+; ^reading modes
 
 SYS.read:
 
-  .id  = $00
+  .id   = $00
 
   ; custom flag for bin.read
   .over = $00
@@ -70,6 +70,8 @@ SYS.read:
   .ecat = $02
   .ucap = $04
 
+; ---   *   ---   *   ---
+; ^ptr movement
 
 SYS.lseek:
 
@@ -79,6 +81,31 @@ SYS.lseek:
   .set = $00
   .cur = $01
   .end = $02
+
+; ---   *   ---   *   ---
+; ^queueing
+
+SYS.poll:
+
+  .id  = $07
+
+  ; events
+  .in  = $01
+  .pri = $02
+  .out = $04
+
+; ---   *   ---   *   ---
+; ^polling struc
+
+reg.new pollfd,public
+  my .fd  dd $00
+  my .ev  dw $00
+  my .rev dw $00
+
+reg.end
+
+; ^undo peso unit alignment
+sizeof.pollfd=$08
 
 ; ---   *   ---   *   ---
 ; GBL
@@ -1136,6 +1163,31 @@ proc.stk qword f0
 
   ; cleanup and give
   proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; knock, knock!
+
+proc.new bin.poll
+proc.lis array.head list r11
+
+macro bin.poll.inline {
+
+  proc.enter
+
+  mov rdi,qword [@list.buff]
+  mov esi,dword [@list.top]
+  shr esi,$03
+  mov rax,SYS.poll.id
+
+  syscall
+
+  proc.leave
+
+}
+
+  ; ^invoke and give
+  inline bin.poll
   ret
 
 ; ---   *   ---   *   ---

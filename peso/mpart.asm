@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.mpart
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -135,6 +135,7 @@ proc.new mpart.shr_occu,public
 ; get N free bits
 
 proc.new mpart.fit,public
+
 proc.stk qword reqm
 proc.stk qword mask
 
@@ -193,7 +194,7 @@ proc.stk qword mask
 
 
     ; rept on X < 64
-    cmp rdx,$3F
+    cmp dl,$3F
     jge .skip
     jmp .top
 
