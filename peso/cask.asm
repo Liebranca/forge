@@ -229,7 +229,7 @@ proc.stk dword idex
   jl  @f
 
   ; ^nope, die
-  constr.throw FATAL,"OOB CASK READ"
+  constr.throw FATAL,"OOB CASK READ",$0A
 
 
   @@:

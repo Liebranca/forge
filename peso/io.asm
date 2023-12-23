@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.io
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -114,7 +114,7 @@ proc.new fto,public
   mov ax,word [buffio.fto]
 
   ; ^skip if so
-  cmp rax,rdi
+  cmp ax,di
   je  @f
 
   ; ^else flush, then swap
@@ -126,6 +126,27 @@ proc.new fto,public
 
   ; cleanup and give
   proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; ^fetch
+
+proc.new fto.get,public
+
+macro fto.get.inline {
+
+  proc.enter
+
+  xor rax,rax
+  mov ax,word [buffio.fto]
+
+  proc.leave
+
+}
+
+
+  ; ^invoke and give
+  inline fto.get
   ret
 
 ; ---   *   ---   *   ---

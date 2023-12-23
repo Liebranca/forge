@@ -22,14 +22,15 @@ library.import
 
   TITLE     peso.constr
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 
 ; ---   *   ---   *   ---
 ; GBL
 
-  define  constr.data
+  define   constr.data
+  List.new constr.throw_code
 
 ; ---   *   ---   *   ---
 ; get (then set) visibility
@@ -236,17 +237,64 @@ macro constr.sow name {
 
 macro constr.errout name,code {
 
-  ; switch file
-  mov  rdi,stderr
-  call fto
+  local blkname
+  local ok
 
-  ; ^write
-  constr.sow code#.tag
-  constr.sow name
+  ok equ 0
 
-  match =FATAL,code \{
-    call reap
-    exit code#.num
+  proc.get_id blkname,constr._throw_gen
+
+  ; generate errcall
+  match blk , blkname \{
+
+    macro blk\#._gen \\{
+
+      blk\#:
+
+      ; setup stack
+      push rbp
+      mov  rbp,rsp
+      sub  rsp,2
+
+      ; ^back old fto
+      call fto.get
+      mov  word [rbp-2],ax
+
+      ; switch file
+      mov  di,stderr
+      call fto
+
+      ; ^write
+      constr.sow code#.tag
+      constr.sow name
+
+      match =FATAL,code \\\{
+        call reap
+        exit code#.num
+
+        ok equ 1
+
+      \\\}
+
+      match =0 , ok \\\{
+
+        ; reset file
+        mov  di,word [rbp-2]
+        call fto
+
+
+        ; cleanup and give
+        pop rbp
+
+        leave
+        ret
+
+      \\\}
+
+    \\}
+
+    constr.throw_code.push blk\#._gen
+    call blk
 
   \}
 
@@ -255,7 +303,7 @@ macro constr.errout name,code {
 ; ---   *   ---   *   ---
 ; ^all-in-one sugar
 
-macro constr.throw code,[ct] {
+macro constr.throw code,ct& {
 
   local name
   proc.get_id name,code#_errme
@@ -292,6 +340,14 @@ macro constr._gen_footer {
 
   match any , constr.data \{
     constr ROM
+
+  \}
+
+  match any , constr.throw_code \{
+
+    EXESEG
+    constr.throw_code
+    constr.throw_code.clear
 
   \}
 
