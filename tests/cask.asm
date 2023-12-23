@@ -7,6 +7,12 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; ROM
+
+constr.new s0,"$$",$0A
+constr.new s1,"$!",$0A
+
+; ---   *   ---   *   ---
 ; crux
 
 EXESEG
@@ -19,40 +25,34 @@ proc.stk qword have
   proc.enter
 
   ; make ice
-  mov  rdi,$02
-  mov  rsi,$08
+  mov  rdi,$08
+  mov  rsi,$02
 
   call cask.new
   mov  qword [@ar],rax
 
   ; ptr test
   mov  rdi,qword [@ar]
-  mov  rsi,$DEAD
+  mov  rsi,s0
   call cask.give
 
   mov  rdi,qword [@ar]
-  mov  rsi,$BEEF
+  mov  rsi,s1
   call cask.give
-
 
   ; ^remove elem
   mov  rdi,qword [@ar]
-  lea  rsi,[@have]
+  xor  rsi,rsi
   xor  rdx,rdx
 
   call cask.take
 
-  ; ^insert new
-  mov  rdi,qword [@ar]
-  mov  rsi,$DE74
-  call cask.give
 
-  ; ^peek elem
+  ; run for each elem
   mov  rdi,qword [@ar]
-  lea  rsi,[@have]
-  xor  rdx,rdx
+  mov  rsi,elem_sow
 
-  call cask.view
+  call cask.batcall
 
 
   ; release
@@ -63,5 +63,21 @@ proc.stk qword have
   ; cleanup and give
   proc.leave
   exit
+
+; ---   *   ---   *   ---
+; test F for batrun
+
+proc.new elem_sow
+
+  proc.enter
+
+  mov  rsi,$03
+
+  call sow
+  call reap
+
+  ; cleanup and give
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---

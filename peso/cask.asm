@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.cask
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -108,9 +108,82 @@ proc.stk dword ezy
   ret
 
 ; ---   *   ---   *   ---
-; ^dstruc alias
+; ^dstruc lising
 
 define cask.del free
+macro cask.bdel TS {
+
+  match type self , TS \{
+
+    mov  rdi,self
+    mov  rsi,type\#.del
+
+    call cask.batcall
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; goes through an iceptr cask
+; and calls the passed method
+; for each occupied slot
+
+proc.new cask.batcall,public
+
+proc.cpr rbx
+
+proc.lis cask  self rbx
+
+proc.stk dword cnt
+proc.stk qword fn
+
+  proc.enter
+
+  ; save tmp
+  mov @self,rdi
+  mov qword [@fn],rsi
+  mov dword [@cnt],$00
+
+  ; get mask
+  mov r11,qword [@self.mask]
+
+  ; ^walk
+  xor ecx,ecx
+  .go_next:
+
+    ; get next elem
+    mov ecx,dword [@cnt]
+    inc dword [@cnt]
+
+    ; ^cap hit?
+    cmp ecx,dword [@self.cnt]
+    je  .skip
+
+
+    ; get mask bit set
+    mov rax,qword [r11]
+    shr rax,cl
+
+    ; ^skip unset
+    and al,$01
+    jz  .go_next
+
+
+    ; ^else call method
+    mov  rdi,[@self.buff]
+    mov  rdi,qword [rdi+rcx*8]
+    mov  rax,qword [@fn]
+
+    call rax
+    jmp  .go_next
+
+
+  ; cleanup and give
+  .skip:
+
+  proc.leave
+  ret
 
 ; ---   *   ---   *   ---
 ; occupy free slot
@@ -174,9 +247,18 @@ proc.stk qword dst
   not rax
   and qword [r11],rax
 
+
+  ; have dst?
+  mov  rdi,qword [@dst]
+  test rdi,rdi
+  jz   @f
+
   ; ^get value @ idex
   mov  rdi,qword [@dst]
   call cask.read
+
+  ; ^else nope
+  @@:
 
 
   ; cleanup and give

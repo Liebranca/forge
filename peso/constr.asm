@@ -269,9 +269,7 @@ macro constr.errout name,code {
       constr.sow name
 
       match =FATAL,code \\\{
-        call reap
         exit code#.num
-
         ok equ 1
 
       \\\}
