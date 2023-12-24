@@ -100,7 +100,7 @@ macro re.new_array.inline {
 
 proc.new re.new,public
 
-proc.lis array.head src rdi
+proc.lis array  src rdi
 
 proc.stk qword  stash
 
@@ -277,8 +277,9 @@ proc.lis re.pat elem rdi
 ; used by pattern
 
 proc.new re.read_data
-proc.lis re.pat     elem rdi
-proc.lis array.head dst  rdx
+
+proc.lis re.pat elem rdi
+proc.lis array  dst  rdx
 
   proc.enter
 
@@ -399,10 +400,10 @@ proc.lis array.head dst  rdx
 
 proc.new re.match,public
 
-proc.lis array.head self rdi
+proc.lis array      self rdi
 proc.lis re.pat     elem rdi
 
-proc.lis array.head sref rsi
+proc.lis string     sref rsi
 
 proc.stk re.status  cur
 proc.stk re.status  ctx

@@ -1169,7 +1169,7 @@ proc.stk qword f0
 ; knock, knock!
 
 proc.new bin.poll
-proc.lis array.head list r11
+proc.lis array list r11
 
 macro bin.poll.inline {
 

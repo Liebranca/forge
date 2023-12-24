@@ -35,7 +35,7 @@ library.import
 ; struc alias
 
 reg.new string,public
-reg.beq array.head
+reg.beq array
 
 reg.end
 

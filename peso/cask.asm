@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.cask
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,11 +32,12 @@ reg.new cask,public
 
   my .cnt    dd $00
   my .ezy    dd $00
+
   my .masksz dd $00
   my .buffsz dd $00
 
-  my .mask dq $00
-  my .buff dq $00
+  my .mask   dq $00
+  my .buff   dq $00
 
 reg.end
 
@@ -130,7 +131,6 @@ macro cask.bdel TS {
 ; for each occupied slot
 
 proc.new cask.batcall,public
-
 proc.cpr rbx
 
 proc.lis cask  self rbx
@@ -182,6 +182,28 @@ proc.stk qword fn
   ; cleanup and give
   .skip:
 
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; selfex
+
+proc.new cask.resize,public
+proc.cpr rbx
+
+proc.lis cask self rbx
+
+  proc.enter
+
+  ; save tmp
+  mov @self,rdi
+
+
+  ; make new container
+  
+
+
+  ; cleanup and give
   proc.leave
   ret
 

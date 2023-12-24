@@ -222,8 +222,8 @@ macro client.static TVN,fpath& {
 
 proc.new socket.unix.open,public
 
-proc.lis socket     self rdi
-proc.lis array.head path rsi
+proc.lis socket self rdi
+proc.lis string path rsi
 
   proc.enter
 
@@ -270,8 +270,9 @@ proc.lis array.head path rsi
 ; ^client
 
 proc.new socket.unix.connect,public
-proc.lis socket     self rdi
-proc.lis array.head path rsi
+
+proc.lis socket self rdi
+proc.lis array  path rsi
 
 macro socket.unix.connect.inline {
 
@@ -300,8 +301,8 @@ macro socket.unix.connect.inline {
 
 proc.new socket.unix.bind,public
 
-proc.lis socket     self rdi
-proc.lis array.head path rsi
+proc.lis socket self rdi
+proc.lis string path rsi
 
 proc.stk qword self_sv
 

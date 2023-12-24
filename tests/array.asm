@@ -1,19 +1,8 @@
 ; ---   *   ---   *   ---
-; get importer
-
-if ~ defined loaded?Imp
-  include '%ARPATH%/forge/Imp.inc'
-
-end if
-
-MAM.xmode='stat'
-MAM.head
-
-; ---   *   ---   *   ---
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::array
+  use '.hed' peso::array
 
 library.import
 
@@ -35,7 +24,8 @@ reg.end
 EXESEG
 
 proc.new struc_test
-proc.stk qword  ar
+
+proc.stk array  ar
 proc.stk tstruc scratch
 
   proc.enter
@@ -43,18 +33,16 @@ proc.stk tstruc scratch
   ; get mem
   mov  rdi,sizeof.tstruc
   mov  rsi,$20
+  lea  rdx,[@ar]
 
   call array.new
-
-  ; ^save tmp
-  mov qword [@ar],rax
 
   ; make test buff
   mov qword [@scratch.a],$2424
   mov qword [@scratch.b],$2525
 
   ; add to end
-  mov  rdi,qword [@ar]
+  lea  rdi,[@ar]
   lea  rsi,[@scratch]
 
   call array.push
@@ -65,10 +53,10 @@ proc.stk tstruc scratch
   mov qword [@scratch.b],$2323
 
   ; add to beg
-  mov   rdi,qword [@ar]
-  lea   rsi,[@scratch]
+  lea  rdi,[@ar]
+  lea  rsi,[@scratch]
 
-  call  array.unshift
+  call array.unshift
 
 
   ; clear test buff
@@ -76,14 +64,14 @@ proc.stk tstruc scratch
   mov qword [@scratch.b],$0000
 
   ; remove from beg
-  mov  rdi,qword [@ar]
+  lea  rdi,[@ar]
   lea  rsi,[@scratch]
 
   call array.shift
 
 
   ; add to end
-  mov  rdi,qword [@ar]
+  lea  rdi,[@ar]
   lea  rsi,[@scratch]
 
   call array.push
@@ -94,13 +82,15 @@ proc.stk tstruc scratch
   mov qword [@scratch.b],$0000
 
   ; ^remove
-  mov  rdi,qword [@ar]
+  lea  rdi,[@ar]
   lea  rsi,[@scratch]
 
   call array.pop
 
   ; release
-  mov  rdi,qword [@ar]
+  lea  rdi,[@ar]
+  mov  sil,$01
+
   call array.del
 
 
@@ -119,6 +109,7 @@ proc.stk qword ar
   ; get mem
   mov  rdi,4
   mov  rsi,$20
+  xor  rdx,rdx
 
   call array.new
 
@@ -156,6 +147,8 @@ proc.stk qword ar
 
   ; release
   mov  rdi,qword [@ar]
+  xor  rsi,rsi
+
   call array.del
 
 
@@ -166,19 +159,14 @@ proc.stk qword ar
 ; ---   *   ---   *   ---
 ; ^entry
 
-proc.new crux
+proc.new crux,public
 
   proc.enter
 
-  call prim_test
+  call struc_test
 
   ; cleanup and give
   proc.leave
   exit
-
-; ---   *   ---   *   ---
-; footer
-
-MAM.foot
 
 ; ---   *   ---   *   ---

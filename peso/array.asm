@@ -22,21 +22,24 @@ library.import
 
   TITLE     peso.array
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; header struc
 
-reg.new array.head,public
-
-  my .buff  dq $00
+reg.new array,public
 
   my .grow  dd $00
+  my .igrow dd $00
+
   my .ezy   dd $00
+  my .cnt   dd $00
 
   my .cap   dd $00
   my .top   dd $00
+
+  my .buff  dq $00
 
 reg.end
 
@@ -48,38 +51,52 @@ EXESEG
 proc.new array.new,public
 proc.cpr rbx
 
-proc.lis array.head self rbx
+proc.lis array self rbx
+
+proc.stk dword  ezy
+proc.stk dword  cnt
+
+proc.stk dword cap
+proc.stk qword head
 
   proc.enter
 
   ; save tmp
-  push rdi
-  push rsi
+  mov dword [@ezy],edi
+  mov dword [@cnt],esi
+  mov qword [@head],rdx
 
-  ; get ezy * cap
-  mov  rax,rdi
-  imul rsi
+  ; get ezy * cnt
+  imul rdi,rsi
+  mov  dword [@cap],edi
 
-  ; make wrapper
-  push rax
-  mov  rdi,sizeof.array.head
 
+  ; head on stack?
+  mov  rax,qword [@head]
+  test rax,rax
+  jnz  @f
+
+  ; ^nope, get heap
+  mov  rdi,sizeof.array
   call alloc
-  mov  @self,rax
+
+  @@:
 
 
-  ; make buffer
-  pop  rdi
-  call alloc
+  ; ^fill out head struc
+  mov @self,rax
+  mov edi,dword [@ezy]
+  mov esi,dword [@cnt]
 
-  ; restore tmp
-  pop rsi
-  pop rdi
-
-  ; ^store
-  mov qword [@self.buff],rax
   mov dword [@self.ezy],edi
+  mov dword [@self.cnt],esi
   mov dword [@self.top],$00
+
+  ; ^make buffer
+  mov  edi,dword [@cap]
+
+  call alloc
+  mov  qword [@self.buff],rax
 
 
   ; get buff capacity
@@ -89,6 +106,13 @@ proc.lis array.head self rbx
   ; ^store
   mov dword [@self.cap],eax
   mov dword [@self.grow],eax
+
+  ; ^get element-wise grow
+  xor rdx,rdx
+  mov edi,dword [@self.ezy]
+  div edi
+
+  mov dword [@self.igrow],eax
 
 
   ; reset out
@@ -102,19 +126,32 @@ proc.lis array.head self rbx
 ; ^dstruc
 
 proc.new array.del,public
-proc.lis array.head self rdi
+proc.cpr rbx
+
+proc.lis array self rbx
+proc.stk byte  dyn
 
   proc.enter
 
+  ; save tmp
+  mov @self,rdi
+  mov byte [@dyn],sil
+
   ; release buffer
-  push @self
   mov  rdi,qword [@self.buff]
-
   call free
 
-  ; ^then wraps
-  pop  @self
+
+  ; head on stack?
+  mov  sil,byte [@dyn]
+  test sil,sil
+  jnz  @f
+
+  ; ^nope, release
+  mov  rdi,@self
   call free
+
+  @@:
 
 
   ; cleanup and give
@@ -122,39 +159,17 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; set value + increase top
-
-macro array.insert_proto dst {
-
-  push @self
-
-  mov  r8d,dword [@self.ezy]
-  mov  rdi,dst
-  xor  r10w,r10w
-
-  call memcpy
-
-  ; ^grow by elem size
-  pop @self
-
-  mov eax,dword [@self.ezy]
-  add dword [@self.top],eax
-
-}
-
-; ---   *   ---   *   ---
 ; conditionally resize array
 
 proc.new array.resize_chk,public
-proc.cpr rbx
-
-proc.lis array.head self rdi
+proc.lis array self rbx
 
   proc.enter
 
-  ; get top,cap
+  ; get top,cap,ezy
   mov ecx,dword [@self.top]
   mov eax,dword [@self.cap]
+  mov esi,dword [@self.ezy]
 
   ; ^skip on top+req < cap
   add ecx,esi
@@ -164,38 +179,33 @@ proc.lis array.head self rdi
 
 
   ; get [N*cstep] growth rate
-  mov ebx,dword [@self.grow]
+  mov edx,dword [@self.grow]
 
   ; ^add until req fits
   .grow:
 
-    add ecx,ebx
+    add ecx,edx
     cmp ecx,esi
 
     jl  .grow
 
 
-  ; resize
-  push @self
+  ; resize and save new addr
   mov  rdi,qword [@self.buff]
   mov  rsi,rcx
 
   call realloc
-
-  ; ^save new addr
-  pop @self
-  mov qword [@self.buff],rax
+  mov  qword [@self.buff],rax
 
 
   ; get new cap
-  push @self
   mov  rdi,rax
-
   call alloc.get_blk_size
 
   ; ^store
-  pop @self
+  mov edx,dword [@self.igrow]
   mov dword [@self.cap],eax
+  add dword [@self.cnt],edx
 
 
   ; cleanup and give
@@ -205,37 +215,38 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; ensure array is big enough
-; to hold new elem
+; begof push/unshift
 
-macro array.grow_proto {
+macro array.push_prologue {
 
-  push rsi
-  mov  esi,dword [@self.ezy]
+  ; save tmp
+  mov @self,rdi
+  mov qword [@src],rsi
 
+  ; ^boundschk
   call array.resize_chk
-
-  pop  rsi
 
 }
 
 ; ---   *   ---   *   ---
-; push without insert
+; add elem at end
 
-proc.new array.grow,public
-proc.lis array.head self rdi
+proc.new array.push,public
+proc.cpr rbx,r11
+
+proc.lis array self rbx
+proc.stk qword src
 
   proc.enter
-  array.grow_proto
+  array.push_prologue
 
-  ; get [base,elem size,end]
-  mov rax,qword [@self.buff]
-  mov ecx,dword [@self.ezy]
-  mov edx,dword [@self.top]
+  ; put @ buff+top
+  mov  r11,qword [@self.buff]
+  mov  edi,dword [@self.top]
+  add  rdi,r11
+  mov  rsi,qword [@src]
 
-  ; ^set out to new,grow end
-  add rax,rdx
-  add dword [@self.top],ecx
+  call array.guts.new_elem
 
 
   ; cleanup and give
@@ -243,25 +254,49 @@ proc.lis array.head self rdi
   ret
 
 ; ---   *   ---   *   ---
-; add element at end
+; ^add elem at beg
 
-proc.new array.push,public
-proc.cpr rbx
+proc.new array.unshift,public
+proc.cpr rbx,r11
 
-proc.lis array.head self rdi
+proc.lis array self rbx
+proc.stk qword src
 
   proc.enter
-  array.grow_proto
+  array.push_prologue
 
-  ; get buff
-  mov rbx,qword [@self.buff]
+  ; copy bytes N places right
+  mov  r8d,dword [@self.ezy]
+  call array.guts.shr
 
-  ; ^get top
-  mov eax,dword [@self.top]
-  lea rax,[rbx+rax]
+  ; ^put @ buff+0
+  mov  rdi,qword [@self.buff]
+  mov  rsi,qword [@src]
 
-  ; add elem and grow top
-  array.insert_proto rax
+  call array.guts.new_elem
+
+
+  ; cleanup and give
+  proc.leave
+  ret
+
+; ---   *   ---   *   ---
+; set value + increase top
+
+proc.new array.guts.new_elem,public
+proc.lis array self rbx
+
+  proc.enter
+
+  ; copy src
+  mov  r8d,dword [@self.ezy]
+  xor  r10w,r10w
+
+  call memcpy
+
+  ; ^grow by elem size
+  mov eax,dword [@self.ezy]
+  add dword [@self.top],eax
 
 
   ; cleanup and give
@@ -272,14 +307,14 @@ proc.lis array.head self rdi
 ; remove at end
 
 proc.new array.pop,public
-proc.cpr rbx
+proc.cpr rbx,r11
 
-proc.lis array.head self rdi
+proc.lis array self rbx
 
   proc.enter
 
   ; get buff
-  mov rbx,qword [@self.buff]
+  mov r11,qword [@self.buff]
 
 
   ; adjust top
@@ -288,7 +323,7 @@ proc.lis array.head self rdi
 
   ; ^get top
   mov eax,dword [@self.top]
-  lea rax,[rbx+rax]
+  add rax,r11
 
   ; ^get value
   mov  r8d,dword [@self.ezy]
@@ -343,68 +378,27 @@ proc.new array.get,public
   proc.leave
   ret
 
-; ---   *   ---   *   ---
-; add element at beg
 
-proc.new array.unshift,public
-proc.cpr rbx
-
-proc.lis array.head self rdi
-
-  proc.enter
-
-  ; get bounds
-  push rsi
-  mov  esi,dword [@self.ezy]
-
-  call array.resize_chk
-
-
-  ; save tmp
-  push @self
-
-  ; ^copy bytes N places right
-  mov  r8d,dword [@self.ezy]
-  call array.shr
-
-
-  ; restore tmp
-  pop @self
-  pop rsi
-
-  ; ^write to beg
-  array.insert_proto qword [@self.buff]
-
-
-  ; cleanup and give
-  proc.leave
-  ret
 
 ; ---   *   ---   *   ---
 ; ^reverse walk copy
 
-proc.new array.shr,public
-proc.cpr rdi
-
-proc.lis array.head self rdi
+proc.new array.guts.shr,public
+proc.lis array self rbx
 
   proc.enter
 
   ; size of other is shift size
   ; own top is copy size
-  mov esi,r8d
+  mov edi,r8d
   mov r8d,dword [@self.top]
 
   ; get beg,beg+N
-  mov rdi,qword [@self.buff]
-  lea rsi,[rdi+rsi]
+  mov rsi,qword [@self.buff]
+  lea rdi,[rsi+rdi]
 
 
-  ; dst eq beg+N
-  ; src eq beg
-  xchg rdi,rsi
-
-  ; ^grow
+  ; ^shift N bytes to the right
   mov  r10w,smX.CDEREF
   call memcpy
 
@@ -419,7 +413,7 @@ proc.lis array.head self rdi
 proc.new array.shift,public
 proc.cpr rbx
 
-proc.lis array.head self rdi
+proc.lis array self rdi
 
   proc.enter
 
@@ -481,7 +475,7 @@ proc.lis array.head self rdi
 proc.new array.shl,public
 proc.cpr rdi
 
-proc.lis array.head self rdi
+proc.lis array self rdi
 
   proc.enter
 

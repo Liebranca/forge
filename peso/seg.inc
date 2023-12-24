@@ -14,7 +14,7 @@
 
   TITLE     peso.seg
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -22,15 +22,19 @@
 
   sizeof.byte  = $0001
   sizep2.byte  = $0000
+  sizebm.byte  = $00FF
 
   sizeof.word  = $0002
   sizep2.word  = $0001
+  sizebm.word  = $FFFF
 
   sizeof.dword = $0004
   sizep2.dword = $0002
+  sizebm.dword = $FFFFFFFF
 
   sizeof.qword = $0008
   sizep2.qword = $0003
+  sizebm.qword = $FFFFFFFFFFFFFFFF
 
   sizeof.unit  = $0010
   sizep2.unit  = $0004

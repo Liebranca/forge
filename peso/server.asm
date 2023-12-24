@@ -141,7 +141,7 @@ proc.stk qword self
   mov  qword [rbx+server.poller],rax
 
   ; ^point first elem to self
-  mov rax,qword [rax+array.head.buff]
+  mov rax,qword [rax+array.buff]
   mov rdx,qword [rbx+server.sock]
   mov edx,dword [rdx+socket.fd]
   mov dword [rax+pollfd.fd],edx
@@ -152,7 +152,7 @@ proc.stk qword self
   or SYS.poll.pri
 
   ; ^mark elem as pushed
-  mov dword [rax+array.head.top],sizeof.pollfd
+  mov dword [rax+array.top],sizeof.pollfd
 
 
   ; reset out
@@ -243,7 +243,7 @@ proc.lis server self rbx
   @@:
 
   mov  rdi,qword [@self.peer.tab]
-  mov  edx,dword [rdi+array.head.top]
+  mov  edx,dword [rdi+array.top]
 
   ; ^end on cap hit
   test edx,edx
