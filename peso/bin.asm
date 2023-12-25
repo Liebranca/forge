@@ -712,26 +712,31 @@ proc.lis string dst  rsi
   ; proc dst options
   xor       rax,rax
   mov       ax,r10w
-  branchtab get_mode
+
+  branchtab byte
 
 
   ; cat read bytes at end of dst
-  get_mode.branch SYS.read.ecat => .ecat
+  branch SYS.read.ecat => .ecat
+
     mov r8d,dword [@dst.top]
     mov ecx,edx
+
     jmp .apply_offset
 
   ; overwrite dst in full
-  get_mode.branch SYS.read.over => .over
+  branch SYS.read.over => .over
+
     xor r8d,r8d
     mov dword [@dst.top],$00
     mov ecx,edx
+
     jmp .apply_offset
 
 
   ; overwrite starting at given position
   ; adjust length accordingly
-  get_mode.branch SYS.read.seek => .seek
+  branch SYS.read.seek => .seek
 
     ; get [top,(write end)]
     mov eax,dword [@dst.top]
@@ -746,7 +751,8 @@ proc.lis string dst  rsi
     jmp .apply_offset
 
 
-  get_mode.end
+  branchtab.end
+
 
   ; ^tail-of
   .apply_offset:

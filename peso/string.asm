@@ -925,8 +925,8 @@ proc.cpr rbx
     ; select dst size
     .write_dst:
 
-      mov    rdx,r9
-      jmptab .tab,byte,\
+      mov    al,r9b
+      jmptab byte,\
         .write_dword,\
         .write_qword
 

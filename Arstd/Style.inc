@@ -525,7 +525,7 @@ macro lspacecat dst,token {lprotocat dst,token}
 ; ---   *   ---   *   ---
 ; ^comma
 
-macro commacat  dst,token {
+macro commacat dst,token {
 
   local sep
   sep equ ,

@@ -18,6 +18,55 @@
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; cstruc
+
+macro sfield.new base,field,v= {
+
+  define base#.#field#._back base#.#field
+  define base#.#field v
+
+  ; lis undo
+  macro base#.#field#.del \{
+    sfield.del base,field
+
+  \}
+
+  ; lis getter
+  macro base#.#field#.get dst \{
+    sfield.get dst,base,field
+
+  \}
+
+  ; lis setter
+  macro base#.#field#.set src \{
+    sfield.set base,field,src
+
+  \}
+
+  ; lis push
+  macro base#.#field#.push src \{
+    sfield.push base,field,src
+
+  \}
+
+  ; lis unshift
+  macro base#.#field#.unshift src \{
+    sfield.unshift base,field,src
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^dstruc
+
+macro sfield.del base,field {
+  base#.#field equ base#.#field#._back
+  restore base#.#field#._back
+
+}
+
+; ---   *   ---   *   ---
 ; add element to end of list
 
 macro sfield.push base,field,src {

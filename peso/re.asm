@@ -217,53 +217,54 @@ proc.lis re.pat elem rdi
 
 
     ; ^branch accto value
-    branchtab re.spec
+    branchtab byte
 
     ; pattern is negative
-    re.spec.branch '!' => .neg
+    branch '!' => .neg
       or  byte [@elem.type],re.NEG
       jmp .chk_size
 
     ; match none or once
-    re.spec.branch '?' => .quest
+    branch '?' => .quest
       mov word [@elem.min],$00
       jmp .chk_size
 
     ; match none or any
-    re.spec.branch '*' => .star
+    branch '*' => .star
       mov word [@elem.min],$00
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
     ; match once or any
-    re.spec.branch '+' => .plus
+    branch '+' => .plus
       mov word [@elem.max],$FFFF
       jmp .chk_size
 
 
     ; pattern is value range
-    re.spec.branch '#' => .rng
+    branch '#' => .rng
       or  byte [@elem.type],re.RNG
       jmp .chk_size
 
     ; pattern is character class
-    re.spec.branch '%' => .kls
+    branch '%' => .kls
       or  byte [@elem.type],re.KLS
       jmp .chk_size
 
 
     ; terminate specifier section
-    re.spec.branch '=' => .end
+    branch '=' => .end
       jmp .skip
 
     ; blank entries to avoid a
     ; bounded table
-    re.spec.branch $00 => .non
-    re.spec.branch $FF => .non
-    re.spec.branch def => .non
+    branch $00 => .non
+    branch $FF => .non
+    branch def => .non
       jmp .chk_size
 
-    re.spec.end
+
+    branchtab.end
 
 
   ; cleanup and give
@@ -574,12 +575,11 @@ re.sigt.match_pat
   proc.enter
 
   ; get branch
-  xor rdx,rdx
-  mov dl,byte [@self.type]
-  and dl,re.TYPE
+  mov al,byte [@self.type]
+  and al,re.TYPE
 
   ; ^make tab
-  jmptab .lvl_00,byte,\
+  jmptab byte,\
     .sub,.rng,.kls
 
   ; ^land

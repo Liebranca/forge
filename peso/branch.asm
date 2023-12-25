@@ -154,7 +154,7 @@ macro jmptab size,[item] {
     local kX
 
     ; match decl/fet to size
-    i_sized_reg  rX,d,size
+    i_sized_reg  rX,a,size
     i_sized_data kX,size
 
 
@@ -168,15 +168,14 @@ macro jmptab size,[item] {
 
 
       ; calc fetch-from
-      branch.cclear rdx,size
+      branch.cclear rax,size
 
       offset equ cproc\#blk\#._virt
-      offset equ size [offset+rdx*sizeof.#size]
+      offset equ size [offset+rax*sizeof.#size]
 
       ; ^load jmp addr
-      lea rax,[blk\#._real]
       mov rX,offset
-      add rax,rdx
+      lea rax,[blk\#._real+rax]
 
 
       ; measure dist *after* jmp
@@ -252,7 +251,7 @@ macro lkptab size,[item] {
       end if
 
 
-      ; clairvoyance [see: branch.tab]
+      ; clairvoyance [see: branchtab]
       ; measure dist *after* fetch
       match =0 , branch.CVYC \\{
         lkptab.fetch cproc,blk,size,cvyc
@@ -571,7 +570,7 @@ macro hybtab size,[item] {
 ; ^lets you define branches
 ; as you code them
 
-macro branch.tab size,bounded?= {
+macro branchtab size,bounded?= {
 
 ; ---   *   ---   *   ---
 ; NOTE:
@@ -677,7 +676,7 @@ macro branch vk {
 ; ---   *   ---   *   ---
 ; ^close table
 
-macro branch.end {
+macro branchtab.end {
 
   match cproc blk , hier.cproc branch.CVYC.blk \{
 

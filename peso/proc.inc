@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.01.2a
+  VERSION   v0.01.3a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -101,7 +101,13 @@ macro proc.get_id dst,prefix,mode=global {
   \}
 
   ; ^generate local
-  match =local n , mode PROC_GET_ID \{
+  match =local =dotless n , mode PROC_GET_ID \{
+    proc.get_lid dst,prefix,n,dotless
+
+  \}
+
+  ; ^generate local
+  match = n , mode PROC_GET_ID \{
     proc.get_lid dst,prefix,n
 
   \}
@@ -126,10 +132,19 @@ macro proc.get_gid dst,prefix,n {
 ; ---   *   ---   *   ---
 ; ^local
 
-macro proc.get_lid dst,prefix,n {
+macro proc.get_lid dst,prefix,n,mode= {
 
   match name id , hier.cproc n \{
-    dst equ .#prefix#_\#id
+
+    match =dotless , mode \\{
+      dst equ prefix#_\#id
+
+    \\}
+
+    match , mode \\{
+      dst equ .#prefix#_\#id
+
+    \\}
 
   \}
 

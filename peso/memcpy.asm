@@ -14,7 +14,7 @@
 
   TITLE     peso.memcpy
 
-  VERSION   v0.01.1b
+  VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -41,7 +41,7 @@ proc.new memcpy,public
     jle .skip
 
   ; get branch
-  inline smX.get_size
+  call smX.get_size
 
   push r10
   cmp  al,$04
@@ -72,7 +72,7 @@ proc.new memcpy.struc,public
 
   ; get branch
   proc.enter
-  inline smX.get_alignment
+  call smX.get_alignment
 
 
   ; see if bytes left
@@ -114,7 +114,7 @@ proc.new memclr,public
     jle .skip
 
   ; get branch
-  inline smX.get_size
+  call smX.get_size
 
   cmp  al,$04
   jge  .is_struc
@@ -144,7 +144,7 @@ proc.new memclr.struc,public
 
   ; get branch
   proc.enter
-  inline smX.get_alignment
+  call smX.get_alignment
 
 
   ; see if bytes left

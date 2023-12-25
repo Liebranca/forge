@@ -58,7 +58,7 @@ proc.new memeq,public
 
 
   ; get branch
-  inline smX.get_size
+  call smX.get_size
 
 
   ; ^branch
@@ -123,7 +123,7 @@ proc.cpr rbx
 
   ; get branch
   proc.enter
-  inline smX.get_alignment
+  call smX.get_alignment
 
 
   ; stop at first inequality
