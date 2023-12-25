@@ -188,7 +188,9 @@ macro tokin dst,N,[item] {
 
   common
     local ok
-    ok equ 0
+
+    dst equ 0
+    ok  equ 0
 
   forward match =0 , ok \{
 

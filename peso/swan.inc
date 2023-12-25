@@ -1,6 +1,6 @@
 ; ---   *   ---   *   ---
 ; PESO SWAN
-; Soulof
+; Meta struc
 ;
 ; LIBRE SOFTWARE
 ; Licensed under GNU GPL3
@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.swan
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -40,8 +40,13 @@ macro swan.new base {
   hier.cswan equ base
   sfield.new base,fields
 
-  macro base#.new name,args& \{
-    swan.ice base,name,args
+  macro base#.new _name,_args& \{
+    swan.ice base,_name,_args
+
+  \}
+
+  macro base#.del _name \{
+    swan.del base,_name
 
   \}
 
@@ -50,7 +55,7 @@ macro swan.new base {
 ; ---   *   ---   *   ---
 ; ^add field
 
-macro swan.attr name,defval {
+macro swan.attr name,defval=null {
 
   match base , hier.cswan \{
     base\#.fields.push name=defval
@@ -101,8 +106,13 @@ macro swan.ice base,name,[item] {
 
     \}
 
+    macro name#.del \{
+      swan.del base,name
+
+    \}
+
     if swan.debug
-      name#.prich
+      display 'NEW ',`base,$20,`name,$0A
 
     end if
 
@@ -126,6 +136,47 @@ macro swan.copy_fields name,base {
   ; ^run
   match list , base#.fields \{
     inner list
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; icepick
+
+macro swan.del base,name {
+
+  ; walk fields and dstruc
+  macro inner [item] \{
+
+    forward match field == value , item \\{
+      name#.\\#field\\#.del
+
+    \\}
+
+  \}
+
+  ; ^run
+  match list , base#.fields \{
+    inner list
+
+  \}
+
+  if swan.debug
+    display 'DEL ',`base,$20,`name,$0A
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; make aliases for a batch
+; of macro wrappers
+
+macro swan.batlis name,base,[item] {
+
+  forward macro name#.#item args& \{
+    base#.#item name,args
 
   \}
 

@@ -14,7 +14,7 @@
 
   TITLE     peso.sfield
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -22,7 +22,11 @@
 
 macro sfield.new base,field,v= {
 
-  define base#.#field#._back base#.#field
+  match any , base#.#field \{
+    define base#.#field#._back any
+
+  \}
+
   define base#.#field v
 
   ; lis undo
@@ -32,26 +36,26 @@ macro sfield.new base,field,v= {
   \}
 
   ; lis getter
-  macro base#.#field#.get dst \{
-    sfield.get dst,base,field
+  macro base#.#field#.get _dst \{
+    sfield.get _dst,base,field
 
   \}
 
   ; lis setter
-  macro base#.#field#.set src \{
-    sfield.set base,field,src
+  macro base#.#field#.set _src \{
+    sfield.set base,field,_src
 
   \}
 
   ; lis push
-  macro base#.#field#.push src \{
-    sfield.push base,field,src
+  macro base#.#field#.push _src \{
+    sfield.push base,field,_src
 
   \}
 
   ; lis unshift
-  macro base#.#field#.unshift src \{
-    sfield.unshift base,field,src
+  macro base#.#field#.unshift _src \{
+    sfield.unshift base,field,_src
 
   \}
 
