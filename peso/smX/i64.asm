@@ -52,7 +52,7 @@ swan.attr unav,
 swan.attr unav.len,0
 
 swan.attr mems,
-swan.attr mems.len,1
+swan.attr mems.len,0
 
 swan.end
 
@@ -112,8 +112,8 @@ macro smX.i64.open_scope dst,list& {
     avail.len => v_avail.len,\
     unav      => v_unav,\
     unav.len  => v_unav.len,\
-    mems      => :&END,\
 
+  dst#.mems equ
   i64.cscope equ dst
 
 }
@@ -123,36 +123,13 @@ macro smX.i64.open_scope dst,list& {
 
 macro smX.i64.close_scope {
 
-  ; release mems
-  macro inner [mem] \{
-
-    forward
-
-      local ok
-      ok equ 1
-
-      match =END , mem \\{ok equ 0\\}
-      match =1   , ok  \\{mem\#.del\\}
-
-  \}
-
-
-  ; ^run
-  local flat
-  flat equ
-
   match any , i64.cscope \{
 
-    ; get csv
-    List.cflatten \
-      any\#.mems,any\#.mems.len,flat
-
-    ; ^walk
-    match list,flat \\{
-      inner list
+    ; ^release mems
+    rept any\#.mems.len \\{
+      smX.i64.free_mem
 
     \\}
-
 
     ; release container
     any\#.del
@@ -174,7 +151,7 @@ macro smX.i64.get_mem dst,args {
     local have
     have equ
 
-    rept scp#.avail.len \\{have equ 1\\}
+    rept scp\#.avail.len \\{have equ 1\\}
 
 
     ; ^got scratch
@@ -195,6 +172,31 @@ macro smX.i64.get_mem dst,args {
 
     ; ^TODO: none avail, move to stack
     match , have \\{\\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^release N mems from top
+
+macro smX.i64.free_mem {
+
+  match scp , i64.cscope \{
+
+    local rX
+    rX equ
+
+    List.pop scp\#.mems,rX
+    scp\#.mems.len equ scp\#.mems.len-1
+
+    match any , rX \\{
+      List.push scp\#.avail,any\\#.name
+      scp\#.avail.len equ scp\#.avail.len+1
+
+      any\\#.del
+
+    \\}
 
   \}
 
@@ -325,28 +327,20 @@ macro smX.i64.ld A,B,repl?= {
 
       ; ^overwrite src,[src]
       match =1 bname , repl? B#.name \\\{
-        name equ bname
+        mov B#.loc,B#.size [B#.xloc+B#.off]
 
       \\\}
 
       ; ^get new reg
       match , repl? \\\{
-        smX.i64.get_scratch name
+
+        smX.i64.get_mem C,B#.size r
+        mov C.loc,B#.size [B#.xloc+B#.off]
+
+        src equ C
+        tmp equ C
 
       \\\}
-
-      ; ^cstruc tmp
-      match any sz , name B#.size \\\{
-        smX.i64.new_mem C,sz m+\\\#any
-
-      \\\}
-
-      C.prich
-      err
-
-      mov C.loc,B#.size [B#.xloc+B#.off]
-      src equ C
-      tmp equ C
 
     \\}
 
@@ -369,7 +363,7 @@ macro smX.i64.ld A,B,repl?= {
 
   ; cleanup tmp
   match any,tmp \{
-    any\#.del
+    smX.i64.free_mem
 
   \}
 
