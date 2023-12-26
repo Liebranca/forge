@@ -14,7 +14,7 @@
 
   TITLE     peso.sfield
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -29,33 +29,54 @@ macro sfield.new base,field,v= {
 
   define base#.#field v
 
-  ; lis undo
-  macro base#.#field#.del \{
-    sfield.del base,field
+
+  local subc
+  subc equ 0
+
+  ; ^subclass Arstd::List
+  match =list , v \{
+
+    List.new base#.#field,0
+
+    ; lis undo
+    macro base#.#field#.del \\{
+      List.del   base#.#field
+      sfield.del base,field
+
+    \\}
+
+    subc equ 1
 
   \}
 
-  ; lis getter
-  macro base#.#field#.get _dst \{
-    sfield.get _dst,base,field
+  ; ^no subclass
+  match =0 , subc \{
 
-  \}
+    ; lis methods
+    macro base#.#field#.del \\{
+      sfield.del base,field
 
-  ; lis setter
-  macro base#.#field#.set _src \{
-    sfield.set base,field,_src
+    \\}
 
-  \}
+    macro base#.#field#.get _dst \\{
+      sfield.get _dst,base,field
 
-  ; lis push
-  macro base#.#field#.push _src \{
-    sfield.push base,field,_src
+    \\}
 
-  \}
+    macro base#.#field#.set _src \\{
+      sfield.set base,field,_src
 
-  ; lis unshift
-  macro base#.#field#.unshift _src \{
-    sfield.unshift base,field,_src
+    \\}
+
+    macro base#.#field#.push _src \\{
+      sfield.push base,field,_src
+
+    \\}
+
+    macro base#.#field#.unshift _src \\{
+      sfield.unshift base,field,_src
+
+    \\}
 
   \}
 

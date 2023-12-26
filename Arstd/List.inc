@@ -14,7 +14,7 @@
 
   TITLE     List
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Arstd.List 2
@@ -204,14 +204,30 @@ macro List.cflatten list,len,out {
 ; ---   *   ---   *   ---
 ; cstruc
 
-macro List.new name {
+macro List.new name,paster=1 {
 
+  ; backup previous
+  match s0 s1 , name#.m_list name#.m_len \{
+    define name#.m_list._back s0
+    define name#.m_len._back s1
+
+  \}
+
+  ; ^make new
   define name#.m_list
-  define name#.m_len
+  define name#.m_len 0
 
+
+  ; ^lis methods
   macro name#.push item& \{
     List.push name#.m_list,item
     name#.m_len equ name#.m_len + 1
+
+  \}
+
+  macro name#.pop item \{
+    List.pop name#.m_list,item
+    name#.m_len equ name#.m_len - 1
 
   \}
 
@@ -220,6 +236,13 @@ macro List.new name {
     name#.m_len equ name#.m_len + 1
 
   \}
+
+  macro name#.shift item& \{
+    List.shift name#.m_list,item
+    name#.m_len equ name#.m_len - 1
+
+  \}
+
 
   macro name#.cflatten dst \{
 
@@ -274,7 +297,23 @@ macro List.new name {
 
   \}
 
-  macro name \{name#.npaste\}
+  match =1 , paster \{
+    macro name \\{name#.npaste\\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^dstruc
+
+macro List.del name {
+
+  name#.m_list equ name#.m_list._back
+  name#.m_len equ name#.m_len._back
+
+  restore name#.m_list._back
+  restore name#.m_len._back
 
 }
 

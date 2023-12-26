@@ -45,14 +45,9 @@ library.import
 
 swan.new i64.scope
 
-swan.attr avail,
-swan.attr avail.len,0
-
-swan.attr unav,
-swan.attr unav.len,0
-
-swan.attr mems,
-swan.attr mems.len,0
+swan.attr avail,list
+swan.attr unav,list
+swan.attr mems,list
 
 swan.end
 
@@ -61,17 +56,10 @@ swan.end
 
 macro smX.i64.open_scope dst,list& {
 
-  local v_avail
-  local v_avail.len
 
-  local v_unav
-  local v_unav.len
-
-  v_avail     equ
-  v_avail.len equ 0
-
-  v_unav      equ
-  v_unav.len  equ 0
+  ; make ice
+  i64.scope.new dst
+  i64.cscope equ dst
 
 
   ; build list of avail registers
@@ -85,15 +73,13 @@ macro smX.i64.open_scope dst,list& {
 
       ; ^push to unav if so
       match =1 , ok \\{
-        List.push v_unav,rX
-        v_unav.len equ v_unav.len+1
+        dst#.unav.push rX
 
       \\}
 
       ; ^else push to avail
       match =0 , ok \\{
-        List.push v_avail,rX
-        v_avail.len equ v_avail.len+1
+        dst#.avail.push rX
 
       \\}
 
@@ -106,16 +92,6 @@ macro smX.i64.open_scope dst,list& {
 
   \}
 
-  ; make ice
-  i64.scope.new dst,\
-    avail     => v_avail,\
-    avail.len => v_avail.len,\
-    unav      => v_unav,\
-    unav.len  => v_unav.len,\
-
-  dst#.mems equ
-  i64.cscope equ dst
-
 }
 
 ; ---   *   ---   *   ---
@@ -126,7 +102,7 @@ macro smX.i64.close_scope {
   match any , i64.cscope \{
 
     ; ^release mems
-    rept any\#.mems.len \\{
+    rept any\#.mems.m_len \\{
       smX.i64.free_mem
 
     \\}
@@ -151,7 +127,7 @@ macro smX.i64.get_mem dst,args {
     local have
     have equ
 
-    rept scp\#.avail.len \\{have equ 1\\}
+    rept scp\#.avail.m_len \\{have equ 1\\}
 
 
     ; ^got scratch
@@ -159,13 +135,10 @@ macro smX.i64.get_mem dst,args {
 
       local name
 
-      List.shift scp\#.avail,name
-      scp\#.avail.len equ scp\#.avail.len-1
-
+      scp\#.avail.shift name
       smX.i64.new_mem dst,args+name
 
-      List.push scp\#.mems,dst
-      scp\#.mems.len equ scp\#.mems.len+1
+      scp\#.mems.push dst
 
     \\}
 
@@ -187,13 +160,10 @@ macro smX.i64.free_mem {
     local rX
     rX equ
 
-    List.pop scp\#.mems,rX
-    scp\#.mems.len equ scp\#.mems.len-1
+    scp\#.mems.pop rX
 
     match any , rX \\{
-      List.push scp\#.avail,any\\#.name
-      scp\#.avail.len equ scp\#.avail.len+1
-
+      scp\#.avail.push any\\#.name
       any\\#.del
 
     \\}
