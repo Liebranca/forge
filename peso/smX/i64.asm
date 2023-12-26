@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -195,9 +195,11 @@ swan.attr elem_A,null
 swan.attr elem_B,null
 swan.attr elem_C,null
 
+swan.attr elem_A_deref,null
 swan.attr elem_B_deref,null
 swan.attr elem_C_deref,null
 
+swan.attr elem_A_tmp,null
 swan.attr elem_B_tmp,null
 swan.attr elem_C_tmp,null
 
@@ -206,8 +208,12 @@ swan.end
 ; ---   *   ---   *   ---
 ; ^ROM
 
-  define i64.op.xor_elems 2
-  define i64.op.mov_elems 2
+  define i64.op.xor_elems  2
+  define i64.op.or_elems   2
+
+  define i64.op.mov_elems  2
+  define i64.op.cmp_elems  2
+  define i64.op.test_elems 2
 
 ; ---   *   ---   *   ---
 ; ^cstruc
@@ -357,61 +363,116 @@ macro i64.op.unroll %O,fn,[item] {
 }
 
 ; ---   *   ---   *   ---
+; makes variation in op call
+; where fn@[UDN] args is fn args,[UDN]
+
+macro i64.op.icecall base,[udn] {
+
+  ; cat [UDN-0..UDN-X]
+  common
+    local udncat
+    udncat equ +
+
+  forward match any , udncat \{
+    udncat equ any\#udn
+
+  \}
+
+  ; ^make base@UDN wraps
+  ; with [UDN-0..UDN-X] as implicit args
+  common match =+ ext , udncat \{
+
+    macro i64.op.#base#@\#ext %O,args& \\{
+
+      local ok
+      ok equ 0
+
+      ; need args!
+      match ext2 list, ext args \\\{
+        i64.op.#base %O,list,udn
+        ok equ 1
+
+      \\\}
+
+      ; ^no args ;>
+      match =0 , ok \\\{
+        i64.op.#base %O,udn
+
+      \\\}
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; conditional dereference
 ; of source operand
 
-macro i64.op.need_deref?@AB %O,UA,UB {
+macro i64.op.need_deref? %O,UD0,UD1,UDN {
 
-  match =m , UB#.mode \{
+  match =m , UD1#.mode \{
 
     ; mem to mem, do tmpchk
-    match =m , UA#.mode \\{
-      i64.op.need_repl? %O,UB,B
+    match =m , UD0#.mode \\{
+      i64.op.need_repl?@#UDN %O,UD1
 
     \\}
 
     ; ^no tmp needed ;>
-    match =r , UA#.mode \\{
+    match =r , UD0#.mode \\{
 
       cline %O#.name \
-        UA#.loc,UB#.size [UB#.xloc+UB#.off]
+        UD0#.loc,UD1#.size [UD1#.xloc+UD1#.off]
 
     \\}
+
+  \}
+
+  ; ^rY to rX?
+  match =r , UD1#.mode \{
+    i64.op.deref_dst? %O,UD0,UD1
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^overwrite or use tmp?
+; ^iceof
 
-macro i64.op.need_repl? %O,M,UD {
+i64.op.icecall need_deref?,B
+
+; ---   *   ---   *   ---
+; overwrite or use tmp?
+
+macro i64.op.need_repl? %O,UD0,UDN {
 
   ; replace self
-  match =1 , M#.repl \{
+  match =1 , UD0#.repl \{
 
-    cline %O#.name \
-      M#.loc,M#.size [M#.xloc+M#.off]
+    cline mov \
+      UD0#.loc,UD0#.size [UD0#.xloc+UD0#.off]
 
-    %O#.elem_#UD#_deref.set M
+    %O#.elem_#UDN#_deref.set UD0
 
   \}
 
   ; ^get new reg
-  match =0 , M#.repl \{
+  match =0 , UD0#.repl \{
 
     local uid
-    smX.i64.get_mem uid,M#.size r
+    smX.i64.get_mem uid,UD0#.size r
 
     ; ^use as tmpdst
     match id , uid \\{
 
-      cline %O#.name \
+      cline mov \
         id\\#.loc,\
-        M#.size [M#.xloc+M#.off]
+        UD0#.size [UD0#.xloc+UD0#.off]
 
-      %O#.elem_#UD#_deref.set id
-      %O#.elem_#UD#_tmp.set   id
+      %O#.elem_#UDN#_deref.set id
+      %O#.elem_#UDN#_tmp.set   id
 
     \\}
 
@@ -420,22 +481,28 @@ macro i64.op.need_repl? %O,M,UD {
 }
 
 ; ---   *   ---   *   ---
-; ^overwrite dst?
+; ^iceof
 
-macro i64.op.deref_dst?@AB %O,UA,UB {
+i64.op.icecall need_repl?,A
+i64.op.icecall need_repl?,B
+
+; ---   *   ---   *   ---
+; overwrite dst?
+
+macro i64.op.deref_dst? %O,UD0,UD1 {
 
   ; [dst] <= src
-  match =m , UA#.mode \{
+  match =m , UD0#.mode \{
 
     cline %O#.name \
-      UA#.size [UA#.xloc+UA#.off],\
-      UB#.loc
+      UD0#.size [UD0#.xloc+UD0#.off],\
+      UD1#.loc
 
   \}
 
   ; ^dst <= src
-  match =r , UA#.mode \{
-    cline %O#.name UA#.loc,UB#.loc
+  match =r , UD0#.mode \{
+    cline %O#.name UD0#.loc,UD1#.loc
 
   \}
 
@@ -444,25 +511,25 @@ macro i64.op.deref_dst?@AB %O,UA,UB {
 ; ---   *   ---   *   ---
 ; [?dst] <= [?src] proto
 
-macro i64.op.cderef@AB %O {
+macro i64.op.cderef %O,UDN0,UDN1 {
 
   local status
   status equ 0
 
   ; deref or solve?
-  i64.op.funroll %O,need_deref?@AB
+  i64.op.funroll %O,need_deref?@#UDN1
 
-  match B , %O#.elem_B_deref \{
+  match UD1 , %O#.elem_#UDN1#_deref \{
 
     ; ^solved ;>
-    match =null , B \\{
+    match =null , UD1 \\{
       status equ 1
 
     \\}
 
     ; ^deref, second step needed
-    match =0 UA , status %O#.elem_A \\{
-      i64.op.deref_dst?@AB %O,UA,B
+    match =0 UD0 , status %O#.elem_#UDN0 \\{
+      i64.op.deref_dst? %O,UD0,UD1
 
     \\}
 
@@ -470,12 +537,53 @@ macro i64.op.cderef@AB %O {
 
 
   ; cleanup tmp
-  match any,%O#.elem_B_tmp \{
+  status equ 0
+  match =null,%O#.elem_#UDN1#_tmp \{
+    status equ 1
+
+  \}
+
+  match =0 , status \{
     smX.i64.free_mem
+    %O#.elem_#UDN1#_tmp equ null
 
   \}
 
 }
+
+; ---   *   ---   *   ---
+; ^iceof
+
+i64.op.icecall cderef,A,B
+
+; ---   *   ---   *   ---
+; generic: ins [?dst] <= [?src]
+
+macro i64.op.B2A ins {
+
+  macro i64.#ins UD0,UD1 \{
+
+    ; make ice
+    local uid
+    smX.i64.op.new uid,ins,UD0,UD1
+
+    ; ^run and clear
+    match %O , uid \\{
+      i64.op.cderef@AB %O
+      %O\\#.del
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^iceof
+
+i64.op.B2A mov
+i64.op.B2A xor
+i64.op.B2A or
 
 ; ---   *   ---   *   ---
 ; operand struc
@@ -491,7 +599,6 @@ swan.attr repl,0
 swan.attr mode,r
 
 swan.end
-
 ; ---   *   ---   *   ---
 ; ^cstruc
 
@@ -594,24 +701,6 @@ macro i64.mem.add_off dst,value {
 }
 
 ; ---   *   ---   *   ---
-; load [?dst],[?src]
-
-macro smX.i64.ld UD0,UD1 {
-
-  ; make ice
-  local uid
-  smX.i64.op.new uid,mov,UD0,UD1
-
-  ; ^run and clear
-  match %O , uid \{
-    i64.op.cderef@AB %O
-    %O\#.del
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
 ; clear [?A]
 
 macro smX.i64.cl A {
@@ -638,25 +727,6 @@ macro smX.i64.cl A {
     \\}
 
   \}
-
-}
-
-; ---   *   ---   *   ---
-; [?A] eq [?B]
-
-macro smX.i64.eq A,B {
-
-  local B_src
-  local B_tmp
-
-  B_src equ
-  B_tmp equ
-
-  mov rY,size [rdi]
-
-  ; ^compare values
-  mov rZ,rX
-  xor rZ,rY
 
 }
 

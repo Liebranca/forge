@@ -107,7 +107,6 @@ macro cline.filter [item] {
 
   ; decl accum
   common
-
     local line
     line equ
 
