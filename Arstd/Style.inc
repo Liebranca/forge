@@ -566,7 +566,7 @@ macro lcommacat dst,token& {
 macro eolcat dst,token& {
 
   local sep
-  sep equ $0A
+  sep equ "\n",
 
   protocat dst,sep,token
 
@@ -575,7 +575,7 @@ macro eolcat dst,token& {
 macro leolcat dst,token& {
 
   local sep
-  sep equ $0A
+  sep equ "\n",
 
   lprotocat dst,sep,token
 

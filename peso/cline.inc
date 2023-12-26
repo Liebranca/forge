@@ -117,7 +117,7 @@ macro cline.filter [item] {
     ok equ 0
 
     ; ^EOL, paste and clear
-    match =$0A , item \{
+    match ="\n" , item \{
 
       line
       line equ
@@ -127,7 +127,7 @@ macro cline.filter [item] {
     \}
 
     ; ^code+EOL, cat, paste and clear
-    match =0 any =$0A , ok item \{
+    match =0 any ="\n" , ok item \{
 
       commacat line,any
 

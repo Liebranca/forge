@@ -56,39 +56,48 @@ swan.end
 
 macro smX.i64.open_scope dst,list& {
 
+  ; generated iced
+  local uid
+  uid.new uid,smX.i64.scope,global
 
-  ; make ice
-  i64.scope.new dst
-  i64.cscope equ dst
+  ; ^unroll and make ice
+  match id,uid \{
 
+    i64.scope.new id
+    i64.cscope equ id
 
-  ; build list of avail registers
-  macro inner [rX] \{
-
-    forward
-
-      ; get rX is used
-      local ok
-      tokin ok,rX,list
-
-      ; ^push to unav if so
-      match =1 , ok \\{
-        dst#.unav.push rX
-
-      \\}
-
-      ; ^else push to avail
-      match =0 , ok \\{
-        dst#.avail.push rX
-
-      \\}
-
-  \}
+    dst equ id
 
 
-  ; ^run
-  match any , i64.REGISTERS \{
-    inner any
+    ; build list of avail registers
+    macro inner [rX] \\{
+
+      forward
+
+        ; get rX is used
+        local ok
+        tokin ok,rX,list
+
+        ; ^push to unav if so
+        match =1 , ok \\\{
+          id\#.unav.push rX
+
+        \\\}
+
+        ; ^else push to avail
+        match =0 , ok \\\{
+          id\#.avail.push rX
+
+        \\\}
+
+    \\}
+
+
+    ; ^run
+    match any , i64.REGISTERS \\{
+      inner any
+
+    \\}
 
   \}
 
@@ -176,7 +185,300 @@ macro smX.i64.free_mem {
 }
 
 ; ---   *   ---   *   ---
-; elem struc
+; operation struc
+
+swan.new i64.op
+swan.attr name,xor
+swan.attr elems,2
+
+swan.attr elem_A,null
+swan.attr elem_B,null
+swan.attr elem_C,null
+
+swan.attr elem_B_deref,null
+swan.attr elem_C_deref,null
+
+swan.attr elem_B_tmp,null
+swan.attr elem_C_tmp,null
+
+swan.end
+
+; ---   *   ---   *   ---
+; ^ROM
+
+  define i64.op.xor_elems 2
+  define i64.op.mov_elems 2
+
+; ---   *   ---   *   ---
+; ^cstruc
+
+macro smX.i64.op.new dst,op,item& {
+
+  ; generate iced
+  local uid
+  uid.new uid,smX.i64.op,global
+
+  ; ^unroll and make ice
+  match id , uid \{
+
+    i64.op.new id,\
+      name  => op,\
+      elems => i64.op.#op#_elems
+
+    dst equ id
+
+    ; nit operands if passed
+    match elems , item \{
+      smX.i64.op.set_elems id,elems
+
+    \}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^assign operands
+
+macro smX.i64.op.set_elems %O,[item] {
+
+  ; nit operand id
+  common
+    local elem
+    elem equ A
+
+
+  ; ^set
+  forward
+
+    ; throw on items > 3
+    match =END , elem \{
+      out@err "Overargs for i64.op ",`op
+
+    \}
+
+    match any,elem \{
+      %O#.elem_\#any\#.set item
+
+    \}
+
+    ; ^go next
+    match =C , elem \{
+      elem equ END
+
+    \}
+
+    match =B , elem \{
+      elem equ C
+
+    \}
+
+    match =A , elem \{
+      elem equ B
+
+    \}
+
+}
+
+; ---   *   ---   *   ---
+; unpacks all operands
+; to make call
+
+macro i64.op.funroll %O,fn {
+
+  ; elems
+  local UA
+  local UB
+  local UC
+
+  ; ^unpack
+  match A B C , \
+    %O#.elem_A \
+    %O#.elem_B \
+    %O#.elem_C \
+  \{
+
+    UA equ A
+    UB equ B
+    UC equ C
+
+  \}
+
+
+  ; no operands
+  match =0 , %O#.elems \{i64.op.#fn\}
+
+  ; ^single operand
+  match =1 , %O#.elems \{
+    match A , UA \\{i64.op.#fn %O,A\\}
+
+  \}
+
+  ; ^two operands
+  match =2 , %O#.elems \{
+    match A B , UA UB \\{
+      i64.op.#fn %O,A,B
+
+    \\}
+
+  \}
+
+  ; ^three operands
+  match =3 , %O#.elems \{
+    match A B C , UA UB UC \\{
+      i64.op.#fn %O,A,B,C
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^unpacks *passed* operands
+; to make call
+
+macro i64.op.unroll %O,fn,[item] {
+
+  common
+    local list
+    list equ
+
+  forward match elem , %O#.elem_#item \{
+    commacat list,elem
+
+  \}
+
+  common match any,list \{
+    i64.op.#fn %O,any
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; conditional dereference
+; of source operand
+
+macro i64.op.need_deref?@AB %O,UA,UB {
+
+  match =m , UB#.mode \{
+
+    ; mem to mem, do tmpchk
+    match =m , UA#.mode \\{
+      i64.op.need_repl? %O,UB,B
+
+    \\}
+
+    ; ^no tmp needed ;>
+    match =r , UA#.mode \\{
+
+      cline %O#.name \
+        UA#.loc,UB#.size [UB#.xloc+UB#.off]
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^overwrite or use tmp?
+
+macro i64.op.need_repl? %O,M,UD {
+
+  ; replace self
+  match =1 , M#.repl \{
+
+    cline %O#.name \
+      M#.loc,M#.size [M#.xloc+M#.off]
+
+    %O#.elem_#UD#_deref.set M
+
+  \}
+
+  ; ^get new reg
+  match =0 , M#.repl \{
+
+    local uid
+    smX.i64.get_mem uid,M#.size r
+
+    ; ^use as tmpdst
+    match id , uid \\{
+
+      cline %O#.name \
+        id\\#.loc,\
+        M#.size [M#.xloc+M#.off]
+
+      %O#.elem_#UD#_deref.set id
+      %O#.elem_#UD#_tmp.set   id
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^overwrite dst?
+
+macro i64.op.deref_dst?@AB %O,UA,UB {
+
+  ; [dst] <= src
+  match =m , UA#.mode \{
+
+    cline %O#.name \
+      UA#.size [UA#.xloc+UA#.off],\
+      UB#.loc
+
+  \}
+
+  ; ^dst <= src
+  match =r , UA#.mode \{
+    cline %O#.name UA#.loc,UB#.loc
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; [?dst] <= [?src] proto
+
+macro i64.op.cderef@AB %O {
+
+  local status
+  status equ 0
+
+  ; deref or solve?
+  i64.op.funroll %O,need_deref?@AB
+
+  match B , %O#.elem_B_deref \{
+
+    ; ^solved ;>
+    match =null , B \\{
+      status equ 1
+
+    \\}
+
+    ; ^deref, second step needed
+    match =0 UA , status %O#.elem_A \\{
+      i64.op.deref_dst?@AB %O,UA,B
+
+    \\}
+
+  \}
+
+
+  ; cleanup tmp
+  match any,%O#.elem_B_tmp \{
+    smX.i64.free_mem
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; operand struc
 
 swan.new i64.mem
 
@@ -185,6 +487,7 @@ swan.attr loc,al
 swan.attr xloc,rax
 swan.attr size,byte
 swan.attr off,0
+swan.attr repl,0
 swan.attr mode,r
 
 swan.end
@@ -194,23 +497,29 @@ swan.end
 
 macro smX.i64.new_mem dst,args {
 
-  ; make ice
-  match sz md =+ rX , args \{
+  ; generate iced
+  local uid
+  uid.new uid,smX.i64.mem,global
 
-    i64.mem.new dst,\
+  ; ^unroll and make ice
+  match id sz md =+ rX , uid args \{
+
+    i64.mem.new id,\
       name=>rX,\
       size=>sz,\
-      mode=>md
+      mode=>md,\
 
-    i64.mem.set_loc dst,rX
+    i64.mem.set_loc id,rX
+
+    ; ^lis macros
+    swan.batlis id,i64.mem,\
+      set_size,set_loc,\
+      set_mode,set_repl,\
+      set_off,add_off
+
+    dst equ id
 
   \}
-
-  ; ^lis macros
-  swan.batlis dst,i64.mem,\
-    set_size,set_loc,\
-    set_mode,set_off,\
-    add_off
 
 }
 
@@ -262,6 +571,11 @@ macro i64.mem.set_mode dst,value {
 
 }
 
+macro i64.mem.set_repl dst,value {
+  dst#.repl.set value
+
+}
+
 macro i64.mem.set_off dst,value {
   dst#.off.set value
 
@@ -282,131 +596,67 @@ macro i64.mem.add_off dst,value {
 ; ---   *   ---   *   ---
 ; load [?dst],[?src]
 
-macro smX.i64.ld A,B,repl?= {
+macro smX.i64.ld UD0,UD1 {
 
-  local src
-  local tmp
+  ; make ice
+  local uid
+  smX.i64.op.new uid,mov,UD0,UD1
 
-  src equ B
-  tmp equ
-
-  ; need deref?
-  match =m , B#.mode \{
-
-    ; mem to mem, use tmp
-    match =m , A#.mode \\{
-
-      local name
-
-      ; ^overwrite src,[src]
-      match =1 bname , repl? B#.name \\\{
-        mov B#.loc,B#.size [B#.xloc+B#.off]
-
-      \\\}
-
-      ; ^get new reg
-      match , repl? \\\{
-
-        smX.i64.get_mem C,B#.size r
-        mov C.loc,B#.size [B#.xloc+B#.off]
-
-        src equ C
-        tmp equ C
-
-      \\\}
-
-    \\}
-
-    ; ^no tmp needed ;>
-    match =r , A#.mode \\{
-      mov A#.loc,B#.size [rX+B#.off]
-      src equ
-
-    \\}
-
-  \}
-
-
-  ; ^copy dst,src
-  match any,src \{
-    smX.i64.ld_switch A,any
-
-  \}
-
-
-  ; cleanup tmp
-  match any,tmp \{
-    smX.i64.free_mem
+  ; ^run and clear
+  match %O , uid \{
+    i64.op.cderef@AB %O
+    %O\#.del
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^pick op based on mode
+; clear [?A]
 
-macro smX.i64.ld_switch A,src {
+macro smX.i64.cl A {
 
-  ; [dst] <= src
+  ; clear size ptr A
   match =m , A#.mode \{
-    mov A#.size [A#.xloc+A#.off],src#.loc
+    cline mov A#.size [A#.xloc+A#.off],$00
 
   \}
 
-  ; ^dst <= src
+  ; clear A
   match =r , A#.mode \{
-    mov A#.loc,src#.loc
+
+    ; clear whole register
+    match =1 , A#.repl \\{
+      cline xor A#.xloc,A#.xloc
+
+    \\}
+
+    ; ^clear only sized part (byte or word)
+    match =0 , A#.repl \\{
+      cline xor A#.loc,A#.loc
+
+    \\}
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; clear [A]
+; [?A] eq [?B]
 
-macro smX.i64.clm size,step,_nullarg& {
-  mov size [rdi],$00
+macro smX.i64.eq A,B {
 
-}
+  local B_src
+  local B_tmp
 
-; ---   *   ---   *   ---
-; clear A
+  B_src equ
+  B_tmp equ
 
-macro smX.i64.clr size,step,_nullarg& {
-  xor rdi,rdi
-
-}
-
-; ---   *   ---   *   ---
-; ^[A] eq [B]
-
-macro smX.i64.eqmm size,step,_nullarg& {
-
-  ; get src
-  local rX
-  i_sized_reg rX,si,size
-
-  ; get dst
-  local rY
-  i_sized_reg rY,di,size
-
-  ; get scratch
-  local rZ
-  i_sized_reg rZ,b,size
-
-
-  ; deref
-  mov rX,size [rsi]
   mov rY,size [rdi]
 
   ; ^compare values
   mov rZ,rX
   xor rZ,rY
-
-  ; ^go next
-  add rdi,step
-  add rsi,step
-  sub r8d,step
 
 }
 
