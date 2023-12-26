@@ -14,7 +14,7 @@
 
   TITLE     List
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
   define    loaded?Arstd.List 2
@@ -144,6 +144,54 @@ macro List.shift list,elem {
 }
 
 ; ---   *   ---   *   ---
+; ^remove specific elements
+
+macro List.pluck list,len,out,[which] {
+
+
+  ; get flat copy for iter
+  common
+    local flat
+    flat equ
+
+    List.cflatten list,len,flat
+
+    ; blank for push
+    local dst
+    local dst.len
+
+    dst     equ
+    dst.len equ 0
+
+
+  ; get item in flattened copy
+  forward match any , flat \{
+
+    local ok
+    tokin ok,which,any
+
+    ; ^push to self if not
+    match =0 , ok \\{
+      commacat dst,which
+      dst.len equ dst.len+1
+
+    \\}
+
+    ; ^else push out
+    match =1 , ok \\{
+      commacat out,which
+
+    \\}
+
+  \}
+
+
+  ; ^reset self
+  common List.from list,len,dst
+
+}
+
+; ---   *   ---   *   ---
 ; converts [elem : elem] to [elem elem]
 
 macro List.flatten list,len,out {
@@ -240,6 +288,11 @@ macro List.new name,paster=1 {
   macro name#.shift item& \{
     List.shift name#.m_list,item
     name#.m_len equ name#.m_len - 1
+
+  \}
+
+  macro name#.pluck out,which& \{
+    List.pluck name#.m_list,name#.m_len,out,which
 
   \}
 

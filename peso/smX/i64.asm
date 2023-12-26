@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -127,6 +127,15 @@ macro smX.i64.close_scope {
 
 ; ---   *   ---   *   ---
 ; get unused register
+;
+;
+; TODO:
+;
+; * ask for specific register,
+;   done via List.pluck
+;
+; * save and load from stack
+;   when we run out of registers
 
 macro smX.i64.get_mem dst,args {
 
@@ -163,19 +172,35 @@ macro smX.i64.get_mem dst,args {
 }
 
 ; ---   *   ---   *   ---
-; ^release N mems from top
+; ^release mem from top
+;
+; optionally: release a
+; specific mem, much slower!
 
-macro smX.i64.free_mem {
+macro smX.i64.free_mem which= {
 
   match scp , i64.cscope \{
 
     local rX
     rX equ
 
-    scp\#.mems.pop rX
 
+    ; no name passed
+    match , which \\{
+      scp\#.mems.pop rX
+
+    \\}
+
+    ; ^name passed, hold on...
+    match any , which \\{
+      scp\#.mems.pluck rX,any
+
+    \\}
+
+
+    ; ^give back to pool
     match any , rX \\{
-      scp\#.avail.push any\\#.name
+      scp\#.avail.unshift any\\#.name
       any\\#.del
 
     \\}
@@ -283,6 +308,46 @@ macro smX.i64.op.set_elems %O,[item] {
       elem equ B
 
     \}
+
+}
+
+; ---   *   ---   *   ---
+; dstruc
+
+macro i64.op.del %O {
+  i64.op.bat_free_tmp %O,A,B,C
+  %O#.del
+
+}
+
+; ---   *   ---   *   ---
+; ^cleanup tmps
+
+macro i64.op.free_tmp %O,UDN {
+
+  ; get tmp used
+  local status
+  status equ 0
+
+  match =null,%O#.elem_#UDN#_tmp \{
+    status equ 1
+
+  \}
+
+  ; ^yep, give back
+  match =0 any , status %O#.elem_#UDN#_tmp \{
+    smX.i64.free_mem any
+    %O#.elem_#UDN#_tmp equ null
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^bat
+
+macro i64.op.bat_free_tmp %O,[UDN] {
+  forward i64.op.free_tmp %O,UDN
 
 }
 
@@ -458,8 +523,14 @@ macro i64.op.need_repl? %O,UD0,UDN {
 
   \}
 
+
   ; ^get new reg
-  match =0 , UD0#.repl \{
+  local ok
+  ok equ 0
+
+  match =0 =null ,\
+    UD0#.repl \
+    %O#.elem_#UDN#_tmp \{
 
     local uid
     smX.i64.get_mem uid,UD0#.size r
@@ -475,6 +546,22 @@ macro i64.op.need_repl? %O,UD0,UDN {
       %O#.elem_#UDN#_tmp.set   id
 
     \\}
+
+    ok equ 1
+
+  \}
+
+  ; ^already have tmp ;>
+  match =0 =0 id ,\
+    UD0#.repl ok \
+    %O#.elem_#UDN#_tmp \{
+
+    %O#.elem_#UDN#_deref.set id
+    %O#.elem_#UDN#_tmp.set   id
+
+    cline mov \
+      id\\#.loc,\
+      UD0#.size [UD0#.xloc+UD0#.off]
 
   \}
 
@@ -535,20 +622,6 @@ macro i64.op.cderef %O,UDN0,UDN1 {
 
   \}
 
-
-  ; cleanup tmp
-  status equ 0
-  match =null,%O#.elem_#UDN1#_tmp \{
-    status equ 1
-
-  \}
-
-  match =0 , status \{
-    smX.i64.free_mem
-    %O#.elem_#UDN1#_tmp equ null
-
-  \}
-
 }
 
 ; ---   *   ---   *   ---
@@ -561,18 +634,21 @@ i64.op.icecall cderef,A,B
 
 macro i64.op.B2A ins {
 
-  macro i64.#ins UD0,UD1 \{
-
-    ; make ice
-    local uid
+  ; make op ice
+  macro i64.#ins dst,UD0,UD1 \{
     smX.i64.op.new uid,ins,UD0,UD1
+    dst equ uid
 
-    ; ^run and clear
+    ; ^lis methods
     match %O , uid \\{
-      i64.op.cderef@AB %O
-      %O\\#.del
+
+      macro %O\\#.run \\\{
+        i64.op.cderef@AB %O
+
+      \\\}
 
     \\}
+
 
   \}
 
@@ -584,6 +660,18 @@ macro i64.op.B2A ins {
 i64.op.B2A mov
 i64.op.B2A xor
 i64.op.B2A or
+
+; ---   *   ---   *   ---
+; ^run F for all items
+
+macro i64.op.batrun fn,[item] {
+
+  forward match %O any , item fn \{
+    %O\#.\#any
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; operand struc
