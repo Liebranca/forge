@@ -81,34 +81,34 @@ macro proc.new name,vflag= {
 ; ---   *   ---   *   ---
 ; get unique id
 
-macro proc.get_id dst,prefix,mode=global {
+macro uid.new dst,prefix,mode=global {
 
   ; fet/nit counter
-  local PROC_GET_ID
+  local UID
 
   if ~ defined .#prefix#_ax
     .#prefix#_ax = 0
 
   end if
 
-  PROC_GET_ID = .#prefix#_ax
+  UID = .#prefix#_ax
 
 
   ; generate global label
-  match =global n , mode PROC_GET_ID \{
-    proc.get_gid dst,prefix,n
+  match =global n , mode UID \{
+    uid.get_gid dst,prefix,n
 
   \}
 
   ; ^generate local
-  match =local =dotless n , mode PROC_GET_ID \{
-    proc.get_lid dst,prefix,n,dotless
+  match =local =dotless n , mode UID \{
+    uid.get_lid dst,prefix,n,dotless
 
   \}
 
   ; ^generate local
-  match = n , mode PROC_GET_ID \{
-    proc.get_lid dst,prefix,n
+  match = n , mode UID \{
+    uid.get_lid dst,prefix,n
 
   \}
 
@@ -120,7 +120,7 @@ macro proc.get_id dst,prefix,mode=global {
 ; ---   *   ---   *   ---
 ; ^global
 
-macro proc.get_gid dst,prefix,n {
+macro uid.get_gid dst,prefix,n {
 
   match name id , hier.cproc n \{
     dst equ name\#.#prefix#_\#id
@@ -132,7 +132,7 @@ macro proc.get_gid dst,prefix,n {
 ; ---   *   ---   *   ---
 ; ^local
 
-macro proc.get_lid dst,prefix,n,mode= {
+macro uid.get_lid dst,prefix,n,mode= {
 
   match name id , hier.cproc n \{
 

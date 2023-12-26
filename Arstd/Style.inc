@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.0b
+  VERSION   v0.02.1a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -503,7 +503,7 @@ macro fnpaste2 pro,list {
 ; ---   *   ---   *   ---
 ; cat A B C
 
-macro protocat dst,token,sep= {
+macro protocat dst,sep,token& {
   match any , dst \{dst equ dst sep token\}
   match     , dst \{dst equ token\}
 
@@ -512,7 +512,7 @@ macro protocat dst,token,sep= {
 ; ---   *   ---   *   ---
 ; ^C B A
 
-macro lprotocat dst,token,sep= {
+macro lprotocat dst,sep,token& {
   match any , dst \{dst equ token sep dst\}
   match     , dst \{dst equ token\}
 
@@ -521,27 +521,63 @@ macro lprotocat dst,token,sep= {
 ; ---   *   ---   *   ---
 ; ^sep is space
 
-macro spacecat  dst,token {protocat  dst,token}
-macro lspacecat dst,token {lprotocat dst,token}
+macro spacecat dst,token& {
+
+  local sep
+  sep equ
+
+  protocat dst,sep,token
+
+}
+
+macro lspacecat dst,token& {
+
+  local sep
+  sep equ
+
+  lprotocat dst,sep,token
+
+}
 
 ; ---   *   ---   *   ---
 ; ^comma
 
-macro commacat dst,token {
+macro commacat dst,token& {
 
   local sep
   sep equ ,
 
-  protocat dst,token,sep
+  protocat dst,sep,token
 
 }
 
-macro lcommacat dst,token {
+macro lcommacat dst,token& {
 
   local sep
   sep equ ,
 
-  lprotocat dst,token,sep
+  lprotocat dst,sep,token
+
+}
+
+; ---   *   ---   *   ---
+; ^newline
+
+macro eolcat dst,token& {
+
+  local sep
+  sep equ $0A
+
+  protocat dst,sep,token
+
+}
+
+macro leolcat dst,token& {
+
+  local sep
+  sep equ $0A
+
+  lprotocat dst,sep,token
 
 }
 

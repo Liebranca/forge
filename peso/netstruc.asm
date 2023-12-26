@@ -83,7 +83,7 @@ macro netstruc.setconfig type,opt& {
   blkname equ
 
   ; make codegen ID
-  proc.get_id blkname,netstruc.config_set
+  uid.new blkname,netstruc.config_set
   match blk , blkname \{
 
     macro blk\#._gen [item] \\{

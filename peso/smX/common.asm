@@ -65,7 +65,7 @@ macro smX.gen_tab crux,size,\
 
   ; make id for table
   local id
-  proc.get_id id,smX,local dotless
+  uid.new id,smX,local dotless
 
   ; generate symbol list
   macro inner.get_branch dst,len,[n] \{

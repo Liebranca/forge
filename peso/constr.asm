@@ -242,7 +242,7 @@ macro constr.errout name,code {
 
   ok equ 0
 
-  proc.get_id blkname,constr._throw_gen
+  uid.new blkname,constr._throw_gen
 
   ; generate errcall
   match blk , blkname \{
@@ -304,7 +304,7 @@ macro constr.errout name,code {
 macro constr.throw code,ct& {
 
   local name
-  proc.get_id name,code#_errme
+  uid.new name,code#_errme
 
   match any,name \{
     constr.new    any,ct

@@ -46,7 +46,7 @@ macro string.from ct& {
 
   local name
 
-  proc.get_id name,constr
+  uid.new name,constr
 
   match any,name \{
 
@@ -522,7 +522,7 @@ macro string.fproto.qpaste blk2,Q,CQ {
 
   ; make constant from args
   match any , Q \{
-    proc.get_id name,_fcat_constr
+    uid.new name,_fcat_constr
     constr.new  name,any
 
     ; ^write ins
@@ -575,7 +575,7 @@ macro string.fproto dst,fam,code,[item] {
 
 
     ; ^open virtual
-    proc.get_id blkname,_fcat
+    uid.new blkname,_fcat
 
     match blk2 , blkname \{
 

@@ -91,7 +91,7 @@ macro CVYC.get_blk dst,out,[list] {
   common
 
     match =0 , out \{
-      proc.get_id dst,peso.branch,local
+      uid.new dst,peso.branch,local
 
     \}
 
@@ -162,7 +162,7 @@ macro jmptab size,[item] {
     local offset
     local blkname
 
-    proc.get_id blkname,jmptab,local
+    uid.new blkname,jmptab,local
 
     match cproc blk,hier.cproc blkname \{
 
@@ -616,7 +616,7 @@ macro branchtab size,bounded?= {
 
   ; generate id
   local blkname
-  proc.get_id blkname,peso.branch,local
+  uid.new blkname,peso.branch,local
 
 
   ; pre-promise

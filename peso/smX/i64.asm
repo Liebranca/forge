@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -144,7 +144,10 @@ macro smX.i64.get_mem dst,args {
 
 
     ; ^TODO: none avail, move to stack
-    match , have \\{\\}
+    match , have \\{
+      out@err "NYI stack mem @ i64.scope"
+
+    \\}
 
   \}
 
