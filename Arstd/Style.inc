@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.1a
+  VERSION   v0.02.2a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -578,6 +578,60 @@ macro leolcat dst,token& {
   sep equ "\n",
 
   lprotocat dst,sep,token
+
+}
+
+; ---   *   ---   *   ---
+; cut A from A B C
+
+macro protocut dst,sep,src& {
+
+  local ok
+  local eqsep
+
+  dst   equ
+
+  ok    equ 0
+  eqsep equ =#sep
+
+  match pat , eqsep \{
+
+    ; A [sep] B
+    match any pat next , src \\{
+      src equ next
+      dst equ any
+
+      ok  equ 1
+
+    \\}
+
+    ; ^A [end]
+    match =0 any , ok src \\{
+      src equ
+      dst equ any
+
+      ok  equ 1
+
+    \\}
+
+    match =0 , ok \\{
+      dst equ 0
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; comma ice
+
+macro commacut dst,src& {
+
+  local sep
+  sep equ ,
+
+  protocut dst,sep,src
 
 }
 

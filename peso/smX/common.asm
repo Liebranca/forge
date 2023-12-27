@@ -31,6 +31,48 @@ library.import
   smX.CDEREF = $CDEF
 
 ; ---   *   ---   *   ---
+; GBL
+
+  define smX.REG.ar
+  define smX.REG.br
+  define smX.REG.cr
+  define smX.REG.dr
+
+; ---   *   ---   *   ---
+; ^pass value
+
+macro smX.mov dst,value& {
+  smX.REG.#dst equ value
+
+}
+
+; ---   *   ---   *   ---
+; ^invoke macro
+
+macro smX.call name {smX.#name}
+
+; ---   *   ---   *   ---
+; ~an idea we might revisit later
+
+macro OBJ.new dst,type,args& {
+
+  ; generate id
+  local uid
+  uid.new uid,type,global
+
+  ; ^pass [id,args] to cstruc
+  match id , uid \{
+
+    type#.new id
+    id\#.onew args
+
+    dst equ id
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; declares a footer generator
 ; specific to an operation
 

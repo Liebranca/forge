@@ -14,21 +14,35 @@
 
   TITLE     peso.sfield
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; new/del protos
+
+macro VAR.new name,v= {
+
+  match any , name \{
+    define name#._back any
+
+  \}
+
+  define name v
+
+}
+
+macro VAR.del name {
+  name equ name#._back
+  restore name#._back
+
+}
 
 ; ---   *   ---   *   ---
 ; cstruc
 
 macro sfield.new base,field,v= {
 
-  match any , base#.#field \{
-    define base#.#field#._back any
-
-  \}
-
-  define base#.#field v
-
+  VAR.new base#.#field,v
 
   local subc
   subc equ 0
@@ -86,8 +100,7 @@ macro sfield.new base,field,v= {
 ; ^dstruc
 
 macro sfield.del base,field {
-  base#.#field equ base#.#field#._back
-  restore base#.#field#._back
+  VAR.del base#.#field
 
 }
 

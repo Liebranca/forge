@@ -111,6 +111,16 @@ macro swan.ice base,name,[item] {
 
     \}
 
+    ; used when args are passed as csv
+    macro name#.onew _args& \{
+
+      match any , base#.onew \\{
+        any name,_args
+
+      \\}
+
+    \}
+
     if swan.debug
       display 'NEW ',`base,$20,`name,$0A
 

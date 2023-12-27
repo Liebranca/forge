@@ -354,6 +354,86 @@ macro i64.mem.add_off dst,value {
 }
 
 ; ---   *   ---   *   ---
+; ~
+
+macro i64.memarg dst,src {
+
+  ; unpack arg
+  local proto
+  local repl
+
+  commacut proto,smX.REG.#src
+  commacut repl,smX.REG.#src
+
+
+  ; ^proc arg0
+  match attrs =+ name , proto \{
+    smX.i64.get_mem dst,attrs,name
+
+  \}
+
+  ; ^proc arg1
+  match =CDEREF id , repl dst \{
+    id\#.set_repl 1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; load [?dst] <= [?src]
+
+macro smX.i64.ld {
+
+  ; unpack args
+  local A
+  local B
+
+  i64.memarg A,ar
+  i64.memarg B,br
+
+  ; ^build op
+  local op
+  i64.mov op,A,B
+
+
+  ; run through steps
+  macro inner [step] \{
+
+    forward
+
+      match UA UB , A B \\{
+        UA\\#.set_size step
+        UB\\#.set_size step
+
+      \\}
+
+      smX.op.batrun run,op
+
+      match UA UB , A B \\{
+        UA\\#.add_off sizeof.\#step
+        UB\\#.add_off sizeof.\#step
+
+      \\}
+
+  \}
+
+  ; ^exec
+  match list , smX.REG.cr \{
+    inner list
+
+  \}
+
+  ; cleanup
+  match UA UB , A B \{
+    smX.i64.free_mem UA
+    smX.i64.free_mem UB
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; clear [?A]
 
 macro smX.i64.cl A {
