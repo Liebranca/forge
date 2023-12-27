@@ -13,7 +13,10 @@
 ; deps
 
 library ARPATH '/forge/'
+
   use '.inc' peso::swan
+  use '.inc' peso::cline
+
   use '.asm' peso::smX::common
 
 library.import
@@ -146,7 +149,7 @@ macro smX.op.del %O {
 macro smX.op.get_tmp %O,dst,args {
 
   match mode , %O#.mode \{
-    smX.\#mode\#.get_mem dst,args
+    mode\#.mem.alloc dst,args
 
   \}
 
@@ -170,7 +173,7 @@ macro smX.op.free_tmp %O,UDN {
   match =0 mode any , status \
     %O#.mode %O#.elem_#UDN#_tmp \{
 
-    smX.\#mode\#.free_mem any
+    mode\#.mem.free any
     %O#.elem_#UDN#_tmp equ null
 
   \}
@@ -392,6 +395,8 @@ macro smX.op.need_repl? %O,UD0,UDN {
 
     %O#.elem_#UDN#_deref.set id
     %O#.elem_#UDN#_tmp.set   id
+
+    id\#.set_size UD0#.size
 
     cline mov \
       id\\#.loc,\

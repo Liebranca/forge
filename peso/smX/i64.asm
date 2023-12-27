@@ -13,7 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.asm' peso::smX::op
+  use '.inc' peso::smX::op
+  use '.inc' peso::smX::scope
 
 library.import
 
@@ -22,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -33,209 +34,6 @@ library.import
     di,si,r8,r9,\
     r10,r11,r12,r13,\
     r14,r15
-
-; ---   *   ---   *   ---
-; GBL
-
-  define i64.cscope
-
-; ---   *   ---   *   ---
-; ctx struc
-
-swan.new i64.scope
-
-swan.attr avail,list
-swan.attr unav,list
-swan.attr mems,list
-
-swan.end
-
-; ---   *   ---   *   ---
-; ^cstruc
-
-macro smX.i64.open_scope dst,list& {
-
-  ; generated iced
-  local uid
-  uid.new uid,smX.i64.scope,global
-
-  ; ^unroll and make ice
-  match id,uid \{
-
-    i64.scope.new id
-    i64.cscope equ id
-
-    dst equ id
-
-
-    ; build list of avail registers
-    macro inner [rX] \\{
-
-      forward
-
-        ; get rX is used
-        local ok
-        tokin ok,rX,list
-
-        ; ^push to unav if so
-        match =1 , ok \\\{
-          id\#.unav.push rX
-
-        \\\}
-
-        ; ^else push to avail
-        match =0 , ok \\\{
-          id\#.avail.push rX
-
-        \\\}
-
-    \\}
-
-
-    ; ^run
-    match any , i64.REGISTERS \\{
-      inner any
-
-    \\}
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^dstruc
-
-macro smX.i64.close_scope {
-
-  match any , i64.cscope \{
-
-    ; ^release mems
-    rept any\#.mems.m_len \\{
-      smX.i64.free_mem
-
-    \\}
-
-    ; release container
-    any\#.del
-
-  \}
-
-  restore i64.cscope
-
-}
-
-; ---   *   ---   *   ---
-; get unused register
-;
-;
-; TODO:
-;
-; * save and load from stack
-;   when we run out of registers
-
-macro smX.i64.get_mem dst,args,which= {
-
-  match scp , i64.cscope \{
-
-    ; get registers left
-    local have
-    have equ
-
-    rept scp\#.avail.m_len \\{have equ 1\\}
-
-
-    ; ^got scratch
-    match any,have \\{
-
-      ; get register
-      local rX
-      smX.i64.pick_mem scp,alloc,rX,which
-
-      ; ^mark in use
-      smX.i64.new_mem dst,args+rX
-      scp\#.mems.push dst
-
-    \\}
-
-
-    ; ^none avail, move to stack
-    match , have \\{
-      out@err "NYI stack mem @ i64.scope"
-
-    \\}
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^release mem from top
-;
-; optionally: release a
-; specific mem, much slower!
-
-macro smX.i64.free_mem which= {
-
-  match scp , i64.cscope \{
-
-    ; get register
-    local rX
-    smX.i64.pick_mem scp,free,rX,which
-
-
-    ; ^give back to pool
-    match any , rX \\{
-      scp\#.avail.unshift any\\#.name
-      any\\#.del
-
-    \\}
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; picks register from avail
-
-macro smX.i64.pick_mem scp,mode,rX,which= {
-
-  rX equ
-
-  ; take from scope
-  match =alloc , mode \{
-
-    ; no name passed
-    match , which \\{
-      scp#.avail.shift rX
-
-    \\}
-
-    ; ^name passed, hold on...
-    match any , which \\{
-      scp#.avail.pluck rX,any
-
-    \\}
-
-  \}
-
-  ; ^give back!
-  match =free , mode \{
-
-    ; no name passed
-    match , which \\{
-      scp#.mems.pop rX
-
-    \\}
-
-    ; ^name passed, hold on...
-    match any , which \\{
-      scp#.mems.pluck rX,any
-
-    \\}
-
-  \}
-
-}
 
 ; ---   *   ---   *   ---
 ; operand struc
@@ -255,31 +53,36 @@ swan.end
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-macro smX.i64.new_mem dst,args {
+macro i64.mem.onew id,args& {
 
-  ; generate iced
-  local uid
-  uid.new uid,smX.i64.mem,global
+  ; set attrs
+  match sz md =+ rX , args \{
 
-  ; ^unroll and make ice
-  match id sz md =+ rX , uid args \{
-
-    i64.mem.new id,\
-      name=>rX,\
-      size=>sz,\
-      mode=>md,\
+    id#.mode.set md
+    id#.size.set sz
 
     i64.mem.set_loc id,rX
 
-    ; ^lis macros
-    swan.batlis id,i64.mem,\
-      set_size,set_loc,\
-      set_mode,set_repl,\
-      set_off,add_off
-
-    dst equ id
-
   \}
+
+  ; ^lis methods
+  swan.batlis id,i64.mem,\
+    set_size,set_loc,\
+    set_mode,set_repl,\
+    set_off,add_off
+
+}
+
+; ---   *   ---   *   ---
+; ^ctx wraps
+
+macro i64.mem.alloc dst,args& {
+  smX.scope.alloc dst,i64,args
+
+}
+
+macro i64.mem.free dst,args& {
+  smX.scope.free i64,args
 
 }
 
@@ -368,12 +171,12 @@ macro i64.memarg dst,src {
 
   ; ^proc arg0
   match attrs =+ name , proto \{
-    smX.i64.get_mem dst,attrs,name
+    i64.mem.alloc dst,attrs,name
 
   \}
 
   ; ^proc arg1
-  match =CDEREF id , repl dst \{
+  match =1 id , repl dst \{
     id\#.set_repl 1
 
   \}
@@ -426,8 +229,8 @@ macro smX.i64.ld {
 
   ; cleanup
   match UA UB , A B \{
-    smX.i64.free_mem UA
-    smX.i64.free_mem UB
+    i64.mem.free UA
+    i64.mem.free UB
 
   \}
 

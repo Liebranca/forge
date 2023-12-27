@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.smX.common
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -43,6 +43,14 @@ library.import
 
 macro smX.mov dst,value& {
   smX.REG.#dst equ value
+
+}
+
+; ---   *   ---   *   ---
+; ^clear
+
+macro smX.cl dst {
+  smX.REG.#dst equ
 
 }
 
