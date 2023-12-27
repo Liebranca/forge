@@ -187,7 +187,10 @@ macro List.pluck list,len,out,[which] {
 
 
   ; ^reset self
-  common List.from list,len,dst
+  common match any , dst \{
+    List.from list,len,any
+
+  \}
 
 }
 
