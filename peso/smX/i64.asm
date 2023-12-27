@@ -86,6 +86,11 @@ macro i64.mem.free dst,args& {
 
 }
 
+macro i64.mem.free_back dst,args& {
+  smX.scope.free_back i64,args
+
+}
+
 ; ---   *   ---   *   ---
 ; modifies size-variant of
 ; used register
@@ -157,7 +162,7 @@ macro i64.mem.add_off dst,value {
 }
 
 ; ---   *   ---   *   ---
-; ~
+; cstruc shorthand ;>
 
 macro i64.memarg dst,src {
 
@@ -176,8 +181,8 @@ macro i64.memarg dst,src {
   \}
 
   ; ^proc arg1
-  match =1 id , repl dst \{
-    id\#.set_repl 1
+  match x id , repl dst \{
+    id\#.set_repl x
 
   \}
 
@@ -228,7 +233,10 @@ macro smX.i64.ld {
   \}
 
   ; cleanup
-  match UA UB , A B \{
+  match %O UA UB , op A B \{
+
+    smX.op.odel %O
+
     i64.mem.free UA
     i64.mem.free UB
 

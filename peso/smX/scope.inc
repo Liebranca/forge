@@ -53,9 +53,6 @@ swan.attr sse.avail,list
 swan.attr sse.unav,list
 swan.attr sse.mems,list
 
-swan.attr code.head,list
-swan.attr code.body,list
-
 swan.end
 
 ; ---   *   ---   *   ---
@@ -206,7 +203,7 @@ macro smX.scope.alloc dst,type,args,which= {
 ; optionally: release a
 ; specific mem, much slower!
 
-macro smX.scope.free type,which= {
+macro smX.scope.free_proto type,order,which= {
 
   match id , hier.cscope \{
 
@@ -219,12 +216,25 @@ macro smX.scope.free type,which= {
 
     ; ^give back to pool
     match any , rX \\{
-      id\#.#type#.avail.unshift any\\#.name
+      id\#.#type#.avail.#order any\\#.name
       any\\#.del
 
     \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^iceof
+
+macro smX.scope.free type,which= {
+  smX.scope.free_proto type,unshift,which
+
+}
+
+macro smX.scope.free_back type,which= {
+  smX.scope.free_proto type,push,which
 
 }
 

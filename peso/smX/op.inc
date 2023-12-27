@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -50,6 +50,10 @@ swan.attr elem_A_tmp,null
 swan.attr elem_B_tmp,null
 swan.attr elem_C_tmp,null
 
+swan.attr cbuff_head,null
+swan.attr cbuff_body,null
+swan.attr cbuff_foot,null
+
 swan.end
 
 ; ---   *   ---   *   ---
@@ -65,29 +69,22 @@ swan.end
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-macro smX.op.new dst,md,op,item& {
+macro smX.op.onew id,md,op,item& {
 
-  ; generate iced
-  local uid
-  uid.new uid,smX.op,global
+  ; set attrs
+  id#.name.set  op
+  id#.elems.set smX.op.#op#_elems
+  id#.mode.set  md
 
-  ; ^unroll and make ice
-  match id , uid \{
-
-    smX.op.new id,\
-      name  => op,\
-      elems => smX.op.#op#_elems,\
-      mode  => md
-
-    dst equ id
-
-    ; nit operands if passed
-    match elems , item \{
-      smX.op.set_elems id,elems
-
-    \}
+  ; nit operands if passed
+  match elems , item \{
+    smX.op.set_elems id,elems
 
   \}
+
+  cline.new id#.cbuff_head
+  cline.new id#.cbuff_foot
+  cline.new id#.cbuff_body
 
 }
 
@@ -137,7 +134,15 @@ macro smX.op.set_elems %O,[item] {
 ; ---   *   ---   *   ---
 ; dstruc
 
-macro smX.op.del %O {
+macro smX.op.odel %O {
+
+  ; commit code
+  cline.bat \
+    %O#.cbuff_head,\
+    %O#.cbuff_body,\
+    %O#.cbuff_foot,\
+
+  ; ^release container
   smX.op.bat_free_tmp %O,A,B,C
   %O#.del
 
@@ -173,7 +178,7 @@ macro smX.op.free_tmp %O,UDN {
   match =0 mode any , status \
     %O#.mode %O#.elem_#UDN#_tmp \{
 
-    mode\#.mem.free any
+    mode\#.mem.free_back any
     %O#.elem_#UDN#_tmp equ null
 
   \}
@@ -324,7 +329,6 @@ macro smX.op.need_deref? %O,UD0,UD1,UDN {
 
     ; ^no tmp needed ;>
     match =r , UD0#.mode \\{
-
       cline %O#.name \
         UD0#.loc,UD1#.size [UD1#.xloc+UD1#.off]
 
@@ -350,6 +354,7 @@ smX.op.icecall need_deref?,B
 
 macro smX.op.need_repl? %O,UD0,UDN {
 
+
   ; replace self
   match =1 , UD0#.repl \{
 
@@ -361,26 +366,32 @@ macro smX.op.need_repl? %O,UD0,UDN {
   \}
 
 
-  ; ^get new reg
+  ; ^need new reg?
   local ok
-  ok equ 0
+  local tmp
+  local make_tmp
 
-  match =0 =null ,\
-    UD0#.repl \
-    %O#.elem_#UDN#_tmp \{
+  ok       equ 0
+  tmp      equ
+  make_tmp equ 0
 
-    local uid
-    smX.op.get_tmp %O,uid,UD0#.size r
+  ; ^get existing or make new
+  match =0 , UD0#.repl \{
 
-    ; ^use as tmpdst
-    match id , uid \\{
+    ; make new?
+    match =null , %O#.elem_#UDN#_tmp \\{
+      make_tmp equ 1
 
-      cline mov \
-        id\\#.loc,\
-        UD0#.size [UD0#.xloc+UD0#.off]
+    \\}
+
+    ; ^have one already?
+    match =0 id , make_tmp %O#.elem_#UDN#_tmp \\{
 
       %O#.elem_#UDN#_deref.set id
       %O#.elem_#UDN#_tmp.set   id
+
+      id\\#.set_size UD0#.size
+      tmp equ id
 
     \\}
 
@@ -388,19 +399,62 @@ macro smX.op.need_repl? %O,UD0,UDN {
 
   \}
 
-  ; ^already have tmp ;>
-  match =0 =0 id ,\
-    UD0#.repl ok \
-    %O#.elem_#UDN#_tmp \{
 
-    %O#.elem_#UDN#_deref.set id
-    %O#.elem_#UDN#_tmp.set   id
+  ; ^get new and overwrite existing
+  match =2 , UD0#.repl \{
 
-    id\#.set_size UD0#.size
+    ; no freeing needed
+    match =null , %O#.elem_#UDN#_tmp \\{
+      make_tmp equ 1
+
+    \\}
+
+    ; ^free to bottom of stack
+    match =0 id , make_tmp %O#.elem_#UDN#_tmp \\{
+      smX.op.free_tmp %O,UDN
+      make_tmp equ 1
+
+    \\}
+
+    ok equ 1
+
+  \}
+
+
+  ; ^get tmp
+  match =1 , make_tmp \{
+
+    local uid
+    smX.op.get_tmp %O,uid,UD0#.size r
+
+    ; ^use as tmpdst
+    match id , uid \\{
+      %O#.elem_#UDN#_deref.set id
+      %O#.elem_#UDN#_tmp.set   id
+
+      tmp equ id
+
+    \\}
+
+    ok equ 1
+
+  \}
+
+
+  ; ^add tmp code to head
+  match id , tmp \{
+
+    ; save current buffer name
+    ; then switch to header
+    local old
+    cline.swap %O#.cbuff_head,old
 
     cline mov \
-      id\\#.loc,\
-      UD0#.size [UD0#.xloc+UD0#.off]
+      id\#.loc,UD0#.size [UD0#.xloc+UD0#.off]
+
+
+    ; ^restore buffer
+    cline.swap old
 
   \}
 
@@ -475,11 +529,11 @@ macro smX.op.B2A mode,ins {
 
   ; make op ice
   macro mode#.#ins dst,UD0,UD1 \{
-    smX.op.new uid,mode,ins,UD0,UD1
-    dst equ uid
+
+    OBJ.new dst,smX.op,mode,ins,UD0,UD1
 
     ; ^lis methods
-    match %O , uid \\{
+    match %O , dst \\{
 
       macro %O\\#.run \\\{
         smX.op.cderef@AB %O

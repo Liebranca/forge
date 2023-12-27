@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.cline
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -42,7 +42,7 @@ macro cline.set_dst name {
 ; ---   *   ---   *   ---
 ; clear codestr array
 
-macro cline.new {
+macro cline.new dst= {
 
   ; get id for codestr
   local uid
@@ -50,10 +50,31 @@ macro cline.new {
 
   ; ^save for later
   match id,uid \{
+
     cline.src equ id
     define id\#.sref
 
+    ; optionally save to var
+    match any , dst \\{
+      dst equ id
+
+    \\}
+
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^switch out
+
+macro cline.swap id,sv= {
+
+  match any old , sv cline.src \{
+    sv equ old
+
+  \}
+
+  cline.src equ id
 
 }
 
@@ -64,6 +85,11 @@ macro cline src& {
 
   match id,cline.src \{
     eolcat id\#.sref,src
+
+  \}
+
+  match , cline.src \{
+    out@err "No buffer for cline"
 
   \}
 
@@ -97,6 +123,17 @@ macro cline.commit {
 
   ; clear array
   cline.new
+
+}
+
+; ---   *   ---   *   ---
+; ^bat
+
+macro cline.bat [buff] {
+
+  forward
+    cline.swap   buff
+    cline.commit
 
 }
 
