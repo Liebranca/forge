@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.01.3a
+  VERSION   v0.01.4a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -49,6 +49,7 @@ macro proc._ns_new name,vflag= {
   define name#.$proc.rpres_a
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
+  define name#.$proc.stkali  0
 
 }
 
@@ -170,16 +171,42 @@ macro proc.enter {
   local n
   sfield.get n,hier.cproc,$proc.stksize
 
+  ; ^get declared alignment
+  local ali
+  sfield.get ali,hier.cproc,$proc.stkali
+
+  match =0 , n \{
+    ali equ 0
+
+  \}
+
+  match =1 , ali \{
+    n equ n+1
+
+  \}
+
   ; ^convert size to units
   n equ (n+(sizeof.unit-1))
   n equ (n shr sizep2.unit)
   n equ n shl sizep2.unit
 
+  ; ^overwrite
+  sfield.set hier.cproc,$proc.stksize,n
+
+
   ; ^paste prologue
   if n > 0
+
     push rbp
     mov  rbp,rsp
-    sub  rsp,n
+
+    match =1 , ali \{
+      and  bpl,$F0
+      mov  byte [rbp-(n-1)],spl
+
+    \}
+
+    sub rsp,n
 
   end if
 
@@ -350,8 +377,18 @@ macro proc.stk sn {
 
 }
 
+
 ; ---   *   ---   *   ---
-; ^detail args
+; ^set stack as unit-aligned
+; default is don't do it!
+
+macro proc.align {
+  sfield.set hier.cproc,$proc.stkali,1
+
+}
+
+; ---   *   ---   *   ---
+; detail args
 
 macro proc.arg snr {
 
@@ -413,10 +450,22 @@ macro proc.leave {
   proc.restore hier.cproc
 
   ; get stack was used
+  local n
   sfield.get n,hier.cproc,$proc.stksize
+
+  ; ^get stack was aligned
+  local ali
+  sfield.get ali,hier.cproc,$proc.stkali
+
 
   ; ^paste epilogue
   if n > 0
+
+    match =1 , ali \{
+      mov bpl,byte [rbp-(n-1)]
+
+    \}
+
     leave
 
   end if

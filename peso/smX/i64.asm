@@ -23,170 +23,8 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; ROM
-
-  define i64.REGISTERS \
-    a,b,c,d,\
-    di,si,r8,r9,\
-    r10,r11,r12,r13,\
-    r14,r15
-
-; ---   *   ---   *   ---
-; operand struc
-
-swan.new i64.mem
-
-swan.attr name,a
-swan.attr loc,al
-swan.attr xloc,rax
-swan.attr size,byte
-swan.attr off,0
-swan.attr repl,0
-swan.attr mode,r
-
-swan.end
-
-; ---   *   ---   *   ---
-; ^cstruc
-
-macro i64.mem.onew id,args& {
-
-  ; set attrs
-  match sz md =+ rX , args \{
-
-    id#.mode.set md
-    id#.size.set sz
-
-    i64.mem.set_loc id,rX
-
-  \}
-
-  ; ^lis methods
-  swan.batlis id,i64.mem,\
-    set_size,set_loc,\
-    set_mode,set_repl,\
-    set_off,add_off
-
-}
-
-; ---   *   ---   *   ---
-; ^ctx wraps
-
-macro i64.mem.alloc dst,args& {
-  smX.scope.alloc dst,i64,args
-
-}
-
-macro i64.mem.free dst,args& {
-  smX.scope.free i64,args
-
-}
-
-macro i64.mem.free_back dst,args& {
-  smX.scope.free_back i64,args
-
-}
-
-; ---   *   ---   *   ---
-; modifies size-variant of
-; used register
-
-macro i64.mem.set_size dst,sz {
-
-  ; get sized variant
-  local rX
-  match loc , dst#.name \{
-    i_sized_reg rX,loc,sz
-
-  \}
-
-  ; ^write field
-  dst#.loc.set rX
-  dst#.size.set sz
-
-}
-
-; ---   *   ---   *   ---
-; ^modifies used register
-
-macro i64.mem.set_loc dst,name {
-
-  ; get largest (used for deref)
-  local rX
-  i_sized_reg rX,name,qword
-
-  ; ^write field
-  dst#.xloc.set rX
-  dst#.name.set name
-
-  ; ^update ice
-  match sz,dst#.size \{
-    i64.mem.set_size dst,sz
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^mere wraps
-
-macro i64.mem.set_mode dst,value {
-  dst#.mode.set value
-
-}
-
-macro i64.mem.set_repl dst,value {
-  dst#.repl.set value
-
-}
-
-macro i64.mem.set_off dst,value {
-  dst#.off.set value
-
-}
-
-; ---   *   ---   *   ---
-; ^adds to current offset
-
-macro i64.mem.add_off dst,value {
-
-  match off , dst#.off \{
-    dst#.off.set off+(value)
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; cstruc shorthand ;>
-
-macro i64.memarg dst,src {
-
-  ; unpack arg
-  local proto
-  local repl
-
-  commacut proto,smX.REG.#src
-  commacut repl,smX.REG.#src
-
-
-  ; ^proc arg0
-  match attrs =+ name , proto \{
-    i64.mem.alloc dst,attrs,name
-
-  \}
-
-  ; ^proc arg1
-  match x id , repl dst \{
-    id\#.set_repl x
-
-  \}
-
-}
 
 ; ---   *   ---   *   ---
 ; load [?dst] <= [?src]
@@ -197,8 +35,8 @@ macro smX.i64.ld {
   local A
   local B
 
-  i64.memarg A,ar
-  i64.memarg B,br
+  smX.memarg A,ar
+  smX.memarg B,br
 
   ; ^build op
   local op
@@ -240,8 +78,8 @@ macro smX.i64.ld {
 
     smX.op.odel %O
 
-    i64.mem.free UA
-    i64.mem.free UB
+    smX.mem.free UA
+    smX.mem.free UB
 
   \}
 

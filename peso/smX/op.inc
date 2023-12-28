@@ -18,6 +18,7 @@ library ARPATH '/forge/'
   use '.inc' peso::cline
 
   use '.asm' peso::smX::common
+  use '.inc' peso::smX::mem
 
 library.import
 
@@ -26,8 +27,18 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; ROM
+
+  define smX.op.xor_elems  2
+  define smX.op.or_elems   2
+
+  define smX.op.mov_elems  2
+  define smX.op.cmp_elems  2
+  define smX.op.test_elems 2
 
 ; ---   *   ---   *   ---
 ; operation struc
@@ -36,6 +47,8 @@ swan.new smX.op
 
 swan.attr name,xor
 swan.attr elems,2
+swan.attr size,byte
+swan.attr ali,u
 swan.attr mode,i64
 
 swan.attr elem_A,null
@@ -57,34 +70,65 @@ swan.attr cbuff_foot,null
 swan.end
 
 ; ---   *   ---   *   ---
-; ^ROM
-
-  define smX.op.xor_elems  2
-  define smX.op.or_elems   2
-
-  define smX.op.mov_elems  2
-  define smX.op.cmp_elems  2
-  define smX.op.test_elems 2
-
-; ---   *   ---   *   ---
 ; ^cstruc
 
-macro smX.op.onew id,md,op,item& {
+macro smX.op.onew id,md,OASE,_nullarg& {
 
-  ; set attrs
-  id#.name.set  op
-  id#.elems.set smX.op.#op#_elems
-  id#.mode.set  md
+  ; get operation name+size
+  smX.sized_op id,OASE
+  id#.mode.set md
 
-  ; nit operands if passed
-  match elems , item \{
-    smX.op.set_elems id,elems
-
-  \}
+;  ; nit operands if passed
+;  match elems , item \{
+;    smX.op.set_elems id,elems
+;
+;  \}
 
   cline.new id#.cbuff_head
   cline.new id#.cbuff_foot
   cline.new id#.cbuff_body
+
+}
+
+; ---   *   ---   *   ---
+; get size-variant of operation
+
+macro smX.sized_op %O,OASE {
+
+  local alix
+  local opx
+  local szx
+  local elemx
+
+  ; eg: xor ia&byte r+a,m+b
+  match op ali =& sz elems , OASE \{
+
+    alix  equ ali
+    opx   equ op
+    szx   equ sz
+    elemx equ elemx
+
+    %O#.elems.set smX.op.\#op\#_elems
+
+
+    if sizeof.\#sz < $10
+      smX.op.i64_xlate %O,opx,szx,elemx
+
+    else
+      smX.op.sse_xlate %O,opx,szx
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^make i64 op from smX name
+
+macro smX.op.i64_xlate %O,op,sz,elems& {
+  %O#.size.set sz
+  %O#.name.set op
 
 }
 
@@ -175,10 +219,10 @@ macro smX.op.free_tmp %O,UDN {
   \}
 
   ; ^yep, give back
-  match =0 mode any , status \
-    %O#.mode %O#.elem_#UDN#_tmp \{
+  match =0 any , status \
+    %O#.elem_#UDN#_tmp \{
 
-    mode\#.mem.free_back any
+    smX.mem.free_back %O,any
     %O#.elem_#UDN#_tmp equ null
 
   \}
@@ -190,6 +234,72 @@ macro smX.op.free_tmp %O,UDN {
 
 macro smX.op.bat_free_tmp %O,[UDN] {
   forward smX.op.free_tmp %O,UDN
+
+}
+
+; ---   *   ---   *   ---
+; ^ctx wraps
+
+macro smX.mem.alloc %O,dst,args& {
+  smX.scope.alloc dst,%O#.mode,args
+
+}
+
+macro smX.mem.free %O,args& {
+  smX.scope.free %O#.mode,args
+
+}
+
+macro smX.mem.free_back %O,args& {
+  smX.scope.free_back %O#.mode,args
+
+}
+
+; ---   *   ---   *   ---
+; ^allocates mem for op if
+; none passed to cstruc
+
+macro smX.op.need_mem? {
+
+  ; ^single operand
+  match =1 , %O#.elems %O#.elem_A \{
+
+
+
+  \}
+
+  ; ^two operands
+  match =2 , %O#.elems \{
+    match A B , UA UB \\{
+      smX.op.#fn %O,A,B
+
+    \\}
+
+  \}
+
+  ; ^three operands
+  match =3 , %O#.elems \{
+    match A B C , UA UB UC \\{
+      smX.op.#fn %O,A,B,C
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^alloc individual elem
+
+macro smX.op.get_mem %O,UDN {
+
+  local dst
+  smX.mem.alloc %O,dst
+
+  match id , dst \{
+    %O#.elem_#UDN equ id
+
+  \}
 
 }
 

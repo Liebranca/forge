@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.smX.scope
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -189,7 +189,7 @@ macro smX.scope.alloc dst,type,args,which= {
 
     ; ^none avail, move to stack
     match , have \\{
-      out@err "NYI stack mem @ i64.scope"
+      out@err "NYI stack mem @ smX.scope"
 
     \\}
 

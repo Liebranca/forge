@@ -108,68 +108,6 @@ macro smX.paste_foot op {
 }
 
 ; ---   *   ---   *   ---
-; maps i64 to [zxy]mm
-; quite foolish, but useful
-
-macro smX.sized_reg dst,name,size {
-
-  if sizeof.#size < $10
-    i_sized_reg dst,name,size
-
-  else
-
-    local xname
-    xname equ name
-
-    smX.i2xmap xname
-    match any , xname \{
-      x_sized_reg dst,any,size
-
-    \}
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; ^this is why it's foolish,
-;
-; here's what the mapping
-; looks like:
-;
-; * a__,b__,c__,d__  => _0,_1,_2,_3
-; * di_,si_,r8_,r9_  => _4,_5,_6,_7
-; * r10,r11,r12,r13  => _8,_9,10,11
-; * r14,r15,bp_,sp_  => 12,13,14,15
-;
-;
-; it means segfaults gallore
-; if used mindlessly!
-
-define smX.i2xmap_i \
-  a  ,b  ,c  ,d  ,\
-  di ,si ,r8 ,r9 ,\
-  r10,r11,r12,r13,\
-  r14,r15,bp ,sp
-
-macro smX.i2xmap name {
-
-  local idex
-  idex equ 'I'
-
-  match list , smX.i2xmap_i \{
-    tokin idex,name,list
-
-  \}
-
-  match any , idex \{
-    name equ any
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
 ; generic jmptable maker
 
 macro smX.gen_tab crux,size,\
