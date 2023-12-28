@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -210,14 +210,17 @@ macro smX.i64.ld {
 
     forward
 
+      ; match size to elem
       match UA UB , A B \\{
         UA\\#.set_size step
         UB\\#.set_size step
 
       \\}
 
+      ; mov [?dst],[?src]
       smX.op.batrun run,op
 
+      ; ^go next
       match UA UB , A B \\{
         UA\\#.add_off sizeof.\#step
         UB\\#.add_off sizeof.\#step

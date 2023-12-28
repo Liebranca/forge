@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.2a
+  VERSION   v0.02.3a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -181,33 +181,150 @@ macro MAM.segment name,type,size {
 }
 
 ; ---   *   ---   *   ---
+; get {match =[which] , item}
+
+macro tokis dst,item,which {
+
+  local which2
+
+  which2 equ =#which
+  dst    equ 0
+
+  ; ^unroll
+  match pat , which2 \{
+
+    match pat , item \\{
+      dst equ 1
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; inneficient way of finding
 ; a symbol within a common list
 
 macro tokin dst,N,[item] {
 
   common
+
+    local ok
+    local idex
+
+    ok    equ 0
+    idex  equ -1
+
+    ; mode 'I' outs idex
+    local mode
+    mode equ 'B'
+
+    ; ^passed in dst ;>
+    match any , dst \{
+      mode equ dst
+
+    \}
+
+
+  ; iter match N against list
+  forward match =0 , ok \{
+    tokis ok,N,item
+
+    idex equ idex+1
+    dst  equ ok
+
+  \}
+
+
+  ; ^alter result on idexof mode
+  common
+
+    ; give idex on success
+    match =1 ='I' , ok mode \{
+
+      ; flatten i+1+1...
+      rept 1 cnt:idex \\{
+        idex equ cnt
+
+      \\}
+
+      ; ^save to dst
+      match any , idex \\{
+        dst equ any
+
+      \\}
+
+    \}
+
+    ; ^give non on failure
+    match =0 ='I' , ok mode \{
+      dst equ
+
+    \}
+
+}
+
+; ---   *   ---   *   ---
+; get Nth elem in list
+
+macro nthof dst,[item] {
+
+  common
+
+    local cap
+    local idex
     local ok
 
-    dst equ 0
-    ok  equ 0
+    cap  equ dst
+    dst  equ
 
+    idex equ 0
+    ok   equ 0
+
+
+  ; walk list
   forward match =0 , ok \{
 
-    ; search for literal value of
-    local item2
-    item2 equ =#item
+    ; i eq cap?
+    tokis ok,idex,cap
 
-    ; ^unroll
-    match pat , item2 \\{
-
-      match pat , N \\\{
-        dst equ 1
-        ok  equ 1
-
-      \\\}
+    match =1 , ok \\{
+      dst equ item
 
     \\}
+
+    ; flatten i++
+    idex equ idex+1
+
+    rept 1 cnt:idex \\{
+      idex equ cnt
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^get value from key
+; where list_a is keys
+; and list_b is values
+
+macro listmap dst,map& {
+
+  match A ===> B , map \{
+
+    local idex
+    local key
+
+    idex equ 'I'
+    key  equ dst
+
+    tokin idex,key,A
+    dst equ idex
+
+    nthof dst,B
 
   \}
 
@@ -389,6 +506,38 @@ macro i_ldX dst,src {
     \}
 
   end if
+
+}
+
+; ---   *   ---   *   ---
+; gives [XYZ]mm+N accto size
+
+macro x_sized_reg dst,N,size {
+
+  local K
+  K equ
+
+  ; ^get letter
+  match =xword , size \{
+    K equ x
+
+  \}
+
+  match =yword , size \{
+    K equ y
+
+  \}
+
+  match =zword , size \{
+    K equ z
+
+  \}
+
+  ; ^cat to xmmN
+  match any , K \{
+    dst equ any\#mm#N
+
+  \}
 
 }
 
