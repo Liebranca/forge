@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.smX.mem
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -235,7 +235,7 @@ macro smX.mem._gen_alloc md {
   \}
 
   macro md#.mem.free_back args& \{
-    smX.scope.free md,args
+    smX.scope.free_back md,args
 
   \}
 

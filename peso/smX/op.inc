@@ -27,7 +27,7 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -182,8 +182,11 @@ macro smX.op.odel %O {
 
 macro smX.op.get_tmp %O,dst,args {
 
-  match mode , %O#.mode \{
-    mode\#.mem.alloc dst,args
+  local mode
+  smX.op.get_mode %O,mode
+
+  match md , mode \{
+    md\#.mem.alloc dst,args
 
   \}
 
@@ -207,8 +210,14 @@ macro smX.op.free_tmp %O,UDN {
   match =0 any , status \
     %O#.elem_#UDN#_tmp \{
 
-    smX.mem.free_back %O,any
-    %O#.elem_#UDN#_tmp equ null
+    local mode
+    smX.op.get_mode %O,mode
+
+    match md , mode \\{
+      md\\#.mem.free_back any
+      %O#.elem_#UDN#_tmp equ null
+
+    \\}
 
   \}
 
@@ -249,8 +258,8 @@ macro smX.op.get_mem %O,dst,args& {
   local md
   smX.op.get_mode %O,md
 
-  match mode , md \{
-    mode\#.mem.alloc dst,%O#.size args
+  match mode type == which =+ off , md args \{
+    mode\#.mem.alloc dst,%O#.size args,which
 
     match mem , dst \\{
       mem\\#.owner equ %O
@@ -567,7 +576,6 @@ macro smX.op.need_repl? %O,UD0,UDN {
 
     cline mov \
       id\#.loc,UD0#.size [UD0#.xloc+UD0#.off]
-
 
     ; ^restore buffer
     cline.swap old

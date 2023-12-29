@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.smX.opmeta
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -191,9 +191,7 @@ macro smX.opmeta.get_elems dst,[item] {
 
   \}
 
-  common
-
- match id s , dst sufix \{
+  common match id s , dst sufix \{
     dst equ id\#s
 
   \}
@@ -247,6 +245,11 @@ macro smX.opmeta.lisgen name,cnt {
 
   macro smX.#name \{
     smX.opmeta.liscrux name,cnt
+
+    match %O , smX.REG.ar \\{
+      smX.#name#.run %O
+
+    \\}
 
   \}
 

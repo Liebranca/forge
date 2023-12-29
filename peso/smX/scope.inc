@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.smX.scope
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -182,19 +182,32 @@ macro smX.scope.alloc dst,type,args,which= {
 
     \\}
 
-
     ; ^got scratch
     match any,have \\{
 
       ; get register
       local rX
+      local cmd
 
       smX.scope.pick_mem \
         id,type,alloc,rX,which
 
 
+      ; twisted op.get_mem format!
+      match size type == name =+ off , args \\\{
+        cmd equ size type=name+off
+
+      \\\}
+
+      ; ^regular
+      match size type =+ off , args \\\{
+        cmd equ size type=rX+off
+
+      \\\}
+
+
       ; ^mark in use
-      OBJ.new dst,smX.mem,args+rX
+      OBJ.new dst,smX.mem,args
       id\#.#type#.mems.push dst
 
     \\}
