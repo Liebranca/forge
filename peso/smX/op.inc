@@ -18,6 +18,7 @@ library ARPATH '/forge/'
   use '.inc' peso::cline
 
   use '.inc' peso::smX::mem
+  use '.inc' peso::smX::opmeta
 
 library.import
 
@@ -26,7 +27,7 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -676,170 +677,6 @@ macro smX.op.batrun fn,[item] {
 
   forward match %O any , item fn \{
     %O\#.\#any
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; operation descriptor
-
-swan.new smX.op.meta
-
-swan.attr ins       , xor
-swan.attr ins.size  , byte
-
-swan.attr elem.cnt  , 2
-swan.attr elem.type , r+r
-
-swan.end
-
-; ---   *   ---   *   ---
-; cstruc^2
-
-macro smX.oprom {
-
-  ; make ice
-  local uid
-  local rid
-  rid equ
-
-  uid.new uid,smX.op.meta,global
-
-  match id , uid \{
-    smX.op.meta.new id
-
-  \}
-
-
-  ; unpack args
-  local proto
-  local elems
-
-  commacut proto,smX.REG.ar
-  commacut elems,smX.REG.br
-
-
-  ; ^proc arg0
-  match id lis ===~ size name , uid proto \{
-    id\#.ins.set      name
-    id\#.ins.size.set size
-
-    rid equ lis\#size
-
-  \}
-
-  ; ^proc arg1
-  match id eX , uid elems \{
-
-    local cnt
-    local ful
-    local type
-    local typear
-
-    ful    equ eX
-    typear equ
-
-    pluscut cnt,ful
-
-    rept cnt \\{
-
-      pluscut type,ful
-      pluscat typear,type
-
-      match id2 any , rid type \\\{
-        rid equ id2\\\#any
-
-      \\\}
-
-    \\}
-
-    id\#.elem.cnt.set  cnt
-    id\#.elem.type.set typear
-
-  \}
-
-
-  ; save to ROM
-  match name id , rid uid \{
-    define name id
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^rbld
-
-macro smX.opget {
-
-  ; get base
-  local ins
-  local size
-  local rid
-  rid equ
-
-  commacut ins,smX.REG.ar
-  commacut size,smX.REG.br
-
-  ; ^proc arg0
-  match size name , ins \{
-    rid equ name\#size
-
-  \}
-
-
-  ; ^get sub-args
-  local A
-  local B
-  local C
-
-  commacut A,smX.REG.cr
-  commacut B,smX.REG.dr
-  commacut C,smX.REG.er
-
-  smX.op.meta.get_elems rid,A,B,C
-
-
-  ; build op
-  match id , rid \{
-
-    local dst
-    OBJ.new dst,smX.op,id,A,B,C
-
-
-  \}
-
-
-}
-
-; ---   *   ---   *   ---
-; ^
-
-macro smX.op.meta.get_elems dst,[item] {
-
-  common
-    local sufix
-    sufix equ
-
-  forward match type == data , item \{
-
-    match any , sufix \\{
-      sufix equ any\\#type
-
-    \\}
-
-    match , sufix \\{
-      sufix equ type
-
-    \\}
-
-  \}
-
-  common
-
- match id s , dst sufix \{
-    dst equ id\#s
 
   \}
 
