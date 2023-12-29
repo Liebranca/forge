@@ -229,6 +229,7 @@ macro tokin dst,N,[item] {
 
   ; iter match N against list
   forward match =0 , ok \{
+
     tokis ok,N,item
 
     idex equ idex+1
@@ -731,6 +732,18 @@ macro leolcat dst,token& {
 }
 
 ; ---   *   ---   *   ---
+; ^plus +++ ;>
+
+macro pluscat dst,token& {
+
+  local sep
+  sep equ +
+
+  protocat dst,sep,token
+
+}
+
+; ---   *   ---   *   ---
 ; cut A from A B C
 
 macro protocut dst,sep,src& {
@@ -779,6 +792,18 @@ macro commacut dst,src& {
 
   local sep
   sep equ ,
+
+  protocut dst,sep,src
+
+}
+
+; ---   *   ---   *   ---
+; plus ++++ ice
+
+macro pluscut dst,src& {
+
+  local sep
+  sep equ +
 
   protocut dst,sep,src
 

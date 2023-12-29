@@ -22,23 +22,8 @@ library.import
 
   TITLE     peso.smX.mem
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; ROM
-
-  define i64.REGISTERS \
-    a  , b ,c  ,d  ,\
-    di ,si ,r8 ,r9 ,\
-    r10,r11,r12,r13,\
-    r14,r15,bp ,sp
-
-  define sse.REGISTERS \
-    0 ,1 ,2 ,3 ,\
-    4 ,5 ,6 ,7 ,\
-    8 ,9 ,10,11,\
-    12,13,14,15
 
 ; ---   *   ---   *   ---
 ; operand struc
@@ -53,6 +38,8 @@ swan.attr off,0
 swan.attr repl,0
 swan.attr mode,r
 
+swan.attr owner,null
+
 swan.end
 
 ; ---   *   ---   *   ---
@@ -61,17 +48,18 @@ swan.end
 macro smX.mem.onew id,args& {
 
   ; set attrs
-  match sz md =+ rX , args \{
+  match sz md == rX =+ off , args \{
 
     id#.mode.set md
     id#.size.set sz
+    id#.off.set  off
 
     smX.mem.set_loc id,rX
 
   \}
 
   ; ^lis methods
-  swan.batlis id,i64.mem,\
+  swan.batlis id,smX.mem,\
     set_size,set_loc,\
     set_mode,set_repl,\
     set_off,add_off
@@ -112,7 +100,7 @@ macro smX.mem.set_loc dst,name {
 
   ; ^update ice
   match sz,dst#.size \{
-    i64.mem.set_size dst,sz
+    smX.mem.set_size dst,sz
 
   \}
 
@@ -230,5 +218,30 @@ macro smX.i2xmap name {
   \}
 
 }
+
+; ---   *   ---   *   ---
+; generate alloc/free wraps
+
+macro smX.mem._gen_alloc md {
+
+  macro md#.mem.alloc dst,args& \{
+    smX.scope.alloc dst,md,args
+
+  \}
+
+  macro md#.mem.free args& \{
+    smX.scope.free md,args
+
+  \}
+
+  macro md#.mem.free_back args& \{
+    smX.scope.free md,args
+
+  \}
+
+}
+
+smX.mem._gen_alloc i64
+smX.mem._gen_alloc sse
 
 ; ---   *   ---   *   ---

@@ -17,7 +17,6 @@ library ARPATH '/forge/'
   use '.inc' peso::swan
   use '.inc' peso::cline
 
-  use '.asm' peso::smX::common
   use '.inc' peso::smX::mem
 
 library.import
@@ -31,16 +30,6 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; ROM
-
-  define smX.op.xor_elems  2
-  define smX.op.or_elems   2
-
-  define smX.op.mov_elems  2
-  define smX.op.cmp_elems  2
-  define smX.op.test_elems 2
-
-; ---   *   ---   *   ---
 ; operation struc
 
 swan.new smX.op
@@ -48,8 +37,6 @@ swan.new smX.op
 swan.attr name,xor
 swan.attr elems,2
 swan.attr size,byte
-swan.attr ali,u
-swan.attr mode,i64
 
 swan.attr elem_A,null
 swan.attr elem_B,null
@@ -72,18 +59,12 @@ swan.end
 ; ---   *   ---   *   ---
 ; ^cstruc
 
-macro smX.op.onew id,md,OASE,_nullarg& {
+macro smX.op.onew id,meta,elems& {
 
-  ; get operation name+size
-  smX.sized_op id,OASE
-  id#.mode.set md
+  ; unpack args
+  smX.sized_op id,meta,elems
 
-;  ; nit operands if passed
-;  match elems , item \{
-;    smX.op.set_elems id,elems
-;
-;  \}
-
+  ; make dst buffers
   cline.new id#.cbuff_head
   cline.new id#.cbuff_foot
   cline.new id#.cbuff_body
@@ -93,42 +74,43 @@ macro smX.op.onew id,md,OASE,_nullarg& {
 ; ---   *   ---   *   ---
 ; get size-variant of operation
 
-macro smX.sized_op %O,OASE {
+macro smX.sized_op %O,meta,[elem] {
 
-  local alix
-  local opx
-  local szx
-  local elemx
+  common
 
-  ; eg: xor ia&byte r+a,m+b
-  match op ali =& sz elems , OASE \{
+    %O#.name.set  meta#.ins
+    %O#.size.set  meta#.ins.size
+    %O#.elems.set meta#.elem.cnt
 
-    alix  equ ali
-    opx   equ op
-    szx   equ sz
-    elemx equ elemx
+    local eX
+    eX equ
 
-    %O#.elems.set smX.op.\#op\#_elems
+  forward match any , elem \{
+
+    local id
+    local ok
+    ok equ 0
+
+    match type == name =+ off , elem \\{
+      smX.op.get_mem %O,id,elem
+      ok equ 1
+
+    \\}
+
+    match =0 type == name , ok elem \\{
+      id equ name
+
+    \\}
 
 
-    if sizeof.\#sz < $10
-      smX.op.i64_xlate %O,opx,szx,elemx
-
-    else
-      smX.op.sse_xlate %O,opx,szx
-
-    end if
+    commacat eX,id
 
   \}
 
-}
+  common match list , eX \{
+    smX.op.set_elems %O,list
 
-; ---   *   ---   *   ---
-; ^make i64 op from smX name
-
-macro smX.op.i64_xlate %O,op,sz,elems& {
-  %O#.size.set sz
-  %O#.name.set op
+  \}
 
 }
 
@@ -188,6 +170,8 @@ macro smX.op.odel %O {
 
   ; ^release container
   smX.op.bat_free_tmp %O,A,B,C
+  smX.op.bat_free_mem %O,A,B,C
+
   %O#.del
 
 }
@@ -238,49 +222,37 @@ macro smX.op.bat_free_tmp %O,[UDN] {
 }
 
 ; ---   *   ---   *   ---
-; ^ctx wraps
+; ^get mode from size
 
-macro smX.mem.alloc %O,dst,args& {
-  smX.scope.alloc dst,%O#.mode,args
+macro smX.op.get_mode %O,dst {
 
-}
+  dst equ i64
 
-macro smX.mem.free %O,args& {
-  smX.scope.free %O#.mode,args
+  match =xword , %O#.size \{
+    dst equ sse
 
-}
+  \}
 
-macro smX.mem.free_back %O,args& {
-  smX.scope.free_back %O#.mode,args
+  match =yword , %O#.size \{
+    dst equ sse
+
+  \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^allocates mem for op if
-; none passed to cstruc
+; ^alloc mem for elem
 
-macro smX.op.need_mem? {
+macro smX.op.get_mem %O,dst,args& {
 
-  ; ^single operand
-  match =1 , %O#.elems %O#.elem_A \{
+  local md
+  smX.op.get_mode %O,md
 
+  match mode , md \{
+    mode\#.mem.alloc dst,%O#.size args
 
-
-  \}
-
-  ; ^two operands
-  match =2 , %O#.elems \{
-    match A B , UA UB \\{
-      smX.op.#fn %O,A,B
-
-    \\}
-
-  \}
-
-  ; ^three operands
-  match =3 , %O#.elems \{
-    match A B C , UA UB UC \\{
-      smX.op.#fn %O,A,B,C
+    match mem , dst \\{
+      mem\\#.owner equ %O
 
     \\}
 
@@ -289,17 +261,50 @@ macro smX.op.need_mem? {
 }
 
 ; ---   *   ---   *   ---
-; ^alloc individual elem
+; ^undo
 
-macro smX.op.get_mem %O,UDN {
+macro smX.op.free_mem %O,UDN {
 
-  local dst
-  smX.mem.alloc %O,dst
+  ; get tmp used
+  local status
+  local owned
 
-  match id , dst \{
-    %O#.elem_#UDN equ id
+  status equ 0
+  owned  equ 0
+
+  ; got mem?
+  match =null,%O#.elem_#UDN# \{
+    status equ 1
 
   \}
+
+  ; ^we own mem?
+  match =0 mem , status %O#.elem_#UDN \{
+    tokis owned,mem\#.owner,%O
+
+    ; ^yep, give back
+    match =1 , owned \\{
+
+      local md
+      smX.op.get_mode %O,md
+
+      match mode , md \\\{
+        mode\\\#.mem.free_back mem
+        %O#.elem_#UDN equ null
+
+      \\\}
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^bat
+
+macro smX.op.bat_free_mem %O,[UDN] {
+  forward smX.op.free_mem %O,UDN
 
 }
 
@@ -671,6 +676,170 @@ macro smX.op.batrun fn,[item] {
 
   forward match %O any , item fn \{
     %O\#.\#any
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; operation descriptor
+
+swan.new smX.op.meta
+
+swan.attr ins       , xor
+swan.attr ins.size  , byte
+
+swan.attr elem.cnt  , 2
+swan.attr elem.type , r+r
+
+swan.end
+
+; ---   *   ---   *   ---
+; cstruc^2
+
+macro smX.oprom {
+
+  ; make ice
+  local uid
+  local rid
+  rid equ
+
+  uid.new uid,smX.op.meta,global
+
+  match id , uid \{
+    smX.op.meta.new id
+
+  \}
+
+
+  ; unpack args
+  local proto
+  local elems
+
+  commacut proto,smX.REG.ar
+  commacut elems,smX.REG.br
+
+
+  ; ^proc arg0
+  match id lis ===~ size name , uid proto \{
+    id\#.ins.set      name
+    id\#.ins.size.set size
+
+    rid equ lis\#size
+
+  \}
+
+  ; ^proc arg1
+  match id eX , uid elems \{
+
+    local cnt
+    local ful
+    local type
+    local typear
+
+    ful    equ eX
+    typear equ
+
+    pluscut cnt,ful
+
+    rept cnt \\{
+
+      pluscut type,ful
+      pluscat typear,type
+
+      match id2 any , rid type \\\{
+        rid equ id2\\\#any
+
+      \\\}
+
+    \\}
+
+    id\#.elem.cnt.set  cnt
+    id\#.elem.type.set typear
+
+  \}
+
+
+  ; save to ROM
+  match name id , rid uid \{
+    define name id
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^rbld
+
+macro smX.opget {
+
+  ; get base
+  local ins
+  local size
+  local rid
+  rid equ
+
+  commacut ins,smX.REG.ar
+  commacut size,smX.REG.br
+
+  ; ^proc arg0
+  match size name , ins \{
+    rid equ name\#size
+
+  \}
+
+
+  ; ^get sub-args
+  local A
+  local B
+  local C
+
+  commacut A,smX.REG.cr
+  commacut B,smX.REG.dr
+  commacut C,smX.REG.er
+
+  smX.op.meta.get_elems rid,A,B,C
+
+
+  ; build op
+  match id , rid \{
+
+    local dst
+    OBJ.new dst,smX.op,id,A,B,C
+
+
+  \}
+
+
+}
+
+; ---   *   ---   *   ---
+; ^
+
+macro smX.op.meta.get_elems dst,[item] {
+
+  common
+    local sufix
+    sufix equ
+
+  forward match type == data , item \{
+
+    match any , sufix \\{
+      sufix equ any\\#type
+
+    \\}
+
+    match , sufix \\{
+      sufix equ type
+
+    \\}
+
+  \}
+
+  common
+
+ match id s , dst sufix \{
+    dst equ id\#s
 
   \}
 

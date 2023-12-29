@@ -26,19 +26,28 @@ library.import
 
   TITLE     peso.smX.scope
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; ROM
+
+  define i64.REGISTERS \
+    a  , b ,c  ,d  ,\
+    di ,si ,r8 ,r9 ,\
+    r10,r11,r12,r13,\
+    r14,r15,bp ,sp
+
+  define sse.REGISTERS \
+    0 ,1 ,2 ,3 ,\
+    4 ,5 ,6 ,7 ,\
+    8 ,9 ,10,11,\
+    12,13,14,15
 
 ; ---   *   ---   *   ---
 ; GBL
 
   define hier.cscope
-
-; ---   *   ---   *   ---
-; pre-ROM
-
-  define i64.REGISTERS
-  define sse.REGISTERS
 
 ; ---   *   ---   *   ---
 ; ctx struc
@@ -59,6 +68,7 @@ swan.end
 ; ^cstruc
 
 macro smX.scope.onew id,_nullarg& {
+
   smX.scope.get_regs id,i64,smX.REG.ar
   smX.scope.get_regs id,sse,smX.REG.br
 
@@ -86,7 +96,10 @@ macro smX.scope.get_regs id,type,unav& {
       local ok
       ok equ 0
 
-      tokin ok,rX,unav
+      match list , unav \\{
+        tokin ok,rX,list
+
+      \\}
 
 
       ; ^push to unav if so
@@ -181,7 +194,7 @@ macro smX.scope.alloc dst,type,args,which= {
 
 
       ; ^mark in use
-      OBJ.new dst,type#.mem,args+rX
+      OBJ.new dst,smX.mem,args+rX
       id\#.#type#.mems.push dst
 
     \\}

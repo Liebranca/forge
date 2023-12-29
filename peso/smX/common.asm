@@ -37,6 +37,10 @@ library.import
   define smX.REG.br
   define smX.REG.cr
   define smX.REG.dr
+  define smX.REG.er
+  define smX.REG.fr
+
+  define smX.REG.callee
 
 ; ---   *   ---   *   ---
 ; ^pass value
@@ -57,7 +61,14 @@ macro smX.cl dst {
 ; ---   *   ---   *   ---
 ; ^invoke macro
 
-macro smX.call name {smX.#name}
+macro smX.call name {
+
+  smX.REG.callee equ name
+  smX.#name
+
+  restore smX.REG.callee
+
+}
 
 ; ---   *   ---   *   ---
 ; ~an idea we might revisit later

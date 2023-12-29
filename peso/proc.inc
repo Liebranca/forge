@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.01.4a
+  VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -49,7 +49,7 @@ macro proc._ns_new name,vflag= {
   define name#.$proc.rpres_a
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
-  define name#.$proc.stkali  0
+  define name#.$proc.stkali
 
 }
 
@@ -175,17 +175,18 @@ macro proc.enter {
   local ali
   sfield.get ali,hier.cproc,$proc.stkali
 
-  match =0 , n \{
-    ali equ 0
-
-  \}
-
-  match =1 , ali \{
+  match any , ali \{
     n equ n+1
 
   \}
 
-  ; ^convert size to units
+  match , ali \{
+    ali equ 0
+
+  \}
+
+
+  ; convert stack size to units
   n equ (n+(sizeof.unit-1))
   n equ (n shr sizep2.unit)
   n equ n shl sizep2.unit
@@ -200,11 +201,11 @@ macro proc.enter {
     push rbp
     mov  rbp,rsp
 
-    match =1 , ali \{
-      and  bpl,$F0
+    if ali > 0
+      and  bpl,ali
       mov  byte [rbp-(n-1)],spl
 
-    \}
+    end if
 
     sub rsp,n
 
@@ -382,8 +383,9 @@ macro proc.stk sn {
 ; ^set stack as unit-aligned
 ; default is don't do it!
 
-macro proc.align {
-  sfield.set hier.cproc,$proc.stkali,1
+macro proc.align size=xword {
+  sfield.set hier.cproc,$proc.stkali,\
+    ($100-(sizeof.#size))
 
 }
 
@@ -461,10 +463,10 @@ macro proc.leave {
   ; ^paste epilogue
   if n > 0
 
-    match =1 , ali \{
+    if ali > 0
       mov bpl,byte [rbp-(n-1)]
 
-    \}
+    end if
 
     leave
 
