@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.smX.common
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,6 +47,55 @@ library.import
 
 macro smX.mov dst,value& {
   smX.REG.#dst equ value
+
+}
+
+; ---   *   ---   *   ---
+; ^reg to reg
+
+macro smX.rmov dst,src {
+
+  match value , smX.REG.#src \{
+    smX.mov dst,value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^whole reg to mem
+
+macro smX.mmov dst,src {
+
+  match value , smX.REG.#src \{
+    dst equ value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^cut from reg
+
+macro smX.marg dst,src {
+  commacut dst,smX.REG.#src
+
+}
+
+; ---   *   ---   *   ---
+; ^swap
+
+macro smX.wap A,B {
+
+  match UA , smX.REG.#A  \{
+
+    match UB , smX.REG.#B \{
+      smX.mov A,UB
+      smX.mov B,UA
+
+    \}
+
+  \}
 
 }
 

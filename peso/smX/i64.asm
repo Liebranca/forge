@@ -27,73 +27,83 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; load [?dst] <= [?src]
+; iface wraps for smX.mem.onew
 
-macro smX.i64.ld {
+macro smX.alloc {
 
   ; unpack args
-  local A
-  local B
+  local rX
+  smX.marg rX,ar
 
-  smX.memarg A,ar
-  smX.memarg B,br
+  ; ^call cstruc
+  local uid
+  OBJ.new uid,smX.mem,rX
 
-  ; ^build op
-  local op
-  i64.mov op,A,B
-
-
-  ; run through steps
-  macro inner [step] \{
-
-    forward
-
-      ; match size to elem
-      match UA UB , A B \\{
-        UA\\#.set_size step
-        UB\\#.set_size step
-
-      \\}
-
-      ; mov [?dst],[?src]
-      smX.op.batrun run,op
-
-      ; ^go next
-      match UA UB , A B \\{
-        UA\\#.add_off sizeof.\#step
-        UB\\#.add_off sizeof.\#step
-
-      \\}
-
-  \}
-
-  ; ^exec
-  match list , smX.REG.cr \{
-    inner list
-
-  \}
-
-  ; cleanup
-  match %O UA UB , op A B \{
-
-    smX.op.odel %O
-
-    smX.mem.free UA
-    smX.mem.free UB
+  ; ^give
+  match %M , uid \{
+    smX.mov ar,%M
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; NOTE
-;
-; * ld eq r <= m
+; ^undo
+
+macro smX.free {
+
+  ; unpack args
+  local rX
+  smX.marg rX,ar
+
+  ; ^call dstruc
+  match %M , rX \{
+    %M\#.del
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; r <= [m]
+
+macro smX.ld.proto dst,chunk,ali,_nullarg& {
+
+  local step
+
+  dst   equ
+  step  equ
+
+  ; generate array of sized movs
+  smX.bat_size_adv step,chunk
+
+  ; ^walk
+  match list , step \{
+    smX.bat_sized_mov dst,ali,1,list
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; [m] <= r
+
+macro smX.st.proto dst,chunk,ali,src& {
+
+  dst equ
+
+  ; walk passed mems
+  match list , src \{
+    smX.bat_sized_mov dst,ali,0,list
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; advance N steps by size
 
-macro smX.ld2.adv dst,chunk,key {
+macro smX.size_adv dst,chunk,key {
 
   rept ((chunk) shr sizep2.#key) \{
 
@@ -107,10 +117,10 @@ macro smX.ld2.adv dst,chunk,key {
 ; ---   *   ---   *   ---
 ; ^ALL the sizes
 
-macro smX.ld2.batadv dst,chunk {
+macro smX.bat_size_adv dst,chunk {
 
   macro inner [key] \{
-    smX.ld2.adv dst,chunk,key
+    smX.size_adv dst,chunk,key
 
   \}
 
@@ -119,35 +129,213 @@ macro smX.ld2.batadv dst,chunk {
 }
 
 ; ---   *   ---   *   ---
-; ~
+; give [ins=>reg] array
+; where ins eq sized mov
+;
+; IF need_alloc, arg eq mem size
+; ELSE, arg eq memice
 
-macro smX.ld2 dst,src,chunk,ali {
+macro smX.bat_sized_mov dst,ali,need_alloc,[arg] {
 
-  local ins
-  local step
+  forward
 
-  dst   equ
-  ins   equ
-  step  equ
+    ; get dst mem
+    local mem
 
-  smX.ld2.batadv step,chunk
+    ; ^alloc new
+    match =1 , need_alloc \{
+      smX.mem.from_size mem,arg
 
-  macro inner [size] \{
+    \}
 
-    forward
+    ; ^mem passed
+    match =0 , need_alloc \{
+      mem equ arg
 
-      local mem
-      smX.mem.from_size mem,size
+    \}
 
-      smX.sized_mov ins,size,ali
-      commacat dst,mem ins size src
+
+    ; gen mov variant
+    match %M0 , mem \{
+
+      ; ^get ins
+      local ins
+      smX.sized_mov ins,%M0\#.size,ali
+
+      ; ^write out
+      commacat dst,mem ins
+
+    \}
+
+}
+
+; ---   *   ---   *   ---
+; multi-step read/write
+
+macro smX.multi_rw rX,mode,src& {
+
+  local chunk
+  local ali
+
+  local expr
+  local out
+
+  ; unpack args
+  smX.marg chunk,ar
+  smX.marg ali,cr
+
+
+  ; get dst and src regs
+  smX.#mode#.proto expr,chunk,ali,src
+
+  ; ^save src
+  out equ
+
+  match %M1 list , rX expr \{
+    smX.bat_ins_paste out,mode,%M1,list
 
   \}
 
-  match list , step \{
-    inner list
+
+  ; give back regs
+  match list , out \{
+    smX.mov ar,list
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^paste generated
+
+macro smX.bat_ins_paste out,mode,%M1,[expr] {
+
+  ; make buff
+  common
+
+    cline.new
+
+    out equ
+    commacat out,%M1
+
+
+  ; ^save expr to buff
+  forward match %M0 ins , expr \{
+
+
+    ; ^r <= [m]
+    match =ld , mode \\{
+
+      cline ins \
+        %M0\#.loc,\
+        %M0\#.size [%M1#.xloc+%M1#.off]
+
+    \\}
+
+
+    ; ^[m] <= r
+    match =st , mode \\{
+
+      cline ins \
+        %M0\#.size [%M1#.xloc+%M1#.off],\
+        %M0\#.loc
+
+    \\}
+
+
+    ; save gotten reg
+    commacat out,%M0
+
+    ; ^go next on known
+    match size , %M0\#.size \\{
+      %M1#.add_off sizeof.\\#size
+
+    \\}
+
+  \}
+
+
+  ; ^flush buff
+  common
+    cline.commit
+
+}
+
+; ---   *   ---   *   ---
+; ^make rw proto variations
+
+macro smX.ld {
+
+  local rX
+  smX.marg rX,br
+
+  smX.multi_rw rX,ld
+
+}
+
+macro smX.st {
+
+  local rX
+  local src
+
+  smX.marg rX,br
+  smX.marg src,dr
+  smX.mmov src,dr
+
+  smX.multi_rw rX,st,src
+
+}
+
+; ---   *   ---   *   ---
+; ^combo
+
+macro smX.cpy {
+
+  ; unpack args
+  local dst
+  local src
+  local size
+
+  smX.marg dst,ar
+  smX.marg src,br
+  smX.marg size,cr
+
+
+  ; get src mem
+  smX.mov  ar,qword m=src
+  smX.call alloc
+
+  smX.mmov src,ar
+
+  ; ^read to regs
+  smX.mov  ar,size
+  smX.mov  br,src
+  smX.cl   cr
+
+  smX.call ld
+  smX.rmov dr,ar
+
+
+  ; get dst mem
+  smX.mov  ar,qword m=dst
+  smX.call alloc
+
+  smX.mmov dst,ar
+
+  ; ^[dst] <= [src]
+  smX.mov  ar,size
+  smX.mov  br,dst
+  smX.cl   cr
+
+  smX.call st
+
+
+  ; release dst,src
+  smX.mov  ar,dst
+  smX.call free
+
+  smX.mov  ar,src
+  smX.call free
 
 }
 
