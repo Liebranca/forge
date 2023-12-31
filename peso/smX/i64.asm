@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.01.1b
+  VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -295,10 +295,12 @@ macro smX.cpy {
   local dst
   local src
   local size
+  local ali
 
   smX.marg dst,ar
   smX.marg src,br
   smX.marg size,cr
+  smX.marg ali,dr
 
 
   ; get src mem
@@ -310,7 +312,7 @@ macro smX.cpy {
   ; ^read to regs
   smX.mov  ar,size
   smX.mov  br,src
-  smX.cl   cr
+  smX.mov  cr,ali
 
   smX.call ld
   smX.rmov dr,ar
@@ -325,7 +327,7 @@ macro smX.cpy {
   ; ^[dst] <= [src]
   smX.mov  ar,size
   smX.mov  br,dst
-  smX.cl   cr
+  smX.mov  cr,ali
 
   smX.call st
 

@@ -27,7 +27,7 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -626,6 +626,14 @@ macro smX.sized_mov dst,size,ali=0 {
 
   dst equ mov
 
+  ; flatten ali
+  rept 1 cnt:ali \{
+    ali equ cnt
+
+  \}
+
+
+  ; ^pick
   match =xword , size \{
     bincho dst,ali,movdqu,movdqa
 
