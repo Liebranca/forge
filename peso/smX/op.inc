@@ -27,7 +27,7 @@ library.import
 
   TITLE     peso.smX.op
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,6 +38,7 @@ swan.new smX.op
 swan.attr name,xor
 swan.attr elems,2
 swan.attr size,byte
+swan.attr rsize,byte
 
 swan.attr elem_A,null
 swan.attr elem_B,null
@@ -82,6 +83,21 @@ macro smX.sized_op %O,meta,[elem] {
     %O#.name.set  meta#.ins
     %O#.size.set  meta#.ins.size
     %O#.elems.set meta#.elem.cnt
+
+
+    ; get register size
+    match size , %O#.size \{
+
+      if sizeof.\#size > $20
+        %O#.rsize.set yword
+
+      else
+        %O#.rsize.set %O#.size
+
+      end if
+
+    \}
+
 
     local eX
     eX equ
@@ -186,7 +202,7 @@ macro smX.op.get_tmp %O,dst,args {
   smX.op.get_mode %O,mode
 
   match md , mode \{
-    md\#.mem.alloc dst,args
+    md\#.mem.alloc dst,args+$00
 
   \}
 
@@ -238,13 +254,8 @@ macro smX.op.get_mode %O,dst {
 
   dst equ i64
 
-  match =xword , %O#.size \{
-    dst equ sse
-
-  \}
-
-  match =yword , %O#.size \{
-    dst equ sse
+  match size , %O#.size \{
+    smX.iorx dst,size
 
   \}
 
@@ -259,7 +270,7 @@ macro smX.op.get_mem %O,dst,args& {
   smX.op.get_mode %O,md
 
   match mode type == which =+ off , md args \{
-    mode\#.mem.alloc dst,%O#.size args,which
+    mode\#.mem.alloc dst,%O#.rsize args,which
 
     match mem , dst \\{
       mem\\#.owner equ %O
@@ -322,7 +333,7 @@ macro smX.op.bat_free_mem %O,[UDN] {
 ; unpacks all operands
 ; to make call
 
-macro smX.op.funroll %O,fn {
+macro smX.op.gfunroll %O,fn,args& {
 
   ; elems
   local UA
@@ -348,14 +359,17 @@ macro smX.op.funroll %O,fn {
 
   ; ^single operand
   match =1 , %O#.elems \{
-    match A , UA \\{smX.op.#fn %O,A\\}
+    match A , UA \\{
+      fn %O,A,args
+
+    \\}
 
   \}
 
   ; ^two operands
   match =2 , %O#.elems \{
     match A B , UA UB \\{
-      smX.op.#fn %O,A,B
+      fn %O,A,B,args
 
     \\}
 
@@ -364,7 +378,7 @@ macro smX.op.funroll %O,fn {
   ; ^three operands
   match =3 , %O#.elems \{
     match A B C , UA UB UC \\{
-      smX.op.#fn %O,A,B,C
+      fn %O,A,B,C,args
 
     \\}
 
@@ -376,7 +390,7 @@ macro smX.op.funroll %O,fn {
 ; ^unpacks *passed* operands
 ; to make call
 
-macro smX.op.unroll %O,fn,[item] {
+macro smX.op.gunroll %O,fn,[item] {
 
   common
     local list
@@ -388,9 +402,22 @@ macro smX.op.unroll %O,fn,[item] {
   \}
 
   common match any,list \{
-    smX.op.#fn %O,any
+    fn %O,any
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps: cat smX.op to fn
+
+macro smX.op.funroll %O,fn,args& {
+  smX.op.gfunroll %O,smX.op.#fn,args
+
+}
+
+macro smX.op.funroll %O,fn,args& {
+  smX.op.gunroll %O,smX.op.#fn,args
 
 }
 
@@ -479,11 +506,13 @@ smX.op.icecall need_deref?,B
 
 macro smX.op.need_repl? %O,UD0,UDN {
 
+  local movop
+  smX.op.sized_mov %O,movop
 
   ; replace self
   match =1 , UD0#.repl \{
 
-    cline mov \
+    cline movop \
       UD0#.loc,UD0#.size [UD0#.xloc+UD0#.off]
 
     %O#.elem_#UDN#_deref.set UD0
@@ -574,7 +603,7 @@ macro smX.op.need_repl? %O,UD0,UDN {
     local old
     cline.swap %O#.cbuff_head,old
 
-    cline mov \
+    cline movop \
       id\#.loc,UD0#.size [UD0#.xloc+UD0#.off]
 
     ; ^restore buffer
@@ -589,6 +618,33 @@ macro smX.op.need_repl? %O,UD0,UDN {
 
 smX.op.icecall need_repl?,A
 smX.op.icecall need_repl?,B
+
+; ---   *   ---   *   ---
+; placeholder
+
+macro smX.sized_mov dst,size,ali=0 {
+
+  dst equ mov
+
+  match =xword , size \{
+    bincho dst,ali,movdqu,movdqa
+
+  \}
+
+  match =yword , size \{
+    bincho dst,ali,vmovdqu,vmovdqa
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps
+
+macro smX.op.sized_mov %O,dst,ali=0 {
+  smX.sized_mov dst,%O#.rsize,ali
+
+}
 
 ; ---   *   ---   *   ---
 ; overwrite dst?

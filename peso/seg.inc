@@ -14,65 +14,65 @@
 
   TITLE     peso.seg
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
-  sizeof.byte  = $0001
-  sizep2.byte  = $0000
-  sizebm.byte  = $00FF
+  define sizeof.byte  $0001
+  define sizep2.byte  $0000
+  define sizebm.byte  $00FF
 
-  sizeof.word  = $0002
-  sizep2.word  = $0001
-  sizebm.word  = $FFFF
+  define sizeof.word  $0002
+  define sizep2.word  $0001
+  define sizebm.word  $FFFF
 
-  sizeof.dword = $0004
-  sizep2.dword = $0002
-  sizebm.dword = $FFFFFFFF
+  define sizeof.dword $0004
+  define sizep2.dword $0002
+  define sizebm.dword $FFFFFFFF
 
-  sizeof.qword = $0008
-  sizep2.qword = $0003
-  sizebm.qword = $FFFFFFFFFFFFFFFF
+  define sizeof.qword $0008
+  define sizep2.qword $0003
+  define sizebm.qword $FFFFFFFFFFFFFFFF
 
-  sizeof.unit  = $0010
-  sizep2.unit  = $0004
+  define sizeof.unit  $0010
+  define sizep2.unit  $0004
 
-  sizeof.xword = sizeof.unit
-  sizep2.xword = sizep2.unit
+  define sizeof.xword $0010
+  define sizep2.xword $0004
 
-  sizeof.half  = $0020
-  sizep2.half  = $0005
+  define sizeof.half  $0020
+  define sizep2.half  $0005
 
-  sizeof.yword = sizeof.half
-  sizep2.yword = sizep2.half
+  define sizeof.yword $0020
+  define sizep2.yword $0005
 
-  sizeof.line  = $0040
-  sizep2.line  = $0006
+  define sizeof.line  $0040
+  define sizep2.line  $0006
 
-  sizeof.zword = sizeof.line
-  sizep2.zword = sizep2.line
+  define sizeof.zword $0040
+  define sizep2.zword $0006
 
-  sizeof.dline = $0080
-  sizep2.dline = $0007
-  sizeof.qline = $0100
-  sizep2.qline = $0008
+  define sizeof.dline $0080
+  define sizep2.dline $0007
+  define sizeof.qline $0100
+  define sizep2.qline $0008
 
-  sizeof.xline = $0200
-  sizep2.xline = $0009
+  define sizeof.xline $0200
+  define sizep2.xline $0009
 
-  sizeof.yline = $0400
-  sizep2.yline = $000A
+  define sizeof.yline $0400
+  define sizep2.yline $000A
 
-  sizeof.zline = $0800
-  sizep2.zline = $000B
+  define sizeof.zline $0800
+  define sizep2.zline $000B
 
-  sizeof.page  = $1000
-  sizep2.page  = $000C
+  define sizeof.page  $1000
+  define sizep2.page  $000C
 
-  sizeof.dpage = $2000
-  sizep2.dpage = $000D
+  define sizeof.dpage $2000
+  define sizep2.dpage $000D
 
 ; ---   *   ---   *   ---
 ; GBL

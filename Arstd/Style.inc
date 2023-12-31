@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.3a
+  VERSION   v0.02.4a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -177,6 +177,63 @@ macro MAM.segment name,type,size {
     section name align size
 
   end if
+
+}
+
+; ---   *   ---   *   ---
+; binary choice
+
+macro bincho dst,x,a,b {
+
+  match =0 , x \{
+    dst equ a
+
+  \}
+
+  match =1 , x \{
+    dst equ b
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ~ with { y = N >> x }
+; ^ give { y/y if y >= 1 }
+;
+; ~ else 0
+
+macro shrsdiv dst,N,x {
+
+  local y
+  local ok
+
+  y   equ ((N) shr x)
+  ok  equ 1
+  dst equ 0
+
+
+  ; ^flatten result
+  rept 1 cnt:y \{
+    y equ cnt
+
+  \}
+
+  ; ^chk 0/0
+  match =0 , y \{
+    ok equ 0
+
+  \}
+
+
+  ; ^all good, divide and flatten
+  match =1 , ok \{
+    rept 1 cnt:y/y \\{
+      dst equ cnt
+
+    \\}
+
+  \}
 
 }
 

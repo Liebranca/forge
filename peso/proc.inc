@@ -49,7 +49,7 @@ macro proc._ns_new name,vflag= {
   define name#.$proc.rpres_a
   define name#.$proc.rpres_b
   define name#.$proc.stksize 0
-  define name#.$proc.stkali
+  define name#.$proc.stkali 0
 
 }
 
@@ -173,15 +173,21 @@ macro proc.enter {
 
   ; ^get declared alignment
   local ali
+  local do_ali
+
+  do_ali equ 1
+
   sfield.get ali,hier.cproc,$proc.stkali
 
-  match any , ali \{
-    n equ n+1
+
+  match =0 , ali \{
+    ali    equ 0
+    do_ali equ 0
 
   \}
 
-  match , ali \{
-    ali equ 0
+  match =1 , do_ali \{
+    n equ n+1
 
   \}
 

@@ -169,21 +169,27 @@ macro smX.memarg dst,src {
 
 macro smX.sized_reg dst,name,size {
 
-  if sizeof.#size < $10
+  local xname
+  local d16
+
+  xname equ name
+
+  shrsdiv d16,sizeof.#size,$04
+
+  match =0 , d16 \{
     i_sized_reg dst,name,size
 
-  else
+  \}
 
-    local xname
-    xname equ name
-
+  match =1 , d16 \{
     smX.i2xmap xname
-    match any , xname \{
+
+    match any , xname \\{
       x_sized_reg dst,any,size
 
-    \}
+    \\}
 
-  end if
+  \}
 
 }
 
@@ -207,7 +213,7 @@ macro smX.i2xmap name {
   local idex
   idex equ 'I'
 
-  match list , i64.registers \{
+  match list , i64.REGISTERS \{
     tokin idex,name,list
 
   \}
@@ -220,28 +226,108 @@ macro smX.i2xmap name {
 }
 
 ; ---   *   ---   *   ---
+; ^map register type to
+; size keyword
+
+macro smX.get_mem_type dst,size {
+
+  ; get size >= $10
+  local d16
+
+  dst equ i64
+  shrsdiv d16,sizeof.\#size,$04
+
+  ; ^switch if so
+  rept d16 \{
+    dst equ avx
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps for memice
+
+macro smX.mem.get_type %M,dst {
+
+  match size , %M#.size \{
+    smX.get_mem_type dst,size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; generate alloc/free wraps
 
-macro smX.mem._gen_alloc md {
+macro smX.mem._gen_alloc type {
 
-  macro md#.mem.alloc dst,args& \{
-    smX.scope.alloc dst,md,args
-
-  \}
-
-  macro md#.mem.free args& \{
-    smX.scope.free md,args
+  macro type#.mem.alloc dst,args& \{
+    smX.scope.alloc dst,type,args
 
   \}
 
-  macro md#.mem.free_back args& \{
-    smX.scope.free_back md,args
+  macro type#.mem.free args& \{
+    smX.scope.free type,args
+
+  \}
+
+  macro type#.mem.free_back args& \{
+    smX.scope.free_back type,args
 
   \}
 
 }
 
 smX.mem._gen_alloc i64
-smX.mem._gen_alloc sse
+smX.mem._gen_alloc avx
+
+; ---   *   ---   *   ---
+; ^convenience wraps
+; get mem from size keyword
+
+macro smX.mem.from_size dst,size,args& {
+
+  local type
+  local cmd
+  local ok
+
+  cmd equ
+  ok  equ 0
+
+  smX.get_mem_type type,size
+
+
+  ; cat size to cstruc args
+  match type == name =+ off , args \{
+    cmd equ size args,name
+
+  \}
+
+
+  ; ^call cstruc
+  match any list , type cmd \{
+    any\#.mem.alloc dst,list
+    ok equ 1
+
+  \}
+
+  match =0 any , ok type \{
+    any\#.mem.alloc dst
+
+  \}
+
+
+  ; ^adjust size
+  match , args \{
+
+    match %M , dst \\{
+      %M\\#.set_size size
+
+    \\}
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---

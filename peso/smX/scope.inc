@@ -38,7 +38,7 @@ library.import
     r10,r11,r12,r13,\
     r14,r15,bp ,sp
 
-  define sse.REGISTERS \
+  define avx.REGISTERS \
     0 ,1 ,2 ,3 ,\
     4 ,5 ,6 ,7 ,\
     8 ,9 ,10,11,\
@@ -58,9 +58,9 @@ swan.attr i64.avail,list
 swan.attr i64.unav,list
 swan.attr i64.mems,list
 
-swan.attr sse.avail,list
-swan.attr sse.unav,list
-swan.attr sse.mems,list
+swan.attr avx.avail,list
+swan.attr avx.unav,list
+swan.attr avx.mems,list
 
 swan.end
 
@@ -70,7 +70,7 @@ swan.end
 macro smX.scope.onew id,_nullarg& {
 
   smX.scope.get_regs id,i64,smX.REG.ar
-  smX.scope.get_regs id,sse,smX.REG.br
+  smX.scope.get_regs id,avx,smX.REG.br
 
 }
 
@@ -117,7 +117,7 @@ macro smX.scope.get_regs id,type,unav& {
   \}
 
   ; ^run
-  match list , type#.REGISTERS \{
+  match list , i64.REGISTERS \{
     inner list
 
   \}
@@ -135,8 +135,8 @@ macro smX.scope.odel id {
 
   \}
 
-  rept id#.sse.mems.m_len \{
-    smX.scope.free sse
+  rept id#.avx.mems.m_len \{
+    smX.scope.free avx
 
   \}
 
@@ -188,26 +188,37 @@ macro smX.scope.alloc dst,type,args,which= {
       ; get register
       local rX
       local cmd
+      local ok
 
       smX.scope.pick_mem \
         id,type,alloc,rX,which
 
 
+      ok  equ 0
+
+      match any , rX \\\{
+        cmd equ byte r=\\\#any\\\#+$00
+
+      \\\}
+
+
       ; twisted op.get_mem format!
       match size type == name =+ off , args \\\{
         cmd equ size type=name+off
+        ok equ 1
 
       \\\}
 
       ; ^regular
-      match size type =+ off , args \\\{
+      match =0 size type =+ off , ok args \\\{
         cmd equ size type=rX+off
+        ok  equ 1
 
       \\\}
 
 
       ; ^mark in use
-      OBJ.new dst,smX.mem,args
+      OBJ.new dst,smX.mem,cmd
       id\#.#type#.mems.push dst
 
     \\}

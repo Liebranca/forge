@@ -84,7 +84,9 @@ macro reg.end {
 
     ; get size after alignment
     MAM.malign unit
-    sizeof.\#any=$-any
+
+    _endof.\#any=$
+    define sizeof.\#any _endof.\#any-any
 
   \}
 

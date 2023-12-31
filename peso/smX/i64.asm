@@ -23,7 +23,7 @@ library.import
 
   TITLE     peso.smX.i64
 
-  VERSION   v0.00.9b
+  VERSION   v0.01.1b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -80,6 +80,72 @@ macro smX.i64.ld {
 
     smX.mem.free UA
     smX.mem.free UB
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; NOTE
+;
+; * ld eq r <= m
+
+; ---   *   ---   *   ---
+; advance N steps by size
+
+macro smX.ld2.adv dst,chunk,key {
+
+  rept ((chunk) shr sizep2.#key) \{
+
+    commacat dst,key
+    chunk equ chunk - sizeof.#key
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^ALL the sizes
+
+macro smX.ld2.batadv dst,chunk {
+
+  macro inner [key] \{
+    smX.ld2.adv dst,chunk,key
+
+  \}
+
+  inner yword,xword,qword,dword,word,byte
+
+}
+
+; ---   *   ---   *   ---
+; ~
+
+macro smX.ld2 dst,src,chunk,ali {
+
+  local ins
+  local step
+
+  dst   equ
+  ins   equ
+  step  equ
+
+  smX.ld2.batadv step,chunk
+
+  macro inner [size] \{
+
+    forward
+
+      local mem
+      smX.mem.from_size mem,size
+
+      smX.sized_mov ins,size,ali
+      commacat dst,mem ins size src
+
+  \}
+
+  match list , step \{
+    inner list
 
   \}
 
