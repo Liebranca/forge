@@ -13,6 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' Arstd::uid
   use '.inc' peso::reg
 
 library.import
@@ -84,37 +85,44 @@ macro proc.new name,vflag= {
 
 macro uid.new dst,prefix,mode=global {
 
-  ; fet/nit counter
-  local UID
-
-  if ~ defined .#prefix#_ax
-    .#prefix#_ax = 0
-
-  end if
-
-  UID = .#prefix#_ax
+  local mprefix
+  local final
 
 
   ; generate global label
-  match =global n , mode UID \{
-    uid.get_gid dst,prefix,n
+  match =global name , mode hier.cproc \{
+    mprefix equ name\#.#prefix
+    final   equ name\#.#prefix
 
   \}
 
-  ; ^generate local
-  match =local =dotless n , mode UID \{
-    uid.get_lid dst,prefix,n,dotless
+  ; ^non-parenting global label
+  match =npglobal , mode \{
+    mprefix equ ..#prefix
+    final   equ ..#prefix
 
   \}
 
-  ; ^generate local
-  match = n , mode UID \{
-    uid.get_lid dst,prefix,n
+  ; ^generate local label
+  match =local name , mode hier.cproc \{
+    mprefix equ name\#.#prefix
+    final   equ .#prefix
 
   \}
 
-  ; ^increase counter
-  .#prefix#_ax = (.#prefix#_ax)+1
+
+  ; get instance counter
+  local uid
+  match any , mprefix \{
+    uid.new uid,any
+
+  \}
+
+  ; ^cat and give
+  match any id , final uid \{
+    dst equ any\#_\#id
+
+  \}
 
 }
 
@@ -131,21 +139,24 @@ macro uid.get_gid dst,prefix,n {
 }
 
 ; ---   *   ---   *   ---
-; ^local
+; ^non-parenting global
 
-macro uid.get_lid dst,prefix,n,mode= {
+macro uid.get_npgid dst,prefix,n {
 
   match name id , hier.cproc n \{
+    dst equ name\#.#prefix#_\#id
 
-    match =dotless , mode \\{
-      dst equ prefix#_\#id
+  \}
 
-    \\}
+}
 
-    match , mode \\{
-      dst equ .#prefix#_\#id
+; ---   *   ---   *   ---
+; ^local
 
-    \\}
+macro uid.get_lid dst,prefix,n {
+
+  match name id , hier.cproc n \{
+    dst equ .#prefix#_\#id
 
   \}
 

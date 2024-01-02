@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.4a
+  VERSION   v0.02.5a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

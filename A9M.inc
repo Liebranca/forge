@@ -12,11 +12,19 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
+; deps
+
+library ARPATH '/forge/'
+  use '.inc' A9M::vmem
+
+library.import
+
+; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,6 +42,30 @@
   A9M.nest_curly  = 0
   A9M.nest_parens = 0
   A9M.nest_brak   = 0
+
+  define A9M.ctoken
+  vmem.new A9M.ctoken,$40
+
+; ---   *   ---   *   ---
+; terminate current token
+
+macro A9M.ctoken.end {
+
+  match id , A9M.ctoken \{
+
+    if id\#.ptr
+
+      display $0A,$0A,'A9M.ctoken END',$0A
+      vmem.prich A9M.ctoken
+
+      ; [INSERT STRCMP]
+      vmem.clear A9M.ctoken
+
+    end if
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; conditional maker
@@ -135,6 +167,8 @@ macro A9M.reset {
   A9M.nest_parens = 0
   A9M.nest_brak   = 0
 
+  vmem.clear A9M.ctoken
+
 }
 
 ; ---   *   ---   *   ---
@@ -221,6 +255,7 @@ macro A9M.rd {
 
 macro A9M.logic.ws {
 
+  A9M.ctoken.end
   A9M.scap=0
 
   if ~ A9M.chk.ws
@@ -237,6 +272,8 @@ macro A9M.logic.ws {
 macro A9M.logic.term {
   A9M.term=1
   A9M.wt $0A,$0A
+
+  A9M.ctoken.end
 
 }
 
@@ -266,6 +303,7 @@ macro A9M.logic.nterm {
 
   ; have delim?
   if A9M.pat.curly
+    A9M.ctoken.end
     A9M.logic.nesting curly
 
   ; ^nope, common char
@@ -278,6 +316,8 @@ macro A9M.logic.nterm {
 
     end if
 
+    ; cat to current token
+    vmem.write A9M.ctoken,A9M.CHAR
 
     ; ^cat char to fout
     A9M.wt A9M.CHAR

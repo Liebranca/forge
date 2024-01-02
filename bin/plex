@@ -1,0 +1,71 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# PLEX
+# Peso lexer
+#
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+#
+# CONTRIBUTORS
+# lyeb,
+
+# ---   *   ---   *   ---
+# deps
+
+package main;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use Readonly;
+
+  use Cwd qw(abs_path);
+  use English qw(-no_match_words);
+
+  use lib $ENV{ARPATH}.'/lib/sys/';
+
+  use Style;
+  use Arstd::IO;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION = v0.00.1;#b
+  our $AUTHOR  = 'IBN-3DILA';
+
+# ---   *   ---   *   ---
+# ROM
+
+  Readonly my $SRCDIR=>
+    $ENV{ARPATH}.'/forge/tests/';
+
+# ---   *   ---   *   ---
+# validate input
+
+my $fpath=shift @ARGV;
+   $fpath=abs_path($fpath);
+
+errout(
+  'No file provided',
+  lvl=>$AR_FATAL
+
+) unless -f $fpath;
+
+$fpath="'$fpath'";
+
+# ---   *   ---   *   ---
+# ^make call
+
+my @call=(
+
+  qw(fasm -d),
+  'A9M.FPATH='."$fpath",
+  "$SRCDIR/A9M.asm",
+
+);
+
+exec {$call[0]} @call;
+
+# ---   *   ---   *   ---

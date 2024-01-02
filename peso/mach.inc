@@ -53,28 +53,6 @@ match __list , mach.REGISTERS {
 }
 
 ; ---   *   ---   *   ---
-; counters ctl
-
-macro mach.cnt.new name {
-  define name#._cnt 0
-
-}
-
-macro mach.cnt._flatten name {
-  rept 1 cnt:name#._cnt \{
-    name#._cnt equ cnt
-
-  \}
-
-}
-
-macro mach.cnt.tick name {
-  name#._cnt equ name#._cnt+1
-  mach.cnt._flatten name
-
-}
-
-; ---   *   ---   *   ---
 ; ^save mach state
 
 macro mach.tie {

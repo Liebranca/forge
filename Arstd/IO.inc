@@ -47,6 +47,8 @@ macro ANSIC.bat [DCV] {
   ANSIC IO.number,'33;22',$00
   ANSIC IO.money,'37;1','$'
 
+  ANSIC IO.string,'36;1',$00
+
 ; ---   *   ---   *   ---
 ; add <color> to tag ;>
 
