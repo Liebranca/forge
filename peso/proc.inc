@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.proc
 
-  VERSION   v0.01.5a
+  VERSION   v0.01.6a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -210,6 +210,7 @@ macro proc.enter {
     if ali > 0
       and  bpl,ali
       mov  byte [rbp-(n-1)],spl
+      and  spl,ali
 
     end if
 

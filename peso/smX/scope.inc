@@ -26,7 +26,7 @@ library.import
 
   TITLE     peso.smX.scope
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -157,6 +157,69 @@ macro smX.scope.close {
   \}
 
   restore hier.cscope
+
+}
+
+; ---   *   ---   *   ---
+; big wraps
+
+macro smX.scope_wrap {
+
+  ; unpack args
+  local     i64_unav
+  local     avx_unav
+  local     do_paste
+
+  mach.mmov i64_unav,ar
+  mach.mmov avx_unav,br
+  mach.mmov do_paste,cr
+
+
+  ; get codeblk
+  local     buffar
+
+  mach.cl   ar
+  mach.mov  br,smX.codegen
+
+  mach.call (mach.List.new)
+  mach.mmov buffar,ar
+
+  ; ^make active
+  match id , buffar \{
+    cline.set_dst id
+
+  \}
+
+
+  ; ^beg codegen
+  mach.wed  smX
+  mach.mov  ar,i64_unav
+  mach.mov  br,avx_unav
+
+  mach.call scope.open
+
+
+  ; [INSERT SUB]
+  ; ~
+
+
+  ; ^end codegen
+  mach.call scope.close
+  mach.unwed
+
+  ; give codeblk
+  match id , buffar \{
+
+    ; ^conditionally paste now
+    match =1 , do_paste \\{
+      id
+
+    \\}
+
+    ; ^give regardless
+    mach.mov ar,id
+
+  \}
 
 }
 

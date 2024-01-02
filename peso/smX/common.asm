@@ -13,6 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' peso::mach
   use '.hed' peso::branch
 
 library.import
@@ -22,123 +23,13 @@ library.import
 
   TITLE     peso.smX.common
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
   smX.CDEREF = $CDEF
-
-; ---   *   ---   *   ---
-; GBL
-
-  define smX.REG.ar
-  define smX.REG.br
-  define smX.REG.cr
-  define smX.REG.dr
-  define smX.REG.er
-  define smX.REG.fr
-
-  define smX.REG.callee
-
-; ---   *   ---   *   ---
-; ^pass value
-
-macro smX.mov dst,value& {
-  smX.REG.#dst equ value
-
-}
-
-; ---   *   ---   *   ---
-; ^reg to reg
-
-macro smX.rmov dst,src {
-
-  match value , smX.REG.#src \{
-    smX.mov dst,value
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^whole reg to mem
-
-macro smX.mmov dst,src {
-
-  match value , smX.REG.#src \{
-    dst equ value
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^cut from reg
-
-macro smX.marg dst,src {
-  commacut dst,smX.REG.#src
-
-}
-
-; ---   *   ---   *   ---
-; ^swap
-
-macro smX.wap A,B {
-
-  match UA , smX.REG.#A  \{
-
-    match UB , smX.REG.#B \{
-      smX.mov A,UB
-      smX.mov B,UA
-
-    \}
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^clear
-
-macro smX.cl dst {
-  smX.REG.#dst equ
-
-}
-
-; ---   *   ---   *   ---
-; ^invoke macro
-
-macro smX.call name {
-
-  smX.REG.callee equ name
-  smX.#name
-
-  restore smX.REG.callee
-
-}
-
-; ---   *   ---   *   ---
-; ~an idea we might revisit later
-
-macro OBJ.new dst,type,args& {
-
-  ; generate id
-  local uid
-  uid.new uid,type,global
-
-  ; ^pass [id,args] to cstruc
-  match id , uid \{
-
-    type#.new id
-    id\#.onew args
-
-    dst equ id
-
-  \}
-
-}
 
 ; ---   *   ---   *   ---
 ; declares a footer generator

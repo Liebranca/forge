@@ -33,7 +33,7 @@ macro smX.alloc {
 
   ; unpack args
   local rX
-  smX.marg rX,ar
+  mach.marg rX,ar
 
   ; ^call cstruc
   local uid
@@ -41,7 +41,7 @@ macro smX.alloc {
 
   ; ^give
   match %M , uid \{
-    smX.mov ar,%M
+    mach.mov ar,%M
 
   \}
 
@@ -54,7 +54,7 @@ macro smX.free {
 
   ; unpack args
   local rX
-  smX.marg rX,ar
+  mach.marg rX,ar
 
   ; ^call dstruc
   match %M , rX \{
@@ -181,8 +181,8 @@ macro smX.multi_rw rX,mode,src& {
   local out
 
   ; unpack args
-  smX.marg chunk,ar
-  smX.marg ali,cr
+  mach.marg chunk,ar
+  mach.marg ali,cr
 
 
   ; get dst and src regs
@@ -192,14 +192,14 @@ macro smX.multi_rw rX,mode,src& {
   out equ
 
   match %M1 list , rX expr \{
-    smX.bat_ins_paste out,mode,%M1,list
+    smX.bat_mov_paste out,mode,%M1,list
 
   \}
 
 
   ; give back regs
   match list , out \{
-    smX.mov ar,list
+    mach.mov ar,list
 
   \}
 
@@ -208,7 +208,7 @@ macro smX.multi_rw rX,mode,src& {
 ; ---   *   ---   *   ---
 ; ^paste generated
 
-macro smX.bat_ins_paste out,mode,%M1,[expr] {
+macro smX.bat_mov_paste out,mode,%M1,[expr] {
 
   ; make buff
   common
@@ -267,7 +267,7 @@ macro smX.bat_ins_paste out,mode,%M1,[expr] {
 macro smX.ld {
 
   local rX
-  smX.marg rX,br
+  mach.marg rX,br
 
   smX.multi_rw rX,ld
 
@@ -278,9 +278,9 @@ macro smX.st {
   local rX
   local src
 
-  smX.marg rX,br
-  smX.marg src,dr
-  smX.mmov src,dr
+  mach.marg rX,br
+  mach.marg src,dr
+  mach.mmov src,dr
 
   smX.multi_rw rX,st,src
 
@@ -297,47 +297,47 @@ macro smX.cpy {
   local size
   local ali
 
-  smX.marg dst,ar
-  smX.marg src,br
-  smX.marg size,cr
-  smX.marg ali,dr
+  mach.marg dst,ar
+  mach.marg src,br
+  mach.marg size,cr
+  mach.marg ali,dr
 
 
   ; get src mem
-  smX.mov  ar,qword m=src
-  smX.call alloc
+  mach.mov  ar,qword m=src
+  mach.call alloc
 
-  smX.mmov src,ar
+  mach.mmov src,ar
 
   ; ^read to regs
-  smX.mov  ar,size
-  smX.mov  br,src
-  smX.mov  cr,ali
+  mach.mov  ar,size
+  mach.mov  br,src
+  mach.mov  cr,ali
 
-  smX.call ld
-  smX.rmov dr,ar
+  mach.call ld
+  mach.rmov dr,ar
 
 
   ; get dst mem
-  smX.mov  ar,qword m=dst
-  smX.call alloc
+  mach.mov  ar,qword m=dst
+  mach.call alloc
 
-  smX.mmov dst,ar
+  mach.mmov dst,ar
 
   ; ^[dst] <= [src]
-  smX.mov  ar,size
-  smX.mov  br,dst
-  smX.mov  cr,ali
+  mach.mov  ar,size
+  mach.mov  br,dst
+  mach.mov  cr,ali
 
-  smX.call st
+  mach.call st
 
 
   ; release dst,src
-  smX.mov  ar,dst
-  smX.call free
+  mach.mov  ar,dst
+  mach.call free
 
-  smX.mov  ar,src
-  smX.call free
+  mach.mov  ar,src
+  mach.call free
 
 }
 

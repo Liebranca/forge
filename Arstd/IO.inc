@@ -14,35 +14,86 @@
 
   TITLE     Arstd.IO
 
-  VERSION   v0.00.3a
+  VERSION   v0.00.4a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; GBL
+; color escape+string
 
-  define SYSTAG $0A,      \
-    $1B,$5B,'37;1m<',     \
-    $1B,$5B,'34;22m','AR',\
-    $1B,$5B,'37;1m>',     \
-    $1B,$5B,'0m'
+macro ANSIC dst,color,value& {
+  define dst $1B,$5B,color,'m',value
+
+}
+
+; ---   *   ---   *   ---
+; ^multi
+
+macro ANSIC.bat [DCV] {
+
+  forward match dst color value , DCV \{
+    ANSIC dst,color,value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ROM I
+
+  ANSIC IO.tag_open,'37;1','<'
+  ANSIC IO.tag_close,'37;1','>'
+  ANSIC IO.ncolor,'0',$00
+  ANSIC IO.comma,'37;1',',',IO.ncolor,' '
+  ANSIC IO.number,'33;22',$00
+  ANSIC IO.money,'37;1','$'
+
+; ---   *   ---   *   ---
+; add <color> to tag ;>
+
+macro IO.CTAGIT dst,color,value& {
+
+  local body
+  ANSIC body,color,value
+
+  match any , body \{
+
+    pastedef dst,comma,$0A,\
+      IO.tag_open,\
+      any,\
+      IO.tag_close,\
+      IO.ncolor
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ROM II
 
   define CHDTAG           \
     $1B,$5B,'37;1m::',    \
     $1B,$5B,'0m'
 
-  define ERRTAG $0A,      \
-    $1B,$5B,'37;1m<',     \
-    $1B,$5B,'31;1m','AR', \
-    $1B,$5B,'37;1m>',     \
-    $1B,$5B,'0m'
-
-  define PETAG $0A,         \
-    $1B,$5B,'37;1m<',       \
-    $1B,$5B,'35;1m','peso', \
-    $1B,$5B,'37;1m>',       \
-    $1B,$5B,'0m'
+  IO.CTAGIT SYSTAG,'34;22','AR'
+  IO.CTAGIT ERRTAG,'31;1','AR'
+  IO.CTAGIT PETAG,'35;1','peso'
 
   define BLANK $20
+
+; ---   *   ---   *   ---
+; give "file <filename>"
+
+macro IO.FILEIT dst,name {
+
+  local body
+  ANSIC body,'32;1',name
+
+  match any , body \{
+    dst equ 'file ',any,IO.ncolor
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; shame
@@ -140,7 +191,8 @@ macro hexsay N,bits {
 
   local ._v.d
 
-  display '$'
+  display IO.money,IO.number
+
   repeat (bits)/4
 
     ._v.d = \
@@ -155,6 +207,47 @@ macro hexsay N,bits {
     display ._v.d
 
   end repeat
+
+  display IO.ncolor
+
+}
+
+; ---   *   ---   *   ---
+; display expanded list
+
+macro out@EX [item] {
+
+  common
+    local list
+    list equ
+
+  forward match any , item \{
+
+    local ok
+    local body
+
+    body equ
+    ok   equ 0
+
+    match =~ cmd arg , any \\{
+      cmd body,arg
+      ok equ 1
+
+      commacat list,body
+
+    \\}
+
+    match =0 , ok \\{
+      commacat list,any
+
+    \\}
+
+  \}
+
+  common match any , list \{
+    display any
+
+  \}
 
 }
 

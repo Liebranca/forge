@@ -708,6 +708,28 @@ macro fnpaste2 pro,list {
 }
 
 ; ---   *   ---   *   ---
+; ^and here we go again...
+
+macro pastedef dst,sep,[item] {
+
+  common
+    local list
+    list equ
+
+  forward match any , item \{
+    sep#cat list,any
+
+  \}
+
+  common match any , list \{
+    define dst any
+
+  \}
+
+
+}
+
+; ---   *   ---   *   ---
 ; cat A B C
 
 macro protocat dst,sep,token& {
@@ -795,6 +817,18 @@ macro pluscat dst,token& {
 
   local sep
   sep equ +
+
+  protocat dst,sep,token
+
+}
+
+; ---   *   ---   *   ---
+; ^binary or
+
+macro borcat dst,token& {
+
+  local sep
+  sep equ |
 
   protocat dst,sep,token
 
@@ -912,6 +946,53 @@ macro stirr7 a,b,c {
 
   match ,a \{
     a equ c
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^stringifies a sequence of
+; tokens up to given length
+
+macro stirr9 dst,src,len=$10 {
+
+  local res
+  local rem
+
+  res equ
+  rem equ src
+
+
+  ; walk
+  rept len \{
+
+    local ok
+    ok equ 0
+
+    ; at least two elems
+    match any next , rem \\{
+
+      stirr7 res,,\\`any
+
+      rem equ next
+      ok  equ 1
+
+    \\}
+
+    ; ^last elem
+    match =0 any , ok rem \\{
+      stirr7 res,,\\`any
+      rem equ
+
+    \\}
+
+  \}
+
+
+  ; ^give result
+  match any , res \{
+    dst equ any
 
   \}
 

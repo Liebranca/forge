@@ -1,0 +1,3 @@
+$;
+
+map { nested A,B {dnested} } ar;
