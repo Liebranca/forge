@@ -13,7 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' A9M::vmem
+  use '.inc' A9M::vreg
 
 library.import
 
@@ -22,8 +22,17 @@ library.import
 
   TITLE     A9M.vcrypt
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; table head struc
+
+vreg.new vhash
+  szmy dword cnt $00
+  szmy dword wat $00
+
+vreg.end
 
 ; ---   *   ---   *   ---
 ; get chunk-sized hash

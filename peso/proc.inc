@@ -13,7 +13,6 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' Arstd::uid
   use '.inc' peso::reg
 
 library.import

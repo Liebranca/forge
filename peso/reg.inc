@@ -13,6 +13,9 @@
 ; deps
 
 library ARPATH '/forge/'
+
+  use '.inc' Arstd::uid
+
   use '.inc' peso::seg
   use '.inc' peso::sfield
 
@@ -23,7 +26,7 @@ library.import
 
   TITLE     peso.reg
 
-  VERSION   v0.01.5a
+  VERSION   v0.01.6a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -39,7 +42,10 @@ macro reg.new name,vflag= {
   hier.creg equ name
 
   define name#.$reg 1
+
   define name#.$reg.fields
+  define name#.$reg.fields_sz
+  define name#.$reg.fields_len
 
   ; put definition 'on hold' ;>
   virtual at $00
@@ -52,6 +58,51 @@ macro reg.new name,vflag= {
 
 macro my decl {
   sfield.push hier.creg,$reg.fields,decl
+
+}
+
+; ---   *   ---   *   ---
+; ^actually record the size
+; of this field!
+
+macro szmy decl {
+
+  match size ND? , decl \{
+
+    local sX
+    local ct
+    local id
+
+    ; default to null
+    id equ ND?
+    ct equ $00
+
+    ; passed name => data?
+    match tag any , ND? \\{
+      id equ tag
+      ct equ any
+
+    \\}
+
+    ; get size as data decl
+    i_sized_data sX,size
+
+    ; ^add field
+    match name , id \\{
+      my .\\#name sX ct
+
+    \\}
+
+    sfield.push hier.creg,$reg.fields_sz,size
+
+
+    ; note length of sz array
+    local len
+
+    sfield.get len,hier.creg,$reg.fields_len
+    sfield.set hier.creg,$reg.fields_len,len+1
+
+  \}
 
 }
 
@@ -77,7 +128,7 @@ macro reg.end {
   match any,hier.creg \{
 
     ; ^paste accum
-    match lines,any\#.$reg.fields \\{
+    match lines , any\#.$reg.fields \\{
       npaste lines
 
     \\}
@@ -86,7 +137,7 @@ macro reg.end {
     MAM.malign unit
 
     _endof.\#any=$
-    define sizeof.\#any _endof.\#any-any
+    sizeof.\#any=_endof.\#any-any
 
   \}
 

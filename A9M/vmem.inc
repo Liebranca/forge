@@ -15,6 +15,7 @@
 library ARPATH '/forge/'
   use '.inc' Arstd::uid
   use '.inc' peso::seg
+  use '.inc' A9M::vuint
 
 library.import
 
@@ -23,31 +24,8 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; tmp, we'll move this
-; somewhere else later!
-
-macro UInt.urdivp2_c dst,size,ali {
-
-  if ~ (size)
-    dst = 1 shl ali
-
-  else
-    dst = size+((1 shl ali)-1)
-    dst = dst shr ali
-
-  end if
-
-}
-
-macro UInt.align_c dst,size,ali {
-  UInt.urdivp2_c dst,size,ali
-  dst = dst shl ali
-
-}
 
 ; ---   *   ---   *   ---
 ; make new buff
@@ -111,15 +89,25 @@ macro vmem.segat dst,atid,ct& {
       ; ^paste passed string
       match =0 any , ok ct \\{
         db ct
+        ok equ 1
 
       \\}
 
+      ; ^just pad
+      match =0 , ok \\{
+        db $00
+
+      \\}
+
+
       ; ^get length
-      id\#.len  = $-id\#.beg
-      id\#.pad  = $08 - (id\#.len mod $08)
-      id\#.size = id\#.len+id\#.pad
+      id\#.len = $-id\#.beg
+
+      ; ^align to qword
+      vuint.align id\#.size,id\#.len,$03
 
       ; ^pad to size with null
+      id\#.pad = id\#.size-id\#.len
       db id\#.pad dup $00
 
     end virtual
@@ -156,25 +144,58 @@ macro vmem.seg par,dst,ct& {
 }
 
 ; ---   *   ---   *   ---
+; errchk proto
+
+macro vmem.boundschk id,addr,size,me {
+
+  if (addr+sizeof.#size) > id#.size
+    out@err me
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
 ; set value at ptr
 
 macro vmem.write dst,src,size=byte {
 
   match id , dst \{
 
-    if (id\#.ptr+sizeof.#size) > id\#.size
-      out@err "write past end of vmem"
+    vmem.boundschk id,id\#.ptr,size,\
+      "write past end of vmem"
 
-    end if
 
-    store size src at id\#.base:id\#.ptr
+    ; set and move ptr
+    store size src at id\#.base:\
+      id\#.beg+id\#.ptr
+
     id\#.ptr=id\#.ptr+sizeof.#size
 
+
+    ; ^adjust meta
     if id\#.ptr > id\#.len
       id\#.len = id\#.ptr
       id\#.pad = id\#.size-id\#.ptr
 
     end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^arbitrary set
+
+macro vmem.set dst,src,addr,size=byte {
+
+  match id , dst \{
+
+    vmem.boundschk id,addr,size,\
+      "set past end of vmem"
+
+    store size src at id\#.base:\
+      id\#.beg+addr
 
   \}
 
@@ -187,12 +208,13 @@ macro vmem.read dst,src,size=byte {
 
   match id , src \{
 
-    if (id\#.ptr+sizeof.#size) > id\#.size
-      out@err "read past end of vmem"
+    vmem.boundschk id,id\#.ptr,size,\
+      "read past end of vmem"
 
-    end if
+    ; get and move ptr
+    load dst size from id\#.base:\
+      id\#.beg+id\#.ptr
 
-    load dst size from id\#.base:id\#.ptr
     id\#.ptr=id\#.ptr+sizeof.#size
 
   \}
@@ -200,7 +222,24 @@ macro vmem.read dst,src,size=byte {
 }
 
 ; ---   *   ---   *   ---
-; ^move ptr (absolute)
+; ^arbitrary
+
+macro vmem.get dst,src,addr,size=byte {
+
+  match id , src \{
+
+    vmem.boundschk id,addr,size,\
+      "get past end of vmem"
+
+    load dst size from id\#.base:\
+      id\#.beg+addr
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; move ptr (absolute)
 
 macro vmem.seek dst,N {
 
@@ -275,7 +314,7 @@ macro vmem.eq dst,s0,s1 {
     else
 
       ; walk in qword steps
-      UInt.urdivp2_c len,id0\#.len,$03
+      vuint.urdivp2 len,id0\#.len,$03
 
       repeat len
 
@@ -339,11 +378,15 @@ macro vmem.have dst,src,sptr {
 ; ---   *   ---   *   ---
 ; dbout
 
-macro vmem.prich src {
+macro vmem.prich src,parshow=0 {
 
   ; varlis
   local c
-  c equ vmem.prich.c
+  local psize
+
+  c     equ vmem.prich.c
+  psize equ vmem.prich.pshow
+
 
   match id , src \{
 
@@ -367,6 +410,16 @@ macro vmem.prich src {
     display '  pad  '
     hexsay  id\#.pad,$08
     out@nl
+
+
+    ; get print size
+    if parshow
+      psize=id\#.size shr $03
+
+    else
+      psize=id\#.len+id\#.pad
+
+    end if
 
 
     ; show raw ct : print ct
