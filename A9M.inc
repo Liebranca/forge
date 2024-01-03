@@ -44,7 +44,7 @@ library.import
   A9M.nest_brak   = 0
 
   define A9M.ctoken
-  vmem.new A9M.ctoken,$40
+  vmem.new A9M.ctoken,blk $40
 
 ; ---   *   ---   *   ---
 ; terminate current token
@@ -259,8 +259,8 @@ macro A9M.logic.ws {
   A9M.scap=0
 
   if ~ A9M.chk.ws
-    A9M.wt $0A
-    A9M.wt.nest_branch
+    A9M.write $0A
+    A9M.write.nest_branch
 
   end if
 
@@ -271,7 +271,7 @@ macro A9M.logic.ws {
 
 macro A9M.logic.term {
   A9M.term=1
-  A9M.wt $0A,$0A
+  A9M.write $0A,$0A
 
   A9M.ctoken.end
 
@@ -312,7 +312,7 @@ macro A9M.logic.nterm {
     ; was last char a delim?
     ; are we now at ident lvl 0?
     if A9M.delim &~ A9M.fulnest
-      A9M.wt.branch
+      A9M.write.branch
 
     end if
 
@@ -320,7 +320,7 @@ macro A9M.logic.nterm {
     vmem.write A9M.ctoken,A9M.CHAR
 
     ; ^cat char to fout
-    A9M.wt A9M.CHAR
+    A9M.write A9M.CHAR
 
     ; ^mark last as nterm
     A9M.delim = 0
@@ -350,9 +350,9 @@ macro A9M.logic.nesting name {
 
     A9M.nest_#name = A9M.nest_#name+1
 
-    A9M.wt d0,$0A
-    A9M.wt.nest_pad
-    A9M.wt.branch
+    A9M.write d0,$0A
+    A9M.write.nest_pad
+    A9M.write.branch
 
 
   ; ^close, nest--
@@ -360,15 +360,15 @@ macro A9M.logic.nesting name {
 
     A9M.nest_#name = A9M.nest_#name-1
 
-    A9M.wt $0A
-    A9M.wt.nest_pad
-    A9M.wt '.'
+    A9M.write $0A
+    A9M.write.nest_pad
+    A9M.write '.'
 
-    A9M.wt $0A
-    A9M.wt.nest_pad
+    A9M.write $0A
+    A9M.write.nest_pad
 
-    A9M.wt.branch d1,$0A
-    A9M.wt.nest_pad
+    A9M.write.branch d1,$0A
+    A9M.write.nest_pad
 
   end if
 
@@ -377,7 +377,7 @@ macro A9M.logic.nesting name {
 ; ---   *   ---   *   ---
 ; ^write to fout
 
-macro A9M.wt ct& {
+macro A9M.write ct& {
 
   ; cat to file
   virtual A9M.fout
@@ -396,10 +396,10 @@ macro A9M.wt ct& {
 ; ---   *   ---   *   ---
 ; ^outs ident lvl
 
-macro A9M.wt.nest_pad {
+macro A9M.write.nest_pad {
 
   repeat A9M.fulnest
-    A9M.wt '.  '
+    A9M.write '.  '
 
   end repeat
 
@@ -408,15 +408,15 @@ macro A9M.wt.nest_pad {
 ; ---   *   ---   *   ---
 ; ^outs branch beg
 
-macro A9M.wt.branch ct& {
+macro A9M.write.branch ct& {
 
   match any , ct \{
-    A9M.wt '\-->',ct
+    A9M.write '\-->',ct
 
   \}
 
   match , ct \{
-    A9M.wt '\-->'
+    A9M.write '\-->'
 
   \}
 
@@ -425,9 +425,9 @@ macro A9M.wt.branch ct& {
 ; ---   *   ---   *   ---
 ; ^combo
 
-macro A9M.wt.nest_branch ct& {
-  A9M.wt.nest_pad
-  A9M.wt.branch ct
+macro A9M.write.nest_branch ct& {
+  A9M.write.nest_pad
+  A9M.write.branch ct
 
 }
 

@@ -77,8 +77,8 @@ virtual at $00
   other::
     db 'to-match-with'
 
-  len=$-other.base
-  pad=size-other.len
+  len=$-base
+  pad=size-len
 
   db pad dup $00
 
@@ -111,7 +111,7 @@ match id , buff {
 
 And once again, macros can save us a lot of time with these repeating patterns. `A9M::vmem` defines many such operations and can easily be extended by the user.
 
-Of particular note is the `vmem.eq` macro, which performs the aforemention string comparison. This macro takes as arguments the name of a variable to overwrite with the result of the operation, plus the names of the two buffers to compare.
+Of particular note is the `vmem.eq` macro, which performs the aforementioned string comparison. This macro takes as arguments the name of a variable to overwrite with the result of the operation, plus the names of the two buffers to compare.
 
 To show an example of it's usage:
 

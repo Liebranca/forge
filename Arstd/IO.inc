@@ -46,6 +46,7 @@ macro ANSIC.bat [DCV] {
   ANSIC IO.comma,'37;1',',',IO.ncolor,' '
   ANSIC IO.number,'33;22',$00
   ANSIC IO.money,'37;1','$'
+  ANSIC IO.colon,'37;1',':'
 
   ANSIC IO.string,'36;1',$00
 
@@ -161,7 +162,7 @@ macro out@sys args& {d'oh! SYSTAG,args}
 macro out@chd args& {d'oh! CHDTAG,args}
 macro out@err args& {d'oh! ERRTAG,args}
 
-macro out@nl        {display $0A}
+macro out@nl  r=1   {rept r\{display $0A\}}
 
 ; ---   *   ---   *   ---
 ; meta prints
@@ -211,6 +212,44 @@ macro hexsay N,bits {
   end repeat
 
   display IO.ncolor
+
+}
+
+; ---   *   ---   *   ---
+; ^print version
+
+macro humansay N,bits {
+
+  local ._v.d
+
+  display IO.string,"'"
+
+  repeat (bits)/8
+
+    ._v.d = (N shr ((%-1)*8)) and $FF
+
+    if (._v.d > $7E) | (._v.d < $20)
+      ._v.d='.'
+
+    end if
+
+    display ._v.d
+
+  end repeat
+
+  display "'",IO.ncolor
+
+}
+
+; ---   *   ---   *   ---
+; ^a combination of the two
+
+macro xesay N,bits {
+
+  hexsay   N,bits
+  display  $20,IO.colon,$20
+
+  humansay N,bits
 
 }
 

@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,8 +32,6 @@ library.import
 
 macro UInt.urdivp2_c dst,size,ali {
 
-  ; [1] cx is exponent
-  ; get 2^N thru shift
   if ~ (size)
     dst = 1 shl ali
 
@@ -54,14 +52,7 @@ macro UInt.align_c dst,size,ali {
 ; ---   *   ---   *   ---
 ; make new buff
 
-macro vmem.new dst,req,ct& {
-
-  ; force size to a multiple of 8
-  local size
-
-  size equ vmem.new.size
-  UInt.align_c size,req,$03
-
+macro vmem.new dst,ct& {
 
   ; get id
   local uid
@@ -70,22 +61,63 @@ macro vmem.new dst,req,ct& {
   ; ^gen buff
   match id , uid \{
 
-    ; save vars
-    id\#.size = size
-    id\#.ptr  = $00
-
-    ; ^open buff
     virtual at $00
 
-      id\#.beg:
       id\#.base::
 
-      ; paste passed string
-      match any , ct \\{db ct\\}
+      id\#.off  = 0
+      id\#.size = 0
+
+    end virtual
+
+    ; ^write
+    vmem.segat id,id,ct
+
+    ; give id
+    dst equ id
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^write segment
+
+macro vmem.segat dst,atid,ct& {
+
+  match par id , dst atid \{
+
+    virtual par\#.base
+
+      id\#.beg=par\#.off+par\#.size
+      id\#.ptr=id\#.beg
+
+      ; par != id, make new base ptr
+      if ~(par\#.beg = id\#.beg)
+        id\#.base::
+
+      end if
+
+      local ok
+      ok equ 0
+
+      ; produce blank of size N?
+      match =blk size , ct \\{
+        db size dup $00
+        ok equ 1
+
+      \\}
+
+      ; ^paste passed string
+      match =0 any , ok ct \\{
+        db ct
+
+      \\}
 
       ; ^get length
-      id\#.len=$-id\#.beg
-      id\#.pad=size-id\#.len
+      id\#.len  = $-id\#.beg
+      id\#.pad  = $08 - (id\#.len mod $08)
+      id\#.size = id\#.len+id\#.pad
 
       ; ^pad to size with null
       db id\#.pad dup $00
@@ -93,7 +125,30 @@ macro vmem.new dst,req,ct& {
     end virtual
 
 
-    ; give id
+    ; par != id, update par size
+    if ~(par\#.beg = id\#.beg)
+      par\#.size=par\#.size+id\#.size
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^add new segment to existing
+
+macro vmem.seg par,dst,ct& {
+
+  ; get id
+  local uid
+  uid.new uid,A9M.vmem,npglobal
+
+  ; ^use id for new segment
+  vmem.segat par,uid,ct
+
+  ; ^give segptr
+  match id , uid \{
     dst equ id
 
   \}
@@ -117,6 +172,7 @@ macro vmem.write dst,src,size=byte {
 
     if id\#.ptr > id\#.len
       id\#.len = id\#.ptr
+      id\#.pad = id\#.size-id\#.ptr
 
     end if
 
@@ -163,6 +219,14 @@ macro vmem.seek dst,N {
 }
 
 ; ---   *   ---   *   ---
+; ^wraps for seek 0
+
+macro vmem.rewind dst {
+  vmem.seek dst,$00
+
+}
+
+; ---   *   ---   *   ---
 ; clear buff
 
 macro vmem.clear dst {
@@ -175,6 +239,8 @@ macro vmem.clear dst {
     end repeat
 
     id\#.ptr = 0
+    id\#.len = 0
+    id\#.pad = id\#.size
 
   \}
 
@@ -275,11 +341,21 @@ macro vmem.have dst,src,sptr {
 
 macro vmem.prich src {
 
+  ; varlis
+  local c
+  c equ vmem.prich.c
+
   match id , src \{
 
-    display $0A,'BUF ',\`id,':',$0A
+    ; give seg name/addr
+    display $0A,'BUFID ',\`id,$0A
+
+    display 'SEGAT '
+    hexsay  id\#.beg,$10
+    out@nl  2
 
 
+    ; give seg attrs
     display '  size '
     hexsay  id\#.size,$08
     out@nl
@@ -292,15 +368,23 @@ macro vmem.prich src {
     hexsay  id\#.pad,$08
     out@nl
 
-    display $0A,IO.string,"'"
 
-    repeat id\#.len
-      load    id\#.c byte from id\#.base:%-1
-      display id\#.c
+    ; show raw ct : print ct
+    display $0A
+
+    repeat id\#.size shr $03
+
+      load  \c qword \
+        from id\#.base:((%-1)*8) \
+      + id\#.beg
+
+      xesay \c,$40
+      out@nl
+
 
     end repeat
 
-    display "'",IO.ncolor,$0A,$0A
+    display $0A,$0A
 
   \}
 
