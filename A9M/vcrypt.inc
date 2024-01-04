@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vcrypt
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -89,7 +89,7 @@ macro vhash.new dst,type,kbits {
   ; decl storage buffs
   match id , dst \{
 
-    vmem.seg id\#.head,id\#%origin,\
+    vmem.seg id\#.values,id\#%origin,\
       blk cap
 
     vmem.seg id\#.mask,id\#%origin,\
@@ -122,27 +122,114 @@ macro vhash.store tab,IV,chunk=qword {
   ; ^get key
   match idex ===> value , IV \{
 
+
     ; is idex a buffer?
-    local ok
-    local buff
+    local sref
+    vhash.unpack_key_src sref,idex
 
-    ok equ 0
+    ; is value a buffer?
+    local vref
+    vhash.unpack_value vref,value
 
-    match ptr name , idex \\{
-      buff equ name
-      ok equ 1
+
+    ; idex into hash
+    vcrypt.hash key,sref,chunk,kbits
+
+    ; ^write at idex
+    vhash.get_free addr,tab,sref,key
+    vhash.set_slot_value tab,vref,addr
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^fetch id
+
+macro vhash.load dst,tab,idex,chunk=qword {
+
+  ; varlis
+  local key
+  local kbits
+  local addr
+
+  key   equ vhash.load.key
+  kbits equ vhash.load.kbits
+  addr  equ vhash.load.addr
+
+  ; get key size
+  vhash.kbits.get kbits,tab
+
+  ; is idex a buffer?
+  local sref
+  vhash.unpack_key_src sref,idex
+
+  ; is dst a buffer?
+  local vref
+  vhash.unpack_value vref,dst
+
+
+  ; idex into hash
+  vcrypt.hash key,sref,chunk,kbits
+
+  ; ^write at idex
+  vhash.get_slot addr,tab,sref,key
+  vhash.get_slot_value vref,tab,addr
+
+}
+
+; ---   *   ---   *   ---
+; get type of key passed to store/load
+
+macro vhash.unpack_key_src dst,idex {
+
+  local ok
+  ok equ 0
+
+  match ptr name , idex \{
+    dst equ name
+    ok  equ 1
+
+  \}
+
+  ; ^else make tmp
+  match =0 , ok \{
+    vmem.new dst,idex
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^similar thing for the value
+
+macro vhash.unpack_value dst,value {
+
+  local ok
+  ok equ 0
+
+  ; ptr to vmem or casted pointer
+  match type name , value \{
+
+    ; raw vmem
+    match =ptr , type \\{
+      dst equ name
 
     \\}
 
-    ; ^else make tmp
-    match =0 , ok \\{
-      vmem.new buff,idex
+    ; ^some vreg typecast
+    match =% , type \\{
+      dst equ name\#%origin
 
     \\}
 
+    ok equ 1
 
-    vcrypt.hash    key,buff,chunk,kbits
-    vhash.get_free addr,tab,buff,key
+  \}
+
+  ; ^else make tmp
+  match =0 , ok \{
+    vmem.new dst,value
 
   \}
 
@@ -185,7 +272,7 @@ macro vhash.keycoord tab,idex,mask,kmask,bit {
 ;
 ; * catch unsolvable
 
-macro vhash.get_slot dst,tab,sref,key,fn= {
+macro vhash.get_slot elem,tab,sref,key,fn& {
 
   ; varlis
   local mask
@@ -199,37 +286,30 @@ macro vhash.get_slot dst,tab,sref,key,fn= {
   idex  equ vhash.get_slot.idex
   bit   equ vhash.get_slot.bit
   tmp   equ vhash.get_slot.tmp
+  spin  equ vhash.get_slot.spin
 
 
   ; map key to bitmask array
   bit = key
   vhash.keycoord tab,idex,mask,kmask,bit
 
-  dst = 1 shl bit
+  elem = 1 shl bit
 
   ; slot free?
-  if ~(mask & dst)
+  if ~(mask & elem)
     vhash.throw_nokey sref
 
   end if
 
 
   ; ^nope, get key eq sref
-  while (mask & dst)
+  spin = 0
 
-    ; R skip sentinels
-    if ~(kmask & dst)
-      tmp=bsf kmask
+  while (mask & elem)
 
-      ; ^L skip on fail
-      if(tmp > $3F)
-        tmp=bit + bsf (kmask shr bit)
-
-      end if
-
-      bit=tmp
-      dst=1 shl bit
-
+    ; skip sentinels
+    if ~(kmask & elem)
+      vhash.mask_search kmask,bit,elem,tmp
 
     ; ^actual elem, compare buffers
     else
@@ -238,23 +318,8 @@ macro vhash.get_slot dst,tab,sref,key,fn= {
       local ok
       ok equ vhash.get_slot.ok
 
-      ; get *elem* idex
-      dst = bit + (idex shl sizep2.line)
-
-
-      ; key match?
-      match id , tab \{
-
-        ; get key src at offset
-        local sbuf
-        vmem.view sbuf,id\#.keys,\
-          dst*vcrypt.SKEY_SIZE,\
-          ,vcrypt.SKEY_SIZE
-
-        ; ^compare buffers
-        vmem.eq ok,sref,sbuf
-
-      \}
+      ; ^compare
+      vhash.keycmp ok,tab,elem,bit,sref,idex
 
 
       ; ^break if so
@@ -266,29 +331,30 @@ macro vhash.get_slot dst,tab,sref,key,fn= {
 
     end if
 
+
+    ; lazy out!
+    spin=spin+1
+
+    if spin > 8
+      vhash.throw_unsolvable sref
+
+    end if
+
   end while
 
 
   ; optinal footer
-  match any , fn \{
-    fn idex,bit
+  match mode , fn \{
+    vhash.set_slot_meta elem,\
+      tab,bit,idex,sref,mode
 
   \}
 
-}
+  ; ^else just give *elem* idex
+  match , fn \{
+    elem = bit + (idex shl sizep2.line)
 
-; ---   *   ---   *   ---
-; ^errme
-
-macro vhash.throw_nokey sref {
-
-  display  'Key '
-  humansay sref,$100
-
-  display  'not found in vhash'
-  out@nl
-
-  err
+  \}
 
 }
 
@@ -308,12 +374,14 @@ macro vhash.get_free elem,tab,sref,key {
   local idex
   local bit
   local tmp
+  local spin
 
   mask  equ vhash.get_free.mask
   kmask equ vhash.get_free.kmask
   idex  equ vhash.get_free.idex
   bit   equ vhash.get_free.bit
   tmp   equ vhash.get_free.tmp
+  spin  equ vhash.get_free.spin
 
 
   ; map key to bitmask array
@@ -322,7 +390,10 @@ macro vhash.get_free elem,tab,sref,key {
 
   elem = 1 shl bit
 
+
   ; get first free or sentinel
+  spin = 0
+
   while (mask & elem)
 
     ; standing on sentinel!
@@ -334,49 +405,110 @@ macro vhash.get_free elem,tab,sref,key {
 
       ; varlis for bool
       local ok
-      ok equ vhash.get_slot.ok
+      ok equ vhash.get_free.ok
 
-      ; get *elem* idex
-      elem = bit + (idex shl sizep2.line)
-
-
-      ; key match?
-      match id , tab \{
-
-        ; get key src at offset
-        local sbuf
-        vmem.view sbuf,id\#.keys,\
-          elem,vcrypt.SKEY_SIZE
-
-        ; ^compare buffers
-        vmem.eq ok,sref,sbuf
-
-      \}
+      ; ^key match?
+      vhash.keycmp ok,tab,elem,bit,sref,idex
 
 
-      ; wrong idex, R get free
+      ; ^wrong idex, R get free
       if ok = 0
+        vhash.mask_search kmask,bit,elem,tmp,not
 
-        tmp=bsf (not kmask)
 
-        ; ^L get free on fail
-        if(tmp > $3F)
-          tmp=bit + bsf not (kmask shr bit)
-
-        end if
-
-        bit  = tmp
-        elem = 1 shl bit
+      ; ^same key, overwrite
+      else
+        break
 
       end if
 
 
     end if
 
+
+    ; lazy out!
+    spin=spin+1
+
+    if spin > 8
+      vhash.throw_unsolvable sref
+
+    end if
+
   end while
 
 
-  ; reset *elem* idex
+  ; update meta
+  vhash.set_slot_meta \
+    elem,tab,bit,idex,sref,or copy
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps for freeing
+
+macro vhash.free_slot elem,tab,sref,key {
+  vhash.get_slot elem,tab,sref,key,xor clear
+
+}
+
+; ---   *   ---   *   ---
+; tries to find free slot
+
+macro vhash.mask_search mask,bit,elem,tmp,op= {
+
+  ; R search
+  tmp=bsf op (mask)
+
+  hexsay tmp,$08
+  out@nl
+
+  ; ^L search on fail
+  if (tmp > $3F)
+    tmp=bit + bsf op (mask shr bit)
+
+  end if
+
+  bit  = tmp
+  elem = 1 shl bit
+
+  hexsay bit,$08
+  out@nl
+
+}
+
+; ---   *   ---   *   ---
+; compare current key to
+; pointed one
+
+macro vhash.keycmp dst,tab,elem,bit,sref,idex {
+
+  ; get *elem* idex
+  elem = bit + (idex shl sizep2.line)
+
+  ; key match?
+  match id , tab \{
+
+    ; get key src at offset
+    local sbuf
+    vmem.view sbuf,id\#.keys,\
+      elem*vcrypt.SKEY_SIZE,\
+      vcrypt.SKEY_SIZE
+
+    ; ^compare buffers
+    vmem.eq dst,sref,sbuf
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; overwrite slot meta
+
+macro vhash.set_slot_meta \
+  elem,tab,bit,idex,sref,mode {
+
+
+  ; get *elem* idex
   elem = bit + (idex shl sizep2.line)
 
   ; occupy mask slot
@@ -389,19 +521,119 @@ macro vhash.get_free elem,tab,sref,key {
     ; get kmask offset
     vhash.masksz.get masksz,tab
 
+
     ; ^update masks
-    vmem.or id\#.mask,(1 shl bit),idex,qword
-    vmem.or id\#.mask,(1 shl bit),idex+masksz,qword
+    match mask_op sbuf_op , mode \\{
 
-    ; ^update key src
-    local sbuf
-    vmem.view sbuf,id\#.keys,\
-      elem*vcrypt.SKEY_SIZE,\
-      vcrypt.SKEY_SIZE
+      vmem.\\#mask_op id\#.mask,(1 shl bit),\
+        idex*8,qword
 
-    vmem.copy  sbuf,sref
+      vmem.\\#mask_op id\#.mask,(1 shl bit),\
+        (idex+masksz)*8,qword
+
+
+      ; ^update key src
+      local sbuf
+      vmem.view sbuf,id\#.keys,\
+        elem*vcrypt.SKEY_SIZE,\
+        vcrypt.SKEY_SIZE
+
+      ; ^mode switch
+      local sbuf_args
+      sbuf_args equ sbuf,sref
+
+      match =clear , sbuf_op \\\{
+        sbuf_args equ sbuf
+
+      \\\}
+
+      match list , sbuf_args \\\{
+        vmem.\\#sbuf_op list
+
+      \\\}
+
+    \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; ^set value at elem idex
+
+macro vhash.set_slot_value tab,value,elem {
+
+  match id , tab \{
+
+    ; varlis
+    local ezy
+    ezy equ vhash.set_slot_value.ezy
+
+    ; ^get elem size
+    vhash.ezy.get ezy,tab
+
+    ; ^get dst
+    local vbuf
+    vmem.view vbuf,id\#.values,\
+      elem*ezy,\
+      ezy
+
+    ; ^write
+    vmem.copy vbuf,value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^fetch
+
+macro vhash.get_slot_value dst,tab,elem {
+
+  match id , tab \{
+
+    ; varlis
+    local ezy
+    ezy equ vhash.get_slot_value.ezy
+
+    ; ^get elem size
+    vhash.ezy.get ezy,tab
+
+    ; ^get dst
+    local vbuf
+    vmem.view vbuf,id\#.values,\
+      elem*ezy,\
+      ezy
+
+    ; ^write
+    vmem.copy dst,vbuf
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; errmes
+
+macro vhash.throw_nokey sref {
+
+  display  'Key '
+  humansay sref,$100
+
+  display  'not found in vhash'
+  out@nl
+
+  err
+
+}
+
+macro vhash.throw_unsolvable sref {
+
+  display  'Unsolvable collision, key '
+  humansay sref,$100
+  out@nl
+
+  err
 
 }
 

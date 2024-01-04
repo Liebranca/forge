@@ -193,6 +193,12 @@ Further processing of the tree is left up to another program to carry out.
 
 # CHANGELOG
 
+### v0.00.5b
+
+- Largely untested, but working: `vhash.store` && `vhash.load` at `*::vcrypt`; so, we have effectively implemented hash tables on virtual buffers.
+
+- Small fixes to `*::vmem` copying and comparison macros.
+
 ### v0.00.4b
 
 - Initial sketching on `*::vcrypt` for implementing hash tables on virtual buffers.

@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -395,7 +395,8 @@ macro vmem.clear dst {
   match id , dst \{
 
     repeat id\#.size shr $03
-      store qword $00 at id\#.base:(%-1)*$08
+      store qword $00 at id\#.base:\
+        id\#.beg+((%-1)*$08)
 
     end repeat
 
@@ -410,7 +411,7 @@ macro vmem.clear dst {
 ; ---   *   ---   *   ---
 ; compare two buffers
 
-macro vmem.eq dst,s0,s1 {
+macro vmem.eq dst,s0,s1,len_ow= {
 
 
   local len
@@ -428,24 +429,32 @@ macro vmem.eq dst,s0,s1 {
   ; unroll srcs
   match id0 id1 , s0 s1 \{
 
-    ; skip on unequal length
-    if ~(id0\#.len = id1\#.len)
+    ; overwrite comparison length
+    len = id1\#.len
+
+    match any , len_ow \\{
+      len=len_ow
+
+    \\}
+
+    ; skip on bad length
+    if ~(id0\#.len < len)
       dst = 1
 
     ; ^else compare
     else
 
       ; walk in qword steps
-      vuint.urdivp2 len,id0\#.len,$03
+      vuint.urdivp2 len,len,$03
 
       repeat len
 
         ; ^read next chunk
-        load w0 qword \
-          from id0\#.base:(%-1)*$08
+        load w0 qword from id0\#.base:\
+          id0\#.beg+((%-1)*$08)
 
-        load w1 qword \
-          from id1\#.base:(%-1)*$08
+        load w1 qword from id1\#.base:\
+          id1\#.beg+((%-1)*$08)
 
         ; compare and go next
         dst = dst or (w0 xor w1)
