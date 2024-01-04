@@ -154,7 +154,11 @@ macro vreg.cast dst,PT {
   macro inner lis,lis_t,[item] \{
 
     forward match size tag , item \\{
+
       lis\\#tag = lis_t\\#tag
+
+      sizeof.\#lis\\#tag\\#.size=sizeof.\\#size
+
       define lis\\#tag\\#.size size
 
     \\}

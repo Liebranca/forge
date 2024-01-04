@@ -162,7 +162,7 @@ macro vhash.keycoord tab,idex,mask,kmask,bit {
 
 
   ; get mask idex
-  idex = key shr sizep2.line
+  idex = bit shr sizep2.line
 
   ; ^get *elem* idex in mask
   bit = (bit) - (idex shl sizep2.line)
