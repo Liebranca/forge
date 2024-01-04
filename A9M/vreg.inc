@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vreg
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -36,18 +36,14 @@ macro vreg.new name,nullarg& {
 
 ; ---   *   ---   *   ---
 ; ^closer
-;
-; TODO:
-;
-; * wraps for vmem.seg
 
 macro vreg.end {
 
   match name , hier.creg \{
 
     ; lis cstruc
-    macro name\#.new dst \\{
-      vreg.ice dst,name
+    macro name\#.new dst,seg= \\{
+      vreg.ice dst,name,seg
 
     \\}
 
@@ -63,8 +59,8 @@ macro vreg.end {
 
 
     ; lis dbout
-    macro name\#.prich src \\{
-      vreg.prich src
+    macro name\#.prich src,parshow=1 \\{
+      vreg.prich src,parshow
 
     \\}
 
@@ -122,30 +118,43 @@ macro vreg.lisattr type,[item] {
 }
 
 ; ---   *   ---   *   ---
-; ^make vmem with size of struc
+; make vmem with size of struc
 ; then cast vmem to struc
 
-macro vreg.ice dst,type {
+macro vreg.ice dst,type,seg= {
 
-  vmem.new dst,blk sizeof.#type
+  ; cat to existing buffer
+  ; if addr passed
+  match addr , seg \{
+    vmem.seg dst,addr,blk sizeof.#type
 
+  \}
+
+  ; ^else make new buffer
+  match , seg \{
+    vmem.new dst,blk sizeof.#type
+
+  \}
+
+
+  ; ^typecast vmem ptr
   match id , dst \{
-    vreg.cast dst,id=>type id\#.beg
+    vreg.cast dst,id type
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; virtual type-cast
+; struc typecast on virtual memory
 
-macro vreg.cast dst,PTA {
+macro vreg.cast dst,PT {
 
   ; walk fields
-  macro inner lis,lis_t,base,[item] \{
+  macro inner lis,lis_t,[item] \{
 
     forward match size tag , item \\{
-      lis\\#tag = (base+lis_t\\#tag)
+      lis\\#tag = lis_t\\#tag
       define lis\\#tag\\#.size size
 
     \\}
@@ -153,7 +162,7 @@ macro vreg.cast dst,PTA {
   \}
 
   ; ^run
-  match par ===> type addr , PTA \{
+  match par type , PT \{
 
     local fields
     vreg.get_fields fields,type
@@ -164,7 +173,7 @@ macro vreg.cast dst,PTA {
 
     ; ^make lis.[X],lis.[X].size
     match name list , uid fields \\{
-      inner name,type,addr,list
+      inner name,type,list
 
       ; save parent id and overwrite dst
       define name\\#%origin par
@@ -211,10 +220,10 @@ macro vreg.get_fields dst,type {
 ; ---   *   ---   *   ---
 ; dbout wraps
 
-macro vreg.prich src {
+macro vreg.prich src,parshow=1 {
 
   match id , src \{
-    vmem.prich id\#%origin
+    vmem.prich id\#%origin,parshow
 
   \}
 

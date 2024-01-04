@@ -193,13 +193,27 @@ Further processing of the tree is left up to another program to carry out.
 
 # CHANGELOG
 
+### v0.00.4b
+
+- Initial sketching on `*::vcrypt` for implementing hash tables on virtual buffers.
+
+- `*::vmem.bop` macro for quick implementation of operations on virtual buffers. Currently used solely for binary operators, but can be easily extended by calling the `*::vmem._gen_bop` generator macro.
+
+- `*::vmem.view` macro for taking a "slice" of a virtual buffer. This handle can then be manipulated as one would a regular `vmem ice`.
+
+### v0.00.3b
+
+- Added segments to `*::vmem`: essentially, a virtual buffer can be extended to contain another. The parent segment can write to a child, but not the other way around.
+
+- Added `*::vreg` to provide a struc-like interface to virtual buffers: strucs can be defined, instanced and their fields accessed through wrapper macros such as `get`, `set` and the like.
+
 ### v0.00.2b
 
 - Made this document ;>
 
-- Initial implementation of `A9M.vmem`; methods `new`, `clear`, `write`, `read`, `seek` and `eq`.
+- Initial implementation of `*::vmem`; methods `new`, `clear`, `write`, `read`, `seek` and `eq`.
 
-- Storing of current token inside `vmem A9M.ctoken`.
+- Storing of current token inside `vmem *.ctoken`.
 
 ### v0.00.1b
 

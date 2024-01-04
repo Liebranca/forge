@@ -13,8 +13,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' Arstd::uid
-  use '.inc' peso::seg
+  use '.inc' peso::cline
   use '.inc' A9M::vuint
 
 library.import
@@ -24,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -42,8 +41,6 @@ macro vmem.new dst,ct& {
     virtual at $00
 
       id\#.base::
-
-      id\#.off  = 0
       id\#.size = 0
 
     end virtual
@@ -67,7 +64,7 @@ macro vmem.segat dst,atid,ct& {
 
     virtual par\#.base
 
-      id\#.beg=par\#.off+par\#.size
+      id\#.beg=par\#.size
       id\#.ptr=id\#.beg
 
       ; par != id, make new base ptr
@@ -126,7 +123,7 @@ macro vmem.segat dst,atid,ct& {
 ; ---   *   ---   *   ---
 ; ^add new segment to existing
 
-macro vmem.seg par,dst,ct& {
+macro vmem.seg dst,par,ct& {
 
   ; get id
   local uid
@@ -136,6 +133,40 @@ macro vmem.seg par,dst,ct& {
   vmem.segat par,uid,ct
 
   ; ^give segptr
+  match id , uid \{
+    dst equ id
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; get handle to slice
+
+macro vmem.view dst,src,addr,len {
+
+  ; get id
+  local uid
+  uid.new uid,A9M.vmem,npglobal
+
+  ; get offset into parent
+  match par id , src uid \{
+
+    ; base is just an alias
+    id\#.base equ par\#.base
+
+    ; ^addr is all that counts ;>
+    id\#.beg = par\#.beg+addr
+    id\#.ptr = id\#.beg
+
+    ; note: no pad len on vmem view!
+    id\#.len  = len
+    id\#.size = len
+    id\#.pad  = 0
+
+  \}
+
+  ; ^give ptr
   match id , uid \{
     dst equ id
 
@@ -239,6 +270,97 @@ macro vmem.get dst,src,addr,size=byte {
 }
 
 ; ---   *   ---   *   ---
+; write contents of one
+; buffer to another
+
+macro vmem.copy dst,src {
+
+  ; varlis
+  local w0
+  w0 equ vmem.copy.w0
+
+  match A B , dst src \{
+
+    ; errchk
+    if B\#.size > A\#.size
+      out@err 'OOB vmem copy'
+
+    end if
+
+    ; walk B and set A
+    repeat B\#.size shr $03
+
+      load w0 qword from B\#.base:\
+        B\#.beg+((%-1)*8)
+
+      store qword w0 at A\#.base:\
+        A\#.beg+((%-1)*8)
+
+    end repeat
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; template for operator wraps
+
+macro vmem.bop buff,fn,src,addr,size=byte {
+
+  ; varlis
+  local dst
+  dst equ vmem.or.dst
+
+  ; ^get current value
+  vmem.get dst,buff,addr,size
+
+  ; ^run op
+  fn dst,src
+
+  ; ^overwrite
+  vmem.set buff,dst,addr,size
+
+}
+
+; ---   *   ---   *   ---
+; ^generator
+
+macro vmem._gen_bop name,ct& {
+
+  match list , ct \{
+
+    ; inner F to run from within bop
+    macro vmem.#name#_inner dst,src \\{
+      cline.filter list
+
+    \\}
+
+    ; ^the wraps themselves
+    macro vmem.#name \
+      buff,src,addr,size=byte \\{
+
+      vmem.bop buff,\
+        vmem.#name#_inner,src,addr,size
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^binary ops icebox
+
+vmem._gen_bop xor   , dst=dst xor src
+vmem._gen_bop or    , dst=dst or  src
+vmem._gen_bop and   , dst=dst and src
+
+vmem._gen_bop not   , dst=not dst
+vmem._gen_bop xnor  , dst=not (dst xor src)
+vmem._gen_bop nor   , dst=not (dst or  src)
+vmem._gen_bop nand  , dst=not (dst and src)
+
+; ---   *   ---   *   ---
 ; move ptr (absolute)
 
 macro vmem.seek dst,N {
@@ -298,9 +420,9 @@ macro vmem.eq dst,s0,s1 {
   dst = 0
 
   ; varlis
-  len  equ vmem.eq.len
-  w0   equ vmem.eq.w0
-  w1   equ vmem.eq.w1
+  len equ vmem.eq.len
+  w0  equ vmem.eq.w0
+  w1  equ vmem.eq.w1
 
 
   ; unroll srcs
@@ -413,11 +535,11 @@ macro vmem.prich src,parshow=0 {
 
 
     ; get print size
-    if parshow
+    if parshow & 1
       psize=id\#.size shr $03
 
     else
-      psize=id\#.len+id\#.pad
+      psize=(id\#.len+id\#.pad) shr $03
 
     end if
 
@@ -425,7 +547,7 @@ macro vmem.prich src,parshow=0 {
     ; show raw ct : print ct
     display $0A
 
-    repeat id\#.size shr $03
+    repeat psize
 
       load  \c qword \
         from id\#.base:((%-1)*8) \
