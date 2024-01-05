@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -175,6 +175,95 @@ macro vmem.view dst,src,addr,len {
 }
 
 ; ---   *   ---   *   ---
+; my favorite conditional
+; REALLY
+
+macro vmem.xfn len,op,args& {
+
+  if len = 1
+    op args,byte
+
+  else if len < 4
+    op args,word
+
+  else if len < 8
+    op args,dword
+
+  else
+    op args,qword
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; ^get N-sized step/mask/shift
+
+macro vmem.xstep dst,len,mode=sizeof {
+  vmem.xfn len,vmem._xstep,dst,mode
+
+}
+
+; ---   *   ---   *   ---
+; ^shorthand
+
+macro vmem._xstep dst,mode,size {
+
+  match =sizeof , mode \{
+    dst = sizeof.#size
+
+  \}
+
+  match =sizep2 , mode \{
+    dst = sizep2.#size
+
+  \}
+
+  match =sizebm , mode \{
+    dst = sizebm.#size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^N-sized ld/st
+
+macro vmem.xld dst,src,off,len {
+  vmem.xfn len,vmem._xld,dst,src,off
+
+}
+
+macro vmem.xst dst,src,off,len {
+  vmem.xfn len,vmem._xst,dst,src,off
+
+}
+
+; ---   *   ---   *   ---
+; ^shorthands
+
+macro vmem._xld dst,src,off,size {
+
+  match id , src \{
+
+    load dst size from id\#.base:\
+      id\#.beg+off*sizeof.#size
+
+  \}
+
+}
+
+macro vmem._xst dst,src,off,size {
+
+  match id , dst \{
+    store size src at id\#.base:\
+      id\#.beg+off*sizeof.#size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; errchk proto
 
 macro vmem.boundschk id,addr,size,me {
@@ -270,31 +359,56 @@ macro vmem.get dst,src,addr,size=byte {
 }
 
 ; ---   *   ---   *   ---
+; overwrite length
+
+macro vmem.proclen dst,src,ow {
+
+  dst=src
+
+  match any , ow \{
+    dst=ow
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; write contents of one
 ; buffer to another
 
-macro vmem.copy dst,src {
+macro vmem.copy dst,src,ow= {
 
   ; varlis
   local w0
-  w0 equ vmem.copy.w0
+  local len
+
+  w0  equ vmem.copy.w0
+  len equ vmem.copy.len
 
   match A B , dst src \{
 
+    ; get chunk size
+    vmem.proclen len,B\#.len,ow
+
     ; errchk
-    if B\#.size > A\#.size
+    if len > A\#.len
       out@err 'OOB vmem copy'
 
     end if
 
+
     ; walk B and set A
-    repeat B\#.size shr $03
+    local shift
+    shift equ vmem.copys.shift
 
-      load w0 qword from B\#.base:\
-        B\#.beg+((%-1)*8)
+    vmem.xstep    shift,len,sizep2
 
-      store qword w0 at A\#.base:\
-        A\#.beg+((%-1)*8)
+    vuint.urdivp2 len,len,shift
+
+
+    repeat len
+      vmem.xld w0,B,(%-1),(len shl shift)
+      vmem.xst A,w0,(%-1),(len shl shift)
 
     end repeat
 
@@ -390,13 +504,13 @@ macro vmem.rewind dst {
 ; ---   *   ---   *   ---
 ; clear buff
 
-macro vmem.clear dst {
+macro vmem.clear dst,step=qword {
 
   match id , dst \{
 
-    repeat id\#.size shr $03
-      store qword $00 at id\#.base:\
-        id\#.beg+((%-1)*$08)
+    repeat id\#.size shr sizep2.#step
+      store step $00 at id\#.base:\
+        id\#.beg+((%-1)*sizeof.#step)
 
     end repeat
 
@@ -411,7 +525,7 @@ macro vmem.clear dst {
 ; ---   *   ---   *   ---
 ; compare two buffers
 
-macro vmem.eq dst,s0,s1,len_ow= {
+macro vmem.eq dst,s0,s1,ow= {
 
 
   local len
@@ -429,13 +543,9 @@ macro vmem.eq dst,s0,s1,len_ow= {
   ; unroll srcs
   match id0 id1 , s0 s1 \{
 
-    ; overwrite comparison length
-    len = id1\#.len
-
-    match any , len_ow \\{
-      len=len_ow
-
-    \\}
+    ; get chunk size
+    local _step
+    vmem.proclen len,id1\#.size,ow
 
     ; skip on bad length
     if ~(id0\#.len < len)
@@ -444,22 +554,24 @@ macro vmem.eq dst,s0,s1,len_ow= {
     ; ^else compare
     else
 
-      ; walk in qword steps
-      vuint.urdivp2 len,len,$03
+      ; walk in N-sized steps
+      local shift
+      shift equ vmem.eq.shift
+
+      vmem.xstep    step,len,sizep2
+
+      vuint.urdivp2 len,len,shift
 
       repeat len
 
-        ; ^read next chunk
-        load w0 qword from id0\#.base:\
-          id0\#.beg+((%-1)*$08)
-
-        load w1 qword from id1\#.base:\
-          id1\#.beg+((%-1)*$08)
+        vmem.xld w0,id0,(%-1),(len shl shift)
+        vmem.xld w1,id1,(%-1),(len shl shift)
 
         ; compare and go next
         dst = dst or (w0 xor w1)
 
       end repeat
+
 
     end if
 
@@ -540,35 +652,43 @@ macro vmem.prich src,parshow=0 {
 
     display '  pad  '
     hexsay  id\#.pad,$08
-    out@nl
+    out@nl  2
 
 
     ; get print size
     if parshow & 1
-      psize=id\#.size shr $03
+      psize=id\#.size
 
     else
-      psize=(id\#.len+id\#.pad) shr $03
+      psize=(id\#.len+id\#.pad)
 
     end if
 
 
-    ; show raw ct : print ct
-    display $0A
+    ; walk in N-sized steps
+    local shift
+    local step
 
+    shift equ vmem.prich.shift
+    step  equ vmem.prich.step
+
+    vmem.xstep    shift,psize,sizep2
+    vmem.xstep    step,psize,sizeof
+
+    vuint.urdivp2 psize,psize,shift
+
+
+    ; show raw : print
     repeat psize
 
-      load  \c qword \
-        from id\#.base:((%-1)*8) \
-      + id\#.beg
+      vmem.xld \c,id,(%-1),(psize shl shift)
 
-      xesay \c,$40
+      xesay    \c,8*step
       out@nl
 
 
     end repeat
-
-    display $0A,$0A
+    out@nl 2
 
   \}
 

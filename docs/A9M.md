@@ -193,6 +193,12 @@ Further processing of the tree is left up to another program to carry out.
 
 # CHANGELOG
 
+### v0.00.6b
+
+- Automatic, variable-sized steps for the macros `copy`, `eq` and `prich` from `*::vmem`; this makes it easier to work with slices of data smaller than the base alignment of a virtual buffer.
+
+- Fixed mistakes in `*::vcrypt` that prevented hash collisions from being solved.
+
 ### v0.00.5b
 
 - Largely untested, but working: `vhash.store` && `vhash.load` at `*::vcrypt`; so, we have effectively implemented hash tables on virtual buffers.

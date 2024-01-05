@@ -22,13 +22,14 @@ library.import
 
   TITLE     A9M.vcrypt
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
-  vcrypt.SKEY_SIZE=$20
+  vcrypt.ASCII_MIN = $2020202020202020
+  vcrypt.ASCII_MAX = $7F7F7F7F7F7F7F7F
 
 ; ---   *   ---   *   ---
 ; table head struc
@@ -40,6 +41,7 @@ vreg.new vhash
 
   szmy word  cnt
   szmy word  kbits
+  szmy word  kezy
   szmy word  masksz
 
 vreg.end
@@ -47,7 +49,7 @@ vreg.end
 ; ---   *   ---   *   ---
 ; ^cstruc wraps
 
-macro vhash.new dst,type,kbits {
+macro vhash.new dst,type,kbits,kezy=$20 {
 
   ; varlis
   local ezy
@@ -83,6 +85,7 @@ macro vhash.new dst,type,kbits {
   vhash.cap.set    dst,cap
   vhash.cnt.set    dst,cnt
   vhash.kbits.set  dst,kbits
+  vhash.kezy.set   dst,kezy
   vhash.masksz.set dst,masksz
 
 
@@ -96,7 +99,7 @@ macro vhash.new dst,type,kbits {
       blk masksz*8*2
 
     vmem.seg id\#.keys,id\#%origin,\
-      blk vcrypt.SKEY_SIZE*cnt
+      blk kezy*cnt
 
   \}
 
@@ -279,13 +282,11 @@ macro vhash.get_slot elem,tab,sref,key,fn& {
   local kmask
   local idex
   local bit
-  local tmp
 
   mask  equ vhash.get_slot.mask
   kmask equ vhash.get_slot.kmask
   idex  equ vhash.get_slot.idex
   bit   equ vhash.get_slot.bit
-  tmp   equ vhash.get_slot.tmp
   spin  equ vhash.get_slot.spin
 
 
@@ -296,7 +297,7 @@ macro vhash.get_slot elem,tab,sref,key,fn& {
   elem = 1 shl bit
 
   ; slot free?
-  if ~(mask & elem)
+  if ~(mask and elem)
     vhash.throw_nokey sref
 
   end if
@@ -305,11 +306,11 @@ macro vhash.get_slot elem,tab,sref,key,fn& {
   ; ^nope, get key eq sref
   spin = 0
 
-  while (mask & elem)
+  while (mask and elem)
 
     ; skip sentinels
-    if ~(kmask & elem)
-      vhash.mask_search kmask,bit,elem,tmp
+    if ~(kmask and elem)
+      vhash.mask_search kmask,bit,elem
 
     ; ^actual elem, compare buffers
     else
@@ -373,14 +374,12 @@ macro vhash.get_free elem,tab,sref,key {
   local kmask
   local idex
   local bit
-  local tmp
   local spin
 
   mask  equ vhash.get_free.mask
   kmask equ vhash.get_free.kmask
   idex  equ vhash.get_free.idex
   bit   equ vhash.get_free.bit
-  tmp   equ vhash.get_free.tmp
   spin  equ vhash.get_free.spin
 
 
@@ -394,10 +393,10 @@ macro vhash.get_free elem,tab,sref,key {
   ; get first free or sentinel
   spin = 0
 
-  while (mask & elem)
+  while (mask and elem)
 
     ; standing on sentinel!
-    if ~(kmask & elem)
+    if ~(kmask and elem)
       break
 
 
@@ -413,8 +412,7 @@ macro vhash.get_free elem,tab,sref,key {
 
       ; ^wrong idex, R get free
       if ok = 0
-        vhash.mask_search kmask,bit,elem,tmp,not
-
+        vhash.mask_search kmask,bit,elem,not
 
       ; ^same key, overwrite
       else
@@ -454,13 +452,15 @@ macro vhash.free_slot elem,tab,sref,key {
 ; ---   *   ---   *   ---
 ; tries to find free slot
 
-macro vhash.mask_search mask,bit,elem,tmp,op= {
+macro vhash.mask_search mask,bit,elem,op= {
+
+  local tmp
+  tmp equ vhash.mask_search.tmp
+
 
   ; R search
   tmp=bsf op (mask)
 
-  hexsay tmp,$08
-  out@nl
 
   ; ^L search on fail
   if (tmp > $3F)
@@ -470,9 +470,6 @@ macro vhash.mask_search mask,bit,elem,tmp,op= {
 
   bit  = tmp
   elem = 1 shl bit
-
-  hexsay bit,$08
-  out@nl
 
 }
 
@@ -488,11 +485,20 @@ macro vhash.keycmp dst,tab,elem,bit,sref,idex {
   ; key match?
   match id , tab \{
 
+    ; get width
+    local kezy
+    kezy equ vhash.keycmp.kezy
+    vhash.kezy.get kezy,tab
+
     ; get key src at offset
     local sbuf
     vmem.view sbuf,id\#.keys,\
-      elem*vcrypt.SKEY_SIZE,\
-      vcrypt.SKEY_SIZE
+      elem*kezy,kezy
+
+vmem.prich sbuf
+vmem.prich sref
+
+display '__________________',$0A,$0A
 
     ; ^compare buffers
     vmem.eq dst,sref,sbuf
@@ -532,11 +538,15 @@ macro vhash.set_slot_meta \
         (idex+masksz)*8,qword
 
 
+      ; get src width
+      local kezy
+      kezy equ vhash.set_slot_meta
+      vhash.kezy.get kezy,tab
+
       ; ^update key src
       local sbuf
       vmem.view sbuf,id\#.keys,\
-        elem*vcrypt.SKEY_SIZE,\
-        vcrypt.SKEY_SIZE
+        elem*kezy,kezy
 
       ; ^mode switch
       local sbuf_args
@@ -645,11 +655,13 @@ macro vcrypt.xorkey dst,src,size {
   local mask
   local chunk
   local len
+  local flip
 
   ; varlis
   mask  equ vcrypt.xorkey.mask
   chunk equ vcrypt.xorkey.chunk
   len   equ vcrypt.xorkey.len
+  flip  equ vcrypt.xorkey.flip
 
   if sizeof.#size = 8
     mask=not 0
@@ -666,6 +678,8 @@ macro vcrypt.xorkey dst,src,size {
   vmem.rewind src
 
   ; walk src
+  flip=0
+
   match id , src \{
 
     ; walk in N-sized steps
@@ -673,8 +687,14 @@ macro vcrypt.xorkey dst,src,size {
 
     ; ^xor chunks together
     repeat len
+
       vmem.read chunk,src,size
-      dst = dst xor (chunk and mask)
+
+      chunk = chunk - (ASCII_MIN and sizebm.#size)
+      chunk = chunk + flip
+      flip  = flip xor ASCII_MAX
+
+      dst   = dst xor (chunk and mask)
 
     end repeat
 
