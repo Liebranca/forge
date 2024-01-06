@@ -23,8 +23,14 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
+
+; ---   *   ---   *   ---
+; GBL
+
+  define vmem.bops_list
+  define vmem.uops_list
 
 ; ---   *   ---   *   ---
 ; make new buff
@@ -419,17 +425,26 @@ macro vmem.copy dst,src,ow= {
 ; ---   *   ---   *   ---
 ; template for operator wraps
 
-macro vmem.bop buff,fn,src,addr,size=byte {
+macro vmem._op_proto buff,addr,size,fn,args& {
 
   ; varlis
   local dst
-  dst equ vmem.or.dst
+  dst equ vmem._op_proto.dst
 
   ; ^get current value
   vmem.get dst,buff,addr,size
 
   ; ^run op
-  fn dst,src
+  match any , args \{
+    fn dst,args
+
+  \}
+
+  match , args \{
+    fn dst
+
+  \}
+
 
   ; ^overwrite
   vmem.set buff,dst,addr,size
@@ -439,40 +454,79 @@ macro vmem.bop buff,fn,src,addr,size=byte {
 ; ---   *   ---   *   ---
 ; ^generator
 
-macro vmem._gen_bop name,ct& {
+macro vmem._gen_op MN,ct& {
 
-  match list , ct \{
+  match mode name list , MN ct \{
 
-    ; inner F to run from within bop
-    macro vmem.#name#_inner dst,src \\{
-      cline.filter list
+
+    ; signature for unary op
+    match =u , mode \\{
+
+      ; register F name
+      commacat vmem.uops_list,name
+
+      ; execute passed code
+      macro vmem.\#name\#.inner dst \\\{
+        cline.filter list
+
+      \\\}
+
+      ; ^wraps
+      macro vmem.\#name \
+        buff,addr,size=byte \\\{
+
+        vmem._op_proto buff,addr,size,\
+          vmem.\#name\#.inner
+
+      \\\}
 
     \\}
 
-    ; ^the wraps themselves
-    macro vmem.#name \
-      buff,src,addr,size=byte \\{
 
-      vmem.bop buff,\
-        vmem.#name#_inner,src,addr,size
+    ; ^binary
+    match =b , mode \\{
+
+      ; register F name
+      commacat vmem.bops_list,name
+
+      ; execute passed code
+      macro vmem.\#name\#.inner dst,src \\\{
+        cline.filter list
+
+      \\\}
+
+      ; ^wraps
+      macro vmem.\#name \
+        buff,src,addr,size=byte \\\{
+
+        vmem._op_proto buff,addr,size,\
+          vmem.\#name\#.inner,src
+
+      \\\}
 
     \\}
+
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^binary ops icebox
+; ^icebox
 
-vmem._gen_bop xor   , dst=dst xor src
-vmem._gen_bop or    , dst=dst or  src
-vmem._gen_bop and   , dst=dst and src
+vmem._gen_op b xor   , dst=dst xor src
+vmem._gen_op b or    , dst=dst or  src
+vmem._gen_op b and   , dst=dst and src
 
-vmem._gen_bop not   , dst=not dst
-vmem._gen_bop xnor  , dst=not (dst xor src)
-vmem._gen_bop nor   , dst=not (dst or  src)
-vmem._gen_bop nand  , dst=not (dst and src)
+vmem._gen_op u not   , dst=not dst
+vmem._gen_op b xnor  , dst=not (dst xor src)
+vmem._gen_op b nor   , dst=not (dst or  src)
+vmem._gen_op b nand  , dst=not (dst and src)
+
+vmem._gen_op b add   , dst=dst+src
+vmem._gen_op u inc   , dst=dst+1
+vmem._gen_op b sub   , dst=dst-src
+vmem._gen_op u dec   , dst=dst-1
 
 ; ---   *   ---   *   ---
 ; move ptr (absolute)

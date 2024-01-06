@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vreg
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -97,6 +97,34 @@ macro vreg.get dst,src,field {
 }
 
 ; ---   *   ---   *   ---
+; ^run unary op on attr
+
+macro vreg.uop dst,op,field {
+
+  match id , dst \{
+
+    vmem.#op id\#%origin,\
+      id\#field,id\#field#.size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^binary
+
+macro vreg.bop dst,src,op,field {
+
+  match id , dst \{
+
+    vmem.#op id\#%origin,src,\
+      id\#field,id\#field#.size
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; ^canefield
 
 macro vreg.lisattr type,[item] {
@@ -112,6 +140,45 @@ macro vreg.lisattr type,[item] {
       vreg.get dst,src,tag
 
     \\}
+
+    vreg.lisops type,size,tag
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^aliases binary/unary ops
+
+macro vreg.lisops type,size,tag {
+
+  ; ^unary sig
+  macro u_inner [op] \{
+
+    forward macro type#tag#.\#op dst \\{
+      vreg.uop dst,op,tag
+
+    \\}
+  \}
+
+  match list , vmem.uops_list \{
+    u_inner list
+
+  \}
+
+
+  ; ^binary sig
+  macro b_inner [op] \{
+
+    forward macro type#tag#.\#op dst,src \\{
+      vreg.bop dst,src,op,tag
+
+    \\}
+
+  \}
+
+  match list , vmem.bops_list \{
+    b_inner list
 
   \}
 
@@ -181,6 +248,7 @@ macro vreg.cast dst,PT {
 
       ; save parent id and overwrite dst
       define name\\#%origin par
+      define name\\#%type   type
       dst equ name
 
     \\}
