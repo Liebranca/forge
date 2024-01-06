@@ -10,19 +10,11 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-library ARPATH '/forge/'
-  use '.inc' A9M::vreg
-
-library.import
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.vcrypt
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -34,91 +26,62 @@ library.import
 ; ---   *   ---   *   ---
 ; get chunk-sized hash
 
-macro vcrypt.xorkey dst,src,size {
-
-  local mask
-  local chunk
-  local len
-  local flip
-
-  ; varlis
-  mask  equ vcrypt.xorkey.mask
-  chunk equ vcrypt.xorkey.chunk
-  len   equ vcrypt.xorkey.len
-  flip  equ vcrypt.xorkey.flip
-
-  if sizeof.#size = 8
-    mask=not 0
-
-  else
-    mask=(1 shl (sizeof.#size*8))-1
-
-  end if
-
-  dst   = 0
-
-
-  ; reset ptr
-  vmem.rewind src
-
-  ; walk src
-  flip=0
+macro vcrypt.xorkey src,size {
 
   match id , src \{
 
+    ; clear
+    $xor ar,ar
+    $xor br,br
+
     ; walk in N-sized steps
-    vuint.urdivp2 len,id\#.len,sizep2.#size
+    $urdivp2 cr,id\#.len,sizep2.#size
+    $repeat  cr,sizeof.#size
 
-    ; ^xor chunks together
-    repeat len
+      ; get next chunk
+      $mov dr,size [src+cr]
 
-      vmem.read chunk,src,size
+      ; ^add encoding offset
+      $sub dr,vcrypt.ASCII_MIN and sizebm.#size
+      $add dr,br
 
-      chunk = chunk - (ASCII_MIN and sizebm.#size)
-      chunk = chunk + (flip and sizebm.#size)
-      flip  = flip xor ASCII_MAX
+      $xor br,vcrypt.ASCII_MAX and sizebm.#size
 
-      dst   = dst xor (chunk and mask)
+      ; ^xor to accum
+      $xor ar,dr
+      $and ar,sizebm.#size
 
     end repeat
 
   \}
-
-  ; ^re-reset
-  vmem.rewind src
 
 }
 
 ; ---   *   ---   *   ---
 ; ^clamp to N-bits
 
-macro vcrypt.rotcap dst,bits {
+macro vcrypt.rotcap bits {
 
-  local mask
-  local imask
-  local tmp
+  ; get mask,imask
+  $mov br,(1 shl bits)-1
+  $mov cr,br
+  $not cr
 
-  ; varlis
-  mask  equ vcrypt.rotcap.mask
-  imask equ vcrypt.rotcap.imask
-  tmp   equ vcrypt.rotcap.tmp
-
-  mask  = (1 shl bits)-1
-  imask = not mask
-
-  ; ^collapse
+  ; iter
   while 1
 
-    tmp = dst
-    dst = dst and mask
-    tmp = (tmp and imask) shr bits
-    dst = dst xor tmp
+    $mov dr,ar
 
-    if dst <= mask
-      break
+    ; get [low,high]
+    $and ar,br
+    $and dr,cr
 
-    end if
+    ; ^shift high to low
+    $shr dr,bits
+    $xor ar,dr
 
+    ; ^stop when value fits in N-bits
+    $break on ar <= br
 
   end while
 
@@ -127,9 +90,9 @@ macro vcrypt.rotcap dst,bits {
 ; ---   *   ---   *   ---
 ; ^wraps
 
-macro vcrypt.hash dst,src,chunk,bits {
-  vcrypt.xorkey dst,src,chunk
-  vcrypt.rotcap dst,bits
+macro vcrypt.hash src,chunk,bits {
+  vcrypt.xorkey src,chunk
+  vcrypt.rotcap bits
 
 }
 

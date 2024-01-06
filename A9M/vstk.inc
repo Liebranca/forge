@@ -14,7 +14,7 @@
 
   TITLE     A9M.vstk
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

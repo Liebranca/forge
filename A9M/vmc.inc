@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -346,6 +346,79 @@ macro $mov dst,src {
 }
 
 ; ---   *   ---   *   ---
+; rounded-up division by
+; a power of 2
+
+macro $urdivp2 dst,src,N {
+
+  vmc.decode vmc._tmp_0,src,read
+  vmc.decode vmc._tmp_1,N,read
+
+  vuint.urdivp2 vmc._tmp_0,\
+    vmc._tmp_0,vmc._tmp_1
+
+  vmc.decode vmc._tmp_0,dst,write
+
+}
+
+; ---   *   ---   *   ---
+; kind of a for!
+
+macro $repeat src,step= {
+
+  vmc.decode vmc._tmp_0,src,read
+  repeat vmc._tmp_0
+
+  match any , step \{$mov src,(%-1)*step\}
+
+}
+
+; ---   *   ---   *   ---
+; stop!
+
+macro $break EXPR {
+
+  local ok
+  ok equ 0
+
+  match =on A op? B? , EXPR \{
+
+    local op
+    local B
+
+    op equ op?
+    B  equ B?
+
+    match == any , B? \\{
+      op equ op =
+      B  equ any
+
+    \\}
+
+
+    match X Y , A B \\{
+      vmc.decode vmc._tmp_0,X,read
+      vmc.decode vmc._tmp_1,Y,read
+
+    \\}
+
+
+    if vmc._tmp_0 op vmc._tmp_1
+      break
+
+    end if
+    ok equ 1
+
+  \}
+
+  match =0 , ok \{
+    break
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; operator icef*ck
 
 macro vmc._gen_op type,[name] {
@@ -354,8 +427,9 @@ macro vmc._gen_op type,[name] {
 
     ; unary
     match =u , type \{
+
       macro $\#name dst \\{
-        vmc.decode _,dst,type#op name
+        vmc.decode vmc._tmp_0,dst,type#op name
 
       \\}
 
@@ -366,12 +440,8 @@ macro vmc._gen_op type,[name] {
     match =b , type \{
 
       macro $\#name dst,src \\{
-
-        local value
-        value equ vmc._tmp_0
-
-        vmc.decode value,src,read
-        vmc.decode value,dst,type#op name
+        vmc.decode vmc._tmp_0,src,read
+        vmc.decode vmc._tmp_0,dst,type#op name
 
       \\}
 
@@ -391,6 +461,12 @@ match __list , vmem.bops_list {
   vmc._gen_op b,__list
 
 }
+
+;macro $_inc dst {
+;  display 'FUK',$0A
+;  err
+;
+;}
 
 ; ---   *   ---   *   ---
 ; nit the stack!
