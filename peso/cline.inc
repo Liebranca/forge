@@ -22,7 +22,7 @@ library.import
 
   TITLE     peso.cline
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -181,7 +181,21 @@ macro cline.filter [item] {
     \}
 
   ; ^paste
-  common line
+  common
+
+    local ok
+    ok equ 0
+
+    match cmd args , line \{
+      cmd args
+      ok equ 1
+
+    \}
+
+    match =0 , ok \{
+      cmd
+
+    \}
 
 }
 

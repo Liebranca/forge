@@ -90,6 +90,9 @@ macro ANIMA.prich {
 
   ; ^for use by decoder
   vmc._tmp_4=0
+  vmc._tmp_5=0
+  vmc._tmp_6=0
+  vmc._tmp_7=0
 
 ; ---   *   ---   *   ---
 ; determine type of operand
@@ -190,7 +193,7 @@ macro vmc.decode.struc ok,A,B,mode {
 macro vmc.decode.mem ok,A,B,mode {
 
   match =0 =[ id =] , ok B \{
-    vmc.decode.mem.inner A,mode,qword,id
+    vmc.decode.mem.inner A,mode,word,id
     ok equ 1
 
   \}
@@ -343,7 +346,7 @@ macro $mov dst,src {
 }
 
 ; ---   *   ---   *   ---
-; generirc operator "factory"
+; operator icef*ck
 
 macro vmc._gen_op type,[name] {
 
@@ -399,7 +402,16 @@ library.import
 
 
 define   vmc.STK
-define   vmc.STK.frame_sz
+
+define   vmc.STK.args
+
+define   vmc.STK.frame_sz      0
+define   vmc.STK.frame_sz.back 0
+
+define   vmc.STK.frame_vars
+define   vmc.STK.frame_vars.back
+
+define   vmc.STK.frame_set
 
 vmem.new vmc.STK,blk A9M.STACK_SZ
 
