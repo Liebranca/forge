@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -81,6 +81,8 @@ macro ANIMA.prich {
 
   define    vmc.REG
   ANIMA.new vmc.REG
+
+  define    vmc.ARGV
 
   ; for use by instructions
   vmc._tmp_0=0
@@ -167,8 +169,49 @@ macro vmc.decode.reg.inner A,B,mode {
 macro vmc.decode.ptr ok,A,B,mode {
 
   match =0 =ptr id , ok B \{
-    A  equ id
+    vmc.decode.ptr.inner A,id,mode
     ok equ 1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^yes
+
+macro vmc.decode.ptr.inner A,id,mode {
+
+  ; is id a named ptr? (fake regs ;>)
+  local ok
+  tokin ok,id,ice,ctx
+
+  match =1 , ok \{
+
+    match =read , mode \\{
+      A equ vmc.REG.#id
+
+    \\}
+
+    match =write , mode \\{
+      vmc.REG.#id equ A
+
+    \\}
+
+  \}
+
+
+  ; ^nope, regular id
+  match =0 , ok \{
+
+    match =read , mode \\{
+      A equ id
+
+    \\}
+
+    match =write , mode \\{
+      id equ A
+
+    \\}
 
   \}
 
@@ -178,6 +221,16 @@ macro vmc.decode.ptr ok,A,B,mode {
 ; is src a pointer to struc?
 
 macro vmc.decode.struc ok,A,B,mode {
+
+  match =0 =% =ice , ok B \{
+
+    match id , vmc.REG.ice \\{
+      A  equ id\%origin
+      ok equ 1
+
+    \\}
+
+  \}
 
   match =0 =% id , ok B \{
     A  equ id\%origin
@@ -290,12 +343,7 @@ macro vmc.decode.mem.inner_off_0 N,op {
 macro vmc.decode.attr ok,A,B,mode {
 
   match =0 =% =[ id tag =] , ok B \{
-
-    match type , id\#%type \\{
-      vmc.decode.attr.inner A,mode,id,type,tag
-
-    \\}
-
+    vmc.decode.attr.inner A,mode,id,tag
     ok equ 1
 
   \}
@@ -305,15 +353,37 @@ macro vmc.decode.attr ok,A,B,mode {
 ; ---   *   ---   *   ---
 ; ^yes
 
-macro vmc.decode.attr.inner A,mode,id,type,tag {
+macro vmc.decode.attr.inner A,mode,id,tag {
 
-  match =read , mode \{
-    type#.\#tag\#.get A,id
+  local lis
+  lis equ id
+
+  ; is id a named ptr? (fake regs ;>)
+  local ok
+  tokin ok,id,ice,ctx
+
+  match =1 , ok \{
+    lis equ vmc.REG.#id
 
   \}
 
-  match =write , mode \{
-    type#.\#tag\#.set id,A
+
+  ; deref by macro!
+  match btr , lis \{
+
+    match type , btr\#%type \\{
+
+      match =read , mode \\\{
+        type\\#.#tag#.get A,btr
+
+      \\\}
+
+      match =write , mode \\\{
+        type\\#.#tag#.set btr,A
+
+      \\\}
+
+    \\}
 
   \}
 
@@ -346,6 +416,70 @@ macro $mov dst,src {
 }
 
 ; ---   *   ---   *   ---
+; cats to argv
+; used by call!
+
+macro $pass [item] {
+
+  forward
+
+    local    X
+    vmc.bget X,item
+
+    commacat vmc.ARGV,X
+
+}
+
+; ---   *   ---   *   ---
+; ^here we go...
+
+macro $call fn {
+
+  local ok
+  ok equ 0
+
+  ; setup the F "addresses" ;>
+  vmc.REG.xp equ vmc.REG.xs
+  vmc.REG.xs equ fn
+
+
+  ; have args, pass and clear
+  match list , vmc.ARGV \{
+
+    fn list
+    ok equ 1
+
+    vmc.ARGV equ
+
+  \}
+
+  ; argless
+  match =0 , ok \{fn\}
+
+
+  ; remember who you are, simba!
+  restore vmc.REG.xs
+  restore vmc.REG.xp
+
+}
+
+; ---   *   ---   *   ---
+; when you want to decode a
+; value for a call
+
+macro vmc.bget dst,src {
+
+  local value
+
+  match id , value \{
+    vmc.decode id,src,read
+    dst equ id
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; rounded-up division by
 ; a power of 2
 
@@ -374,14 +508,23 @@ macro $repeat src,step= {
 }
 
 ; ---   *   ---   *   ---
-; stop!
+; breaks down simple expressions
 
-macro $break EXPR {
+macro vmc.decode.logical dst,EXPR {
 
-  local ok
-  ok equ 0
+  local prefix
+  local expr
 
-  match =on A op? B? , EXPR \{
+  prefix equ
+  expr   equ EXPR
+
+  match =~ =( inner =) , expr \{
+    prefix equ ~
+    expr   equ inner
+
+  \}
+
+  match A op? B? , expr \{
 
     local op
     local B
@@ -395,15 +538,69 @@ macro $break EXPR {
 
     \\}
 
+    dst equ A,op,B
 
-    match X Y , A B \\{
-      vmc.decode vmc._tmp_0,X,read
-      vmc.decode vmc._tmp_1,Y,read
+  \}
 
-    \\}
+  dst equ prefix (dst)
 
+}
 
-    if vmc._tmp_0 op vmc._tmp_1
+; ---   *   ---   *   ---
+; ^shorthand
+
+macro $logic fn,EXPR {
+
+  local vars
+  vmc.decode.logical vars,EXPR
+
+  match prefix =( X =, op =, Y =) , vars \{
+    fn prefix,X,op,Y
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; kind of an if ;>
+
+macro $on EXPR,mode=if {
+
+  ; do on [EXPR]
+  macro inner pre,X,op,Y \{
+
+    vmc.decode vmc._tmp_0,X,read
+    vmc.decode vmc._tmp_1,Y,read
+
+    mode prefix (vmc._tmp_0 op vmc._tmp_1)
+
+  \}
+
+  ; ^run
+  $logic inner,EXPR
+
+}
+
+; ---   *   ---   *   ---
+; ^repeated!
+
+macro $while EXPR {
+  $on EXPR,while
+
+}
+
+; ---   *   ---   *   ---
+; stop!
+
+macro $break EXPR {
+
+  local ok
+  ok equ 0
+
+  ; conditional break
+  match =on expr , EXPR \{
+
+    $on EXPR
       break
 
     end if
@@ -411,6 +608,7 @@ macro $break EXPR {
 
   \}
 
+  ; ^no condition
   match =0 , ok \{
     break
 
@@ -461,12 +659,6 @@ match __list , vmem.bops_list {
   vmc._gen_op b,__list
 
 }
-
-;macro $_inc dst {
-;  display 'FUK',$0A
-;  err
-;
-;}
 
 ; ---   *   ---   *   ---
 ; nit the stack!

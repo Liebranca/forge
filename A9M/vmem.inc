@@ -743,12 +743,17 @@ vmem._gen_op b xnor  , dst=not (dst xor src)
 vmem._gen_op b nor   , dst=not (dst or  src)
 vmem._gen_op b nand  , dst=not (dst and src)
 
+vmem._gen_op b shr   , dst=dst shr src
+vmem._gen_op b shl   , dst=dst shl src
+
+vmem._gen_op b bsf   , dst=bsf src
+vmem._gen_op b bsr   , dst=bsr src
+
 vmem._gen_op b add   , dst=dst+src
 vmem._gen_op u inc   , dst=dst+1
 vmem._gen_op b sub   , dst=dst-src
 vmem._gen_op u dec   , dst=dst-1
 
-vmem._gen_op b shr   , dst=dst shr src
-vmem._gen_op b shl   , dst=dst shl src
+vmem._gen_op b mul   , dst=dst * src
 
 ; ---   *   ---   *   ---

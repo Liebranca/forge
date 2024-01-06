@@ -90,7 +90,7 @@ macro vcrypt.rotcap bits {
 ; ---   *   ---   *   ---
 ; ^wraps
 
-macro vcrypt.hash src,chunk,bits {
+macro vcrypt.hash src,chunk {
   vcrypt.xorkey src,chunk
   vcrypt.rotcap bits
 

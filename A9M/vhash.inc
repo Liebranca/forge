@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vhash
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -39,6 +39,9 @@ vreg.new vhash
   szmy word  kezy
   szmy word  masksz
 
+  szmy qword c_mask
+  szmy qword c_kmask
+
 vreg.end
 
 ; ---   *   ---   *   ---
@@ -46,55 +49,52 @@ vreg.end
 
 macro vhash.new dst,type,kbits,kezy=$20 {
 
-  ; varlis
-  local ezy
-  local cnt
-  local cap
-  local masksz
+  ; cr => cnt == capacity in N of elems
+  ; dr => ezy == bytesize per key
+  $mov cr,1 shl kbits
+  $mov dr,sizeof.#type
 
-  ezy    equ vhash.new.ezy
-  cnt    equ vhash.new.cnt
-  cap    equ vhash.new.cap
-  masksz equ vhash.new.masksz
+  ; er => cap == capacity in bytes
+  $mov er,cr
+  $mul er,dr
 
-
-  ; ezy == bytesize per key
-  ; cnt == capacity in N of elems
-  ; cap == capacity in bytes
-  cnt = (1 shl kbits)
-  ezy = sizeof.#type
-  cap = ezy*cnt
-
-  ; masksz is number of qwords used
+  ; br => masksz
+  ;
+  ; that's number of qwords used
   ; to detect occupied slots
   ;
   ; so cnt/64 rounded up
-  vuint.urdivp2 masksz,cnt,sizep2.line
+  $urdivp2 br,cr,sizep2.line
 
 
   ; make ice
   vhash.new dst
 
   ; ^save attrs
-  vhash.ezy.set    dst,ezy
-  vhash.cap.set    dst,cap
-  vhash.cnt.set    dst,cnt
-  vhash.kbits.set  dst,kbits
-  vhash.kezy.set   dst,kezy
-  vhash.masksz.set dst,masksz
+  $mov %[dst cnt],cr
+  $mov %[dst ezy],dr
+  $mov %[dst cap],er
+  $mov %[dst \kbits],kbits
+  $mov %[dst \kezy],kezy
+  $mov %[dst masksz],br
 
 
   ; decl storage buffs
   match id , dst \{
 
+    local tmp
+
+    vmc.bget tmp,%[dst cap]
     vmem.seg id\#.values,id\#%origin,\
-      blk cap
+      blk tmp
 
+    vmc.bget tmp,%[dst masksz]
     vmem.seg id\#.mask,id\#%origin,\
-      blk masksz*8*2
+      blk tmp*8*2
 
+    vmc.bget tmp,%[dst cnt]
     vmem.seg id\#.keys,id\#%origin,\
-      blk kezy*cnt
+      blk kezy*tmp
 
   \}
 
@@ -105,23 +105,11 @@ macro vhash.new dst,type,kbits,kezy=$20 {
 
 macro vhash.store tab,IV,chunk=qword {
 
-  ; varlis
-  local key
-  local kbits
-  local addr
-
-  key   equ vhash.store.key
-  kbits equ vhash.store.kbits
-  addr  equ vhash.store.addr
-
-  ; get key size
-  vhash.kbits.get kbits,tab
-
   ; ^get key
   match idex ===> value , IV \{
 
 
-    ; is idex a buffer?
+    ; is key a buffer?
     local sref
     vhash.unpack_key_src sref,idex
 
@@ -130,12 +118,15 @@ macro vhash.store tab,IV,chunk=qword {
     vhash.unpack_value vref,value
 
 
-    ; idex into hash
-    vcrypt.hash key,sref,chunk,kbits
+    ; key to idex
+    $mov  ar,%[tab kbits]
+    $pass ptr sref,ptr chunk,ar
+
+    $call vcrypt.hash
 
     ; ^write at idex
-    vhash.get_free addr,tab,sref,key
-    vhash.set_slot_value tab,vref,addr
+    vhash.get_free       tab,sref
+    vhash.set_slot_value tab,vref
 
   \}
 
@@ -236,27 +227,36 @@ macro vhash.unpack_value dst,value {
 ; ---   *   ---   *   ---
 ; map key to bitmask coords
 
-macro vhash.keycoord tab,idex,mask,kmask,bit {
-
-  ; varlis
-  local masksz
-  masksz equ vhash.keycoord.masksz
+macro vhash.keycoord {
 
   ; get kmask offset
-  vhash.masksz.get masksz,tab
+  $mov br,%[ice masksz]
+
+  ; map key to mask idex (key/64)
+  $mov cr,ar
+  $shr cr,sizep2.line
+  $mov %[ctx idex],cr
+
+  ; map key to mask *bit* idex
+  $mov dr,cr
+  $shl dr,sizep2.line
+  $mov er,ar
+  $sub er,dr
+  $mov %[ctx bit],er
+
+  ; get mask *elem* bit
+  $mov dr,1
+  $shl dr,er
+  $mov %[ctx elem],dr
 
 
-  ; get mask idex
-  idex = bit shr sizep2.line
-
-  ; ^get *elem* idex in mask
-  bit = (bit) - (idex shl sizep2.line)
-
-
-  ; ^get value of mask@idex
+  ; get mask
   match id , tab \{
-    vmem.get mask,id\#.mask,idex*8,qword
-    vmem.get kmask,id\#.mask,(idex+masksz)*8,qword
+
+    $mov %[ctx mask],qword [id\#.mask+cr*8]
+
+    $add cr,br
+    $mov %[ctx kmask],qword [id\#.mask+cr*8]
 
   \}
 
@@ -265,73 +265,44 @@ macro vhash.keycoord tab,idex,mask,kmask,bit {
 ; ---   *   ---   *   ---
 ; get *occupied* slot
 ; used to fetch elem
-;
-; TODO:
-;
-; * catch unsolvable
 
-macro vhash.get_slot elem,tab,sref,key,fn& {
-
-  ; varlis
-  local mask
-  local kmask
-  local idex
-  local bit
-
-  mask  equ vhash.get_slot.mask
-  kmask equ vhash.get_slot.kmask
-  idex  equ vhash.get_slot.idex
-  bit   equ vhash.get_slot.bit
-  spin  equ vhash.get_slot.spin
-
+macro vhash.get_slot sref,fn& {
 
   ; map key to bitmask array
-  bit = key
-  vhash.keycoord tab,idex,mask,kmask,bit
-
-  elem = 1 shl bit
+  vhash.keycoord
 
   ; slot free?
-  if ~(mask and elem)
+  $on ~(%[ctx mask] and %[ctx elem])
     vhash.throw_nokey sref
 
   end if
 
 
   ; ^nope, get key eq sref
-  spin = 0
-
-  while (mask and elem)
+  $xor   cr,cr
+  $while %[ctx mask] and %[ctx elem]
 
     ; skip sentinels
-    if ~(kmask and elem)
-      vhash.mask_search kmask,bit,elem
+    $on ~(%[ctx kmask] and %[ctx elem])
+      $pass %[ctx mask]
+      $call vhash.mask_search
 
     ; ^actual elem, compare buffers
     else
 
-      ; varlis for bool
-      local ok
-      ok equ vhash.get_slot.ok
+      vhash.keycmp sref
 
-      ; ^compare
-      vhash.keycmp ok,tab,elem,bit,sref,idex
-
-
-      ; ^break if so
-      if ok = 1
-        break
-
-      end if
+      ; ^stop if same
+      $break on ar = 1
 
 
     end if
 
 
     ; lazy out!
-    spin=spin+1
+    $inc cr
 
-    if spin > 8
+    $on cr > 8
       vhash.throw_unsolvable sref
 
     end if
@@ -357,10 +328,6 @@ macro vhash.get_slot elem,tab,sref,key,fn& {
 ; ---   *   ---   *   ---
 ; get *free* slot
 ; used to insert new elem
-;
-; TODO:
-;
-; * catch unsolvable
 
 macro vhash.get_free elem,tab,sref,key {
 
@@ -447,24 +414,27 @@ macro vhash.free_slot elem,tab,sref,key {
 ; ---   *   ---   *   ---
 ; tries to find free slot
 
-macro vhash.mask_search mask,bit,elem,op= {
-
-  local tmp
-  tmp equ vhash.mask_search.tmp
-
+macro vhash.mask_search mask {
 
   ; R search
-  tmp=bsf op (mask)
-
+  $bsf ar,mask
 
   ; ^L search on fail
-  if (tmp > $3F)
-    tmp=bit + bsf op (mask shr bit)
+  $on ar > $3F
+    $mov ar,mask
+    $mov br,%[ctx bit]
+    $shr mask,br
+    $bsf ar,mask
 
   end if
 
-  bit  = tmp
-  elem = 1 shl bit
+
+  ; ^recalc element pos
+  $mov %[ctx bit],ar
+
+  $mov br,1
+  $shl br,ar
+  $mov %[ctx elem],br
 
 }
 
@@ -472,18 +442,18 @@ macro vhash.mask_search mask,bit,elem,op= {
 ; compare current key to
 ; pointed one
 
-macro vhash.keycmp dst,tab,elem,bit,sref,idex {
+macro vhash.keycmp sref {
 
   ; get *elem* idex
-  elem = bit + (idex shl sizep2.line)
+  $mov ar,%[ctx idex]
+  $shl ar,sizep2.line
+  $add ar,%[ctx bit]
+
+  ; get width
+  $mov $br,%[ice kezy]
 
   ; key match?
   match id , tab \{
-
-    ; get width
-    local kezy
-    kezy equ vhash.keycmp.kezy
-    vhash.kezy.get kezy,tab
 
     ; get key src at offset
     local sbuf
