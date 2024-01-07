@@ -1,15 +1,17 @@
-$
+%lps
 
-map
-\-->{
-.  \-->nested
-.  \-->A,B
-.  \-->{
-.  .  \-->dnested
-.  .
-.  \-->}
-.  
-.
-\-->}
-\-->ar
+nocase
+\-->[keyw]
+
+type
+\-->hier
+
+lvl
+\-->0
+
+repl
+\-->0
+
+specfam
+\-->0
 

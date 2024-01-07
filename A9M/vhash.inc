@@ -58,12 +58,12 @@ vreg.end
 ; ---   *   ---   *   ---
 ; ^cstruc wraps
 
-macro vhash.new dst,type,kbits,kezy=$20 {
+macro vhash.new dst,ezy,kbits,kezy=$20 {
 
   ; cr => cnt == capacity in N of elems
   ; dr => ezy == bytesize per key
   $mov cr,1 shl kbits
-  $mov dr,sizeof.#type
+  $mov dr,ezy
 
   ; er => cap == capacity in bytes
   $mov er,cr

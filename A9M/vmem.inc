@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.8b
+  VERSION   v0.01.0b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -270,6 +270,57 @@ macro vmem._xst dst,src,off,size {
 }
 
 ; ---   *   ---   *   ---
+; iter through buff in
+; progressively smaller
+; steps, as required
+
+macro vmem.walk size,fn,args& {
+
+  ; varlis
+  local shift
+  local len
+  local have
+  local step
+  local i
+
+  shift equ vmem.walk.shift
+  len   equ vmem.walk.len
+  have  equ vmem.walk.have
+  step  equ vmem.walk.step
+  i     equ vmem.walk.i
+
+  ; save total
+  have = size
+  i    = 0
+
+  ; ^iter
+  while have
+
+    vmem.xstep shift,have,sizep2
+
+    len  = have shr shift
+    step = 1 shl shift
+    i    = i shr shift
+
+    repeat len
+
+      match list , args \{
+        fn list,i,i,step
+
+      \}
+
+      i = i+1
+
+    end repeat
+
+    i    = i shl shift
+    have = have - (len shl shift)
+
+  end while
+
+}
+
+; ---   *   ---   *   ---
 ; errchk proto
 
 macro vmem.boundschk id,addr,size,me {
@@ -282,36 +333,65 @@ macro vmem.boundschk id,addr,size,me {
 }
 
 ; ---   *   ---   *   ---
+; adjust meta on write
+
+macro vmem.advptr id,step {
+
+  id#.ptr=id#.ptr+step
+
+  if id#.ptr > id#.len
+    id#.len = id#.ptr
+    id#.pad = id#.size-id#.ptr
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; write step from src to dst
+
+macro vmem.BTOA dst,src,i0,i1,step,have {
+
+  local w0
+  w0 equ vmem.BTOA.w0
+
+  vmem.xld w0,src,i1,step
+  vmem.xst dst,w0,i0,step
+
+}
+
+; ---   *   ---   *   ---
+; ^write and move dst ptr
+
+macro vmem.BTOAPTR dst,src,base,i0,i1,step {
+  vmem.BTOA   dst,src,base+i0,i1,step
+  vmem.advptr dst,step
+
+}
+
+; ---   *   ---   *   ---
 ; set value at ptr
 
-macro vmem.write dst,src,size=byte {
+macro vmem.store dst,src,size=byte {
 
   match id , dst \{
 
     vmem.boundschk id,id\#.ptr,size,\
-      "write past end of vmem"
+      "store past end of vmem"
 
 
     ; set and move ptr
     store size src at id\#.base:\
       id\#.beg+id\#.ptr
 
-    id\#.ptr=id\#.ptr+sizeof.#size
-
-
-    ; ^adjust meta
-    if id\#.ptr > id\#.len
-      id\#.len = id\#.ptr
-      id\#.pad = id\#.size-id\#.ptr
-
-    end if
+    vmem.advptr id,sizeof.#size
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^arbitrary set
+; ^arbitrary offset
 
 macro vmem.set dst,src,addr,size=byte {
 
@@ -328,14 +408,14 @@ macro vmem.set dst,src,addr,size=byte {
 }
 
 ; ---   *   ---   *   ---
-; ^get
+; get value at ptr
 
-macro vmem.read dst,src,size=byte {
+macro vmem.load dst,src,size=byte {
 
   match id , src \{
 
     vmem.boundschk id,id\#.ptr,size,\
-      "read past end of vmem"
+      "load past end of vmem"
 
     ; get and move ptr
     load dst size from id\#.base:\
@@ -348,7 +428,7 @@ macro vmem.read dst,src,size=byte {
 }
 
 ; ---   *   ---   *   ---
-; ^arbitrary
+; ^arbitrary offset
 
 macro vmem.get dst,src,addr,size=byte {
 
@@ -359,6 +439,42 @@ macro vmem.get dst,src,addr,size=byte {
 
     load dst size from id\#.base:\
       id\#.beg+addr
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; boundless write at ptr,
+; will extend dst if too small
+
+macro vmem.cat A,B,off {
+
+  match dst src , A B \{
+
+    ; resize dst?
+    if dst\#.size < (dst\#.ptr+src\#.len)
+
+      local nchunk
+      local diff
+
+      diff equ vmem.cat.diff
+      diff = (dst\#.ptr+src\#.len) - dst\#.size
+
+      vmem.seg nchunk,dst,blk diff
+
+    end if
+
+
+    ; get base offset
+    local base
+
+    base equ vmem.cat.base
+    base = dst\#.ptr
+
+    ; ^write src to dst ptr
+    vmem.walk src\#.len,\
+      vmem.BTOAPTR,dst,src,base
 
   \}
 
@@ -408,13 +524,12 @@ macro vmem.copy dst,src,ow= {
     shift equ vmem.copy.shift
 
     vmem.xstep    shift,len,sizep2
-
     vuint.urdivp2 len,len,shift
 
 
     repeat len
-      vmem.xld w0,B,(%-1),(len shl shift)
-      vmem.xst A,w0,(%-1),(len shl shift)
+      vmem.xld w0,B,(%-1),((len-(%-1)) shl shift)
+      vmem.xst A,w0,(%-1),((len-(%-1)) shl shift)
 
     end repeat
 
@@ -608,6 +723,10 @@ macro vmem.prich src,parshow=0 {
 
     display '  pad  '
     hexsay  id\#.pad,$08
+    out@nl
+
+    display '  ptr  '
+    hexsay  id\#.ptr,$08
     out@nl  2
 
 

@@ -15,7 +15,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' A9M::vmem
+  use '.inc' A9M::vhash
 
 library.import
 
@@ -24,7 +24,7 @@ library.import
 
   TITLE     A9M
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,34 +32,47 @@ library.import
 
   IO.CTAGIT A9MTAG,'35;1','A9M'
 
-  A9M.debug = 1
 
+  ; for use by L0 rd
   A9M.scap  = 0
   A9M.join  = 0
   A9M.term  = 0
   A9M.delim = 0
 
+  ; ^nesting logic within
   A9M.nest_curly  = 0
   A9M.nest_parens = 0
   A9M.nest_brak   = 0
 
-  define A9M.ctoken
+  ; makes L1
+  define   A9M.ctoken
   vmem.new A9M.ctoken,blk $40
+
+  ; ^makes L2
+  define   A9M.cexpr
+  vmem.new A9M.cexpr,blk $40
+
+  ; ^counts L2
+  A9M.exprcnt = 0
+
+  ; ^name of interpreter
+  define A9M.ipret
+
+
+  ; for use by all ;>
+  A9M.debug = 1
 
 ; ---   *   ---   *   ---
 ; terminate current token
 
 macro A9M.ctoken.end {
 
-  match id , A9M.ctoken \{
+  match token expr , A9M.ctoken A9M.cexpr \{
 
-    if id\#.ptr
-
-      display $0A,$0A,'A9M.ctoken END',$0A
-      vmem.prich A9M.ctoken
-
-      ; [INSERT STRCMP]
-      vmem.clear A9M.ctoken
+    ; have chars to push?
+    if token\#.ptr
+      vmem.blwrite expr,token
+      vmem.clear   A9M.ctoken
 
     end if
 
@@ -255,14 +268,18 @@ macro A9M.rd {
 
 macro A9M.logic.ws {
 
+  match id , A9M.ctoken \{
+
+    if (id\#.ptr) &~ A9M.chk.ws
+      A9M.write $0A
+      A9M.write.nest_branch
+
+    end if
+
+  \}
+
   A9M.ctoken.end
   A9M.scap=0
-
-  if ~ A9M.chk.ws
-    A9M.write $0A
-    A9M.write.nest_branch
-
-  end if
 
 }
 
@@ -270,10 +287,19 @@ macro A9M.logic.ws {
 ; proc terminator
 
 macro A9M.logic.term {
+
   A9M.term=1
   A9M.write $0A,$0A
 
   A9M.ctoken.end
+
+  ; is this first expr?
+  if A9M.exprcnt=0
+
+  end if
+
+
+  A9M.exprcnt=A9M.exprcnt+1
 
 }
 
@@ -317,7 +343,7 @@ macro A9M.logic.nterm {
     end if
 
     ; cat to current token
-    vmem.write A9M.ctoken,A9M.CHAR
+    vmem.load A9M.ctoken,A9M.CHAR
 
     ; ^cat char to fout
     A9M.write A9M.CHAR
