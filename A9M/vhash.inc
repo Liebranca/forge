@@ -138,19 +138,7 @@ macro vhash.store idex,value,chunk=qword {
 ; ---   *   ---   *   ---
 ; ^fetch id
 
-macro vhash.load dst,tab,idex,chunk=qword {
-
-  ; varlis
-  local key
-  local kbits
-  local addr
-
-  key   equ vhash.load.key
-  kbits equ vhash.load.kbits
-  addr  equ vhash.load.addr
-
-  ; get key size
-  vhash.kbits.get kbits,tab
+macro vhash.load dst,idex,chunk=qword {
 
   ; is idex a buffer?
   local sref
@@ -160,13 +148,33 @@ macro vhash.load dst,tab,idex,chunk=qword {
   local vref
   vhash.unpack_value vref,dst
 
-
-  ; idex into hash
-  vcrypt.hash key,sref,chunk,kbits
+  ; key to idex
+  $pass ptr sref,ptr chunk,%[ice kbits]
+  $call vcrypt.hash
 
   ; ^write at idex
-  vhash.get_occ_slot   addr,tab,sref,key
-  vhash.get_slot_value vref,tab,addr
+  vhash.keycoord
+  vhash.get_occ_slot   sref
+  vhash.get_slot_value vref
+
+}
+
+; ---   *   ---   *   ---
+; ^sugar for freeing slot
+
+macro vhash.free idex,chunk=qword {
+
+  ; is idex a buffer?
+  local sref
+  vhash.unpack_key_src sref,idex
+
+  ; key to idex
+  $pass ptr sref,ptr chunk,%[ice kbits]
+  $call vcrypt.hash
+
+  ; ^clear idex
+  vhash.keycoord
+  vhash.free_occ_slot  sref
 
 }
 
@@ -276,8 +284,13 @@ macro vhash.keycoord {
 
 macro vhash.get_occ_slot sref,fn& {
 
+  $mov   ar,%[ctx mask]
+  $mov   dr,%[ctx kmask]
+  $mov   br,%[ctx elem]
+  $xor   cr,cr
+
   ; slot free?
-  $on ~(%[ctx mask] and %[ctx elem])
+  $on ~(ar and br)
     vhash.throw_nokey sref
 
   end if
@@ -285,11 +298,11 @@ macro vhash.get_occ_slot sref,fn& {
 
   ; ^nope, get key eq sref
   $xor   cr,cr
-  $while %[ctx mask] and %[ctx elem]
+  $while ar and br
 
     ; skip sentinels
-    $on ~(%[ctx kmask] and %[ctx elem])
-      $mov ar,%[ctx mask]
+    $on ~(dr and br)
+      $mov ar,%[ctx kmask]
       vhash.mask_search
 
     ; ^actual elem, compare buffers
@@ -311,12 +324,6 @@ macro vhash.get_occ_slot sref,fn& {
   ; optinal footer
   match mode , fn \{
     vhash.set_slot_meta sref,mode
-
-  \}
-
-  ; ^else just give *elem* idex
-  match , fn \{
-    elem = bit + (idex shl sizep2.line)
 
   \}
 
@@ -372,8 +379,8 @@ macro vhash.get_free_slot sref {
 ; ---   *   ---   *   ---
 ; ^wraps for freeing
 
-macro vhash.free_occ_slot elem,tab,sref,key {
-  vhash.get_occ_slot elem,tab,sref,key,unset
+macro vhash.free_occ_slot sref {
+  vhash.get_occ_slot sref,unset
 
 }
 
@@ -539,18 +546,11 @@ macro vhash.set_slot_meta sref,mode {
     ; ^free
     match =unset , mode \\{
 
-      ; set mask bits
+      ; actually, free nothing
+      ; just put a sentinel ;>
       $not ar
-      $and qword [id\#.mask+cr*8],ar
       $add cr,br
       $and qword [id\#.mask+cr*8],ar
-
-      ; get elem key
-      local sbuf
-      vhash.get_elem_key sbuf
-
-      ; ^update
-      vmem.clear sbuf
 
     \\}
 

@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -405,7 +405,7 @@ macro vmem.copy dst,src,ow= {
 
     ; walk B and set A
     local shift
-    shift equ vmem.copys.shift
+    shift equ vmem.copy.shift
 
     vmem.xstep    shift,len,sizep2
 
@@ -452,13 +452,21 @@ macro vmem.rewind dst {
 ; ---   *   ---   *   ---
 ; clear buff
 
-macro vmem.clear dst,step=qword {
+macro vmem.clear dst {
 
   match id , dst \{
 
-    repeat id\#.size shr sizep2.#step
-      store step $00 at id\#.base:\
-        id\#.beg+((%-1)*sizeof.#step)
+    local len
+    local shift
+
+    len   equ vmem.clear.len
+    shift equ vmem.clear.shift
+
+    vmem.xstep    shift,id\#.len,sizep2
+    vuint.urdivp2 len,id\#.len,shift
+
+    repeat len
+      vmem.xst dst,$00,(%-1),(len shl shift)
 
     end repeat
 
