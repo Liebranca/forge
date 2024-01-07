@@ -73,6 +73,10 @@ macro IO.CTAGIT dst,color,value& {
 ; ---   *   ---   *   ---
 ; ROM II
 
+  define PADTAG           \
+    $1B,$5B,'37;1m.',     \
+    $1B,$5B,'0m'
+
   define CHDTAG           \
     $1B,$5B,'37;1m::',    \
     $1B,$5B,'0m'

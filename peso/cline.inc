@@ -192,8 +192,8 @@ macro cline.filter [item] {
 
     \}
 
-    match =0 , ok \{
-      cmd
+    match =0 any , ok line \{
+      any
 
     \}
 

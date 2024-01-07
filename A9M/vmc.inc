@@ -23,9 +23,8 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
-
 ; ---   *   ---   *   ---
 ; ROM
 
@@ -96,6 +95,9 @@ macro ANIMA.prich {
   vmc._tmp_6=0
   vmc._tmp_7=0
 
+  ; ^for use by everyone ;>
+  vmc.debug=0
+
 ; ---   *   ---   *   ---
 ; determine type of operand
 
@@ -111,7 +113,7 @@ macro vmc.decode A,B,mode {
   vmc.decode.struc ok,A,B,mode
   vmc.decode.mem   ok,A,B,mode
 
-  vmc.decode.imm   ok,A,B
+  vmc.decode.imm   ok,A,B,mode
 
 }
 
@@ -169,7 +171,7 @@ macro vmc.decode.reg.inner A,B,mode {
 macro vmc.decode.ptr ok,A,B,mode {
 
   match =0 =ptr id , ok B \{
-    vmc.decode.ptr.inner A,id,mode
+    vmc.decode.ptr.inner A,mode,id
     ok equ 1
 
   \}
@@ -179,7 +181,7 @@ macro vmc.decode.ptr ok,A,B,mode {
 ; ---   *   ---   *   ---
 ; ^yes
 
-macro vmc.decode.ptr.inner A,id,mode {
+macro vmc.decode.ptr.inner A,mode,id {
 
   ; is id a named ptr? (fake regs ;>)
   local ok
@@ -222,19 +224,53 @@ macro vmc.decode.ptr.inner A,id,mode {
 
 macro vmc.decode.struc ok,A,B,mode {
 
-  match =0 =% =ice , ok B \{
-
-    match id , vmc.REG.ice \\{
-      A  equ id\%origin
-      ok equ 1
-
-    \\}
+  match =0 =% id , ok B \{
+    vmc.decode.struc.inner A,mode,id
+    ok equ 1
 
   \}
 
-  match =0 =% id , ok B \{
-    A  equ id\%origin
-    ok equ 1
+}
+
+; ---   *   ---   *   ---
+; ^yes
+
+macro vmc.decode.struc.inner A,mode,id {
+
+  local lis
+  lis equ id
+
+  ; is id a named ptr? (fake regs ;>)
+  local ok
+  tokin ok,id,ice,ctx
+
+  match =1 , ok \{
+    lis equ vmd.REG.#id
+
+  \}
+
+  ; deref by macro!
+  match btr , lis \{
+
+    match =read , mode \\{
+      A equ btr\#%origin
+
+    \\}
+
+    match =write , mode \\{
+      btr\#%origin equ A
+
+    \\}
+
+    match =bop op , mode \\{
+      vmem.\\#op base,A,$00,size
+
+    \\}
+
+    match =uop op , mode \\{
+      vmem.\\#op base,$00,size
+
+    \\}
 
   \}
 
@@ -281,6 +317,16 @@ macro vmc.decode.mem.inner A,mode,size,id {
 
     \\}
 
+    match =uop ins , mode \\{
+      vmem.\\#ins base,vmc._tmp_4,size
+
+    \\}
+
+    match =bop ins , mode \\{
+      vmem.\\#ins base,A,vmc._tmp_4,size
+
+    \\}
+
     ok equ 1
 
   \}
@@ -295,6 +341,16 @@ macro vmc.decode.mem.inner A,mode,size,id {
 
     match =write , mode \\{
       vmem.set id,A,$00,size
+
+    \\}
+
+    match =uop op , mode \\{
+      vmem.\\#op base,$00,size
+
+    \\}
+
+    match =bop op , mode \\{
+      vmem.\\#op base,A,$00,size
 
     \\}
 
@@ -383,6 +439,16 @@ macro vmc.decode.attr.inner A,mode,id,tag {
 
       \\\}
 
+      match =uop op , mode \\\{
+        type\\#.#tag#.\\\#op btr
+
+      \\\}
+
+      match =bop op , mode \\\{
+        type\\#.#tag#.\\\#op btr,A
+
+      \\\}
+
     \\}
 
   \}
@@ -392,10 +458,33 @@ macro vmc.decode.attr.inner A,mode,id,tag {
 ; ---   *   ---   *   ---
 ; is src an immediate?
 
-macro vmc.decode.imm ok,A,B {
+macro vmc.decode.imm ok,A,B,mode=read {
 
   match =0 , ok \{
-    A=B
+
+    match =read , mode \\{
+      A=B
+
+    \\}
+
+    ; this one you shouldn't do
+    match =write , mode \\{
+      B=A
+
+    \\}
+
+
+    ; these you REALLY shouldn't
+    match =violation4 dst src , mode B A \\{
+      dst equ src
+
+    \\}
+
+    match =violation5 dst src , mode A B \\{
+      dst equ src
+
+    \\}
+
     ok equ 1
 
   \}
@@ -433,35 +522,45 @@ macro $pass [item] {
 ; ---   *   ---   *   ---
 ; ^here we go...
 
-macro $call fn {
+library ARPATH '/forge/'
+  use '.inc' A9M::vrecurse
 
-  local ok
-  ok equ 0
-
-  ; setup the F "addresses" ;>
-  vmc.REG.xp equ vmc.REG.xs
-  vmc.REG.xs equ fn
+library.import
 
 
-  ; have args, pass and clear
-  match list , vmc.ARGV \{
+$RECURSIVE $call,fn
 
-    fn list
-    ok equ 1
+  macro $call fn \{
 
-    vmc.ARGV equ
+    local ok
+    ok equ 0
+
+    ; setup the F "addresses" ;>
+    vmc.REG.xp equ vmc.REG.xs
+    vmc.REG.xs equ fn
+
+
+    ; have args, pass and clear
+    match list , vmc.ARGV \\{
+
+      vmc.ARGV equ
+
+      fn list
+      ok equ 1
+
+    \\}
+
+    ; argless
+    match =0 , ok \\{fn\\}
+
+
+    ; remember who you are, simba!
+    restore vmc.REG.xs
+    restore vmc.REG.xp
 
   \}
 
-  ; argless
-  match =0 , ok \{fn\}
-
-
-  ; remember who you are, simba!
-  restore vmc.REG.xs
-  restore vmc.REG.xp
-
-}
+$RECURSIVE.end
 
 ; ---   *   ---   *   ---
 ; when you want to decode a
@@ -552,12 +651,26 @@ macro vmc.decode.logical dst,EXPR {
 macro $logic fn,EXPR {
 
   local vars
+  local prefix
+
+  prefix equ
+
   vmc.decode.logical vars,EXPR
 
-  match prefix =( X =, op =, Y =) , vars \{
-    fn prefix,X,op,Y
+
+  match P =( inner =) , vars \{
+    prefix equ P
+    vars   equ inner
 
   \}
+
+  match =( inner =) , vars \{
+    vars equ inner
+
+  \}
+
+
+  fn vars,prefix
 
 }
 
@@ -567,17 +680,20 @@ macro $logic fn,EXPR {
 macro $on EXPR,mode=if {
 
   ; do on [EXPR]
-  macro inner pre,X,op,Y \{
+  macro $on.inner vars,prefix= \{
 
-    vmc.decode vmc._tmp_0,X,read
-    vmc.decode vmc._tmp_1,Y,read
+    match X =, op =, Y , vars \\{
+      vmc.decode vmc._tmp_0,X,read
+      vmc.decode vmc._tmp_1,Y,read
 
-    mode prefix (vmc._tmp_0 op vmc._tmp_1)
+      mode prefix (vmc._tmp_0 op vmc._tmp_1)
+
+    \\}
 
   \}
 
   ; ^run
-  $logic inner,EXPR
+  $logic $on.inner,EXPR
 
 }
 
@@ -600,7 +716,7 @@ macro $break EXPR {
   ; conditional break
   match =on expr , EXPR \{
 
-    $on EXPR
+    $on expr
       break
 
     end if
@@ -611,6 +727,50 @@ macro $break EXPR {
   ; ^no condition
   match =0 , ok \{
     break
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; kind of an else if ;>
+;
+; NOTE:
+;
+; The Arcane 9 uses on/or/off
+; rather than if/(else or else if)/end if
+;
+; number one, because it's a switch
+; but also, it's shorter and doesn't
+; throw off your line alignment
+;
+; but this also means B(inary) OR
+; becomes BOR to avoid a name conflict!
+;
+; we won't do that rename here, so sadface
+; but E(lse) ON will do ;>
+
+macro $eon EXPR,mode=if {
+
+  ; do on [EXPR]
+  macro inner pre,X,op,Y \{
+
+    vmc.decode vmc._tmp_0,X,read
+    vmc.decode vmc._tmp_1,Y,read
+
+    else if prefix (vmc._tmp_0 op vmc._tmp_1)
+
+  \}
+
+  ; ^have expr?
+  match any , EXPR \{
+    $logic inner,EXPR
+
+  \}
+
+  ; ^else it's an else!
+  match , EXPR \{
+    else
 
   \}
 
