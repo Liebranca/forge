@@ -38,7 +38,7 @@ macro A9M.L0.reset {
 
 }
 
-A9M.L0.reset
+;A9M.L0.reset
 
 ; ---   *   ---   *   ---
 ; conditional maker
@@ -111,7 +111,13 @@ end if
     (A9M.L0.join|A9M.L0.term|A9M.L0.delim)
 
   A9M.make_chk L0,term,\
-    (A9M.pat.term) &~ A9M.scap
+    (A9M.L0.pat.term) &~ A9M.L0.scap
+
+  A9M.make_chk L0,usrchr,\
+    ((A9M.L0.mem > $2F) & (A9M.L0.mem < $3A)) \
+  | ((A9M.L0.mem > $40) & (A9M.L0.mem < $5B)) \
+  | ((A9M.L0.mem > $60) & (A9M.L0.mem < $7B)) \
+  | ((A9M.L0.mem = $5F))
 
   ; ^sumof all accums
   define A9M.L0.fulnest \
@@ -124,8 +130,12 @@ end if
 
 macro A9M.L0.store {
 
-  vmem.store A9M.L1.mem,\
-    A9M.L0.mem,A9M.L0.CHAR_SZ
+  match step , A9M.L0.CHAR_SZ \{
+
+    vmem.store A9M.L1.mem,\
+      A9M.L0.mem,step
+
+  \}
 
 }
 
@@ -134,8 +144,12 @@ macro A9M.L0.store {
 
 macro A9M.L0.load {
 
-  vmem.load A9M.L0.mem,\
-    A9M.L1.mem,A9M.L0.CHAR_SZ
+  match step , A9M.L0.CHAR_SZ \{
+
+    vmem.load A9M.L0.mem,\
+      A9M.L1.mem,step
+
+  \}
 
 }
 
@@ -145,10 +159,14 @@ macro A9M.L0.load {
 
 macro A9M.L0.chrin {
 
-  vmem.load A9M.L0.mem,\
-    A9M.FSRC,A9M.L0.CHAR_SZ
+  match step , A9M.L0.CHAR_SZ \{
 
-  A9M.L0.procin
+    vmem.load A9M.L0.mem,\
+      A9M.FSRC,step
+
+    A9M.L0.procin
+
+  \}
 
 }
 
@@ -159,19 +177,19 @@ macro A9M.L0.procin {
 
   ; pass
   if A9M.L0.pat.ws
-    A9M.L0.ws
+    A9M.L0.logic.ws
 
   ; term
   else if A9M.L0.chk.term
-    A9M.L0.term
+    A9M.L0.logic.term
 
   ; ^scap next
   else if A9M.L0.pat.scap
-    A9M.L0.scap
+    A9M.L0.logic.scap
 
   ; ^nterm
   else
-    A9M.L0.nterm
+    A9M.L0.logic.nterm
 
   end if
 
@@ -182,9 +200,9 @@ macro A9M.L0.procin {
 
 macro A9M.L0.orc {
 
-  match id , A9M.FSRC \{
+  match id step , A9M.FSRC A9M.L0.CHAR_SZ \{
 
-    repeat id\#.len shr A9M.L0.CHAR_SZ
+    repeat id\#.len shr sizep2.\#step
       A9M.L0.chrin
 
     end repeat
@@ -196,7 +214,7 @@ macro A9M.L0.orc {
 ; ---   *   ---   *   ---
 ; whitespace defproc
 
-macro A9M.L0.ws {
+macro A9M.L0.logic.ws {
 
   match id , A9M.L0.mem \{
 
@@ -208,15 +226,15 @@ macro A9M.L0.ws {
 
   \}
 
-  A9M.L1.term
-  A9M.scap=0
+  A9M.L1.store
+  A9M.L0.scap=0
 
 }
 
 ; ---   *   ---   *   ---
 ; terminator defproc
 
-macro A9M.L0.term {
+macro A9M.L0.logic.term {
 
   A9M.L0.term=1
   A9M.write $0A,$0A
@@ -228,7 +246,7 @@ macro A9M.L0.term {
 ; ---   *   ---   *   ---
 ; escape char defproc
 
-macro A9M.L0.scap {
+macro A9M.L0.logic.scap {
   A9M.L0.scap=1
 
 }
@@ -236,7 +254,7 @@ macro A9M.L0.scap {
 ; ---   *   ---   *   ---
 ; non-term char defproc
 
-macro A9M.L0.nterm {
+macro A9M.L0.logic.nterm {
 
   ; joined to prev token?
   if A9M.L0.pat.join_op
@@ -252,7 +270,7 @@ macro A9M.L0.nterm {
   ; have delim?
   if A9M.L0.pat.curly
     A9M.L1.term
-    A9M.L0.nesting curly
+    A9M.L0.logic.nesting curly
 
   ; ^nope, common char
   else
@@ -268,7 +286,7 @@ macro A9M.L0.nterm {
     A9M.L0.store
 
     ; ^cat char to fout
-    A9M.write A9M.CHAR
+    A9M.write A9M.L0.mem
 
     ; ^mark last as nterm
     A9M.L0.delim = 0
@@ -285,7 +303,7 @@ macro A9M.L0.nterm {
 ; ---   *   ---   *   ---
 ; proc nesting delimiter
 
-macro A9M.L0.nesting name {
+macro A9M.L0.logic.nesting name {
 
   A9M.L0.delim=1
 

@@ -38,6 +38,9 @@ library.import
   ; for use by all ;>
   A9M.debug = 1
 
+  define A9M.FSRC
+  define A9M.FDST
+
 ; ---   *   ---   *   ---
 ; makes conditions with
 ; expanded symbols
@@ -45,7 +48,7 @@ library.import
 macro A9M.make_chk base,name,[item] {
 
   common
-    define A9M.chk.#name
+    define A9M.#base#.chk.#name
 
   forward match any , item \{
     spacecat A9M.#base#.chk.#name,any
@@ -129,6 +132,7 @@ macro A9M.rd {
   ; consume input file
   A9M.L0.orc
 
+
 }
 
 ; ---   *   ---   *   ---
@@ -139,7 +143,7 @@ macro A9M.write ct& {
   ; cat to file
   match id , A9M.FDST \{
 
-    virtual id\.#base
+    virtual id\#.base
       db ct
 
     end virtual

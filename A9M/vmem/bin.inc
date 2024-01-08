@@ -60,7 +60,7 @@ macro vmem.store dst,src,size=byte {
     store size src at id\#.base:\
       id\#.beg+id\#.ptr
 
-    vmem.seek        dst,sizeof.#size
+    vmem.lseek       dst,sizeof.#size
     vmem.update_meta dst,id\#.ptr
 
   \}
@@ -81,7 +81,7 @@ macro vmem.load dst,src,size=byte {
     load dst size from id\#.base:\
       id\#.beg+id\#.ptr
 
-    vmem.seek src,sizeof.#size
+    vmem.lseek src,sizeof.#size
 
   \}
 
@@ -107,18 +107,33 @@ macro vmem.clear dst {
 ; boundless write at ptr,
 ; will extend dst if too small
 
-macro vmem.cat A,B {
+macro vmem.cat A,B,srcptr= {
 
   match dst src , A B \{
 
+    local off
+    local len
+    local fn
+
+    len equ src\#.len
+    off equ 0
+
+    match any , srcptr \{
+      off equ src\#.ptr
+
+    \}
+
+    len equ (len-off)
+
+
     ; resize dst?
-    if dst\#.size < (dst\#.ptr+src\#.len)
+    if dst\#.size < (dst\#.ptr+len)
 
       local nchunk
       local diff
 
       diff equ vmem.cat.diff
-      diff = (dst\#.ptr+src\#.len) - dst\#.size
+      diff = (dst\#.ptr+len) - dst\#.size
 
       vmem.seg nchunk,dst,blk diff
 
@@ -131,9 +146,9 @@ macro vmem.cat A,B {
     base equ vmem.cat.base
     base = dst\#.ptr
 
-    ; ^write src to dst ptr
-    vmem.xwalk src\#.len,\
-      vmem.BTOAPTR,dst,src,base
+    ; ^write src+off to dst ptr
+    vmem.xwalk len,\
+      vmem.BPTRTOAPTR,dst,src,base,off
 
     vmem.update_meta dst,dst\#.ptr
 

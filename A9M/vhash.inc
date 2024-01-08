@@ -500,8 +500,11 @@ macro vhash.keycmp sref {
     local sbuf
     vhash.get_elem_key sbuf
 
-    $xor ar,ar
-    vmem.eq vmc.REG.ar,sref,sbuf
+    local ok
+    ok = 0
+
+    vmem.eq ok,ptr sref,ptr sbuf
+    $mov ar,ok
 
   \}
 

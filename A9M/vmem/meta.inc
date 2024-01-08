@@ -54,7 +54,7 @@ macro vmem.clear_meta dst {
 ; move ptr by direction
 ; relative to current
 
-macro vmem.seek dst,step {
+macro vmem.lseek dst,step {
 
   match id , dst \{
     id\#.ptr=id\#.ptr+step

@@ -194,6 +194,16 @@ macro vmem.BTOAPTR dst,src,base,i0,i1,step {
 }
 
 ; ---   *   ---   *   ---
+; ^apply offset to src
+
+macro vmem.BPTRTOAPTR dst,src,b0,b1,i0,i1,step {
+  vmem.BTOA dst,src,b0+i0,b1+i1,step
+  vmem.seek dst,step
+  vmem.seek src,step
+
+}
+
+; ---   *   ---   *   ---
 ; get values
 
 macro vmem.LOADAB A,B,i0,i1,step {
