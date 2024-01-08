@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vreg
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -190,10 +190,20 @@ macro vreg.lisops type,size,tag {
 
 macro vreg.ice dst,type,seg= {
 
+  local ok
+  ok equ 0
+
+  ; use previously allocated memory
+  match par =at addr , seg \{
+    vmem.view dst,par,addr,sizeof.#type
+    ok equ 1
+
+  \}
+
   ; cat to existing buffer
-  ; if addr passed
-  match addr , seg \{
-    vmem.seg dst,addr,blk sizeof.#type
+  ; if vmem passed
+  match =0 par , ok seg \{
+    vmem.seg dst,par,blk sizeof.#type
 
   \}
 

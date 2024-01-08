@@ -23,14 +23,8 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.0b
+  VERSION   v0.01.1b
   AUTHOR    'IBN-3DILA'
-
-; ---   *   ---   *   ---
-; GBL
-
-  define vmem.bops_list
-  define vmem.uops_list
 
 ; ---   *   ---   *   ---
 ; make new buff
@@ -44,7 +38,36 @@ macro vmem.new dst,ct& {
   ; ^gen buff
   match id , uid \{
 
-    virtual at $00
+    local args
+    local ok
+
+    args equ ct
+    ok   equ 0
+
+    ; write bytes to file
+    match =fout EL , ct \\{
+
+      local ext
+
+      ext  equ EL
+      args equ
+
+      match e list , EL \\\{
+        ext  equ e
+        args equ list
+
+      \\\}
+
+      virtual at $00 as ext
+      ok equ 1
+
+    \\}
+
+    ; ^regular buffer
+    match =0 , ok \\{
+      virtual at $00
+
+    \\}
 
       id\#.base::
       id\#.size = 0
@@ -52,7 +75,10 @@ macro vmem.new dst,ct& {
     end virtual
 
     ; ^write
-    vmem.segat id,id,ct
+    match any , args \\{
+      vmem.segat id,id,any
+
+    \\}
 
     ; give id
     dst equ id
@@ -82,32 +108,46 @@ macro vmem.segat dst,atid,ct& {
       local ok
       ok equ 0
 
+      ; ct from file?
+      match =file args , ct \\{
+
+        file args
+
+        id\#.len = $-id\#.beg
+        vuint.align id\#.size,id\#.len,$03
+
+        ok equ 1
+
+      \\}
+
       ; produce blank of size N?
-      match =blk size , ct \\{
+      match =0 =blk size , ok ct \\{
+
         db size dup $00
         ok equ 1
+
+        id\#.len  = $00
+        id\#.size = size
 
       \\}
 
       ; ^paste passed string
       match =0 any , ok ct \\{
+
         db ct
         ok equ 1
 
+        id\#.len = $-id\#.beg
+        vuint.align id\#.size,id\#.len,$03
+
       \\}
 
-      ; ^just pad
+      ; ^do nothing ;>
       match =0 , ok \\{
-        db $00
+        id\#.len  = $00
+        id\#.size = $00
 
       \\}
-
-
-      ; ^get length
-      id\#.len = $-id\#.beg
-
-      ; ^align to qword
-      vuint.align id\#.size,id\#.len,$03
 
       ; ^pad to size with null
       id\#.pad = id\#.size-id\#.len
@@ -181,217 +221,7 @@ macro vmem.view dst,src,addr,len {
 }
 
 ; ---   *   ---   *   ---
-; my favorite conditional
-; REALLY
-
-macro vmem.xfn len,op,args& {
-
-  if len = 1
-    op args,byte
-
-  else if len < 4
-    op args,word
-
-  else if len < 8
-    op args,dword
-
-  else
-    op args,qword
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; ^get N-sized step/mask/shift
-
-macro vmem.xstep dst,len,mode=sizeof {
-  vmem.xfn len,vmem._xstep,dst,mode
-
-}
-
-; ---   *   ---   *   ---
-; ^shorthand
-
-macro vmem._xstep dst,mode,size {
-
-  match =sizeof , mode \{
-    dst = sizeof.#size
-
-  \}
-
-  match =sizep2 , mode \{
-    dst = sizep2.#size
-
-  \}
-
-  match =sizebm , mode \{
-    dst = sizebm.#size
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^N-sized ld/st
-
-macro vmem.xld dst,src,off,len {
-  vmem.xfn len,vmem._xld,dst,src,off
-
-}
-
-macro vmem.xst dst,src,off,len {
-  vmem.xfn len,vmem._xst,dst,src,off
-
-}
-
-; ---   *   ---   *   ---
-; ^shorthands
-
-macro vmem._xld dst,src,off,size {
-
-  match id , src \{
-
-    load dst size from id\#.base:\
-      id\#.beg+off*sizeof.#size
-
-  \}
-
-}
-
-macro vmem._xst dst,src,off,size {
-
-  match id , dst \{
-    store size src at id\#.base:\
-      id\#.beg+off*sizeof.#size
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; iter through buff in
-; progressively smaller
-; steps, as required
-
-macro vmem.walk size,fn,args& {
-
-  ; varlis
-  local shift
-  local len
-  local have
-  local step
-  local i
-
-  shift equ vmem.walk.shift
-  len   equ vmem.walk.len
-  have  equ vmem.walk.have
-  step  equ vmem.walk.step
-  i     equ vmem.walk.i
-
-  ; save total
-  have = size
-  i    = 0
-
-  ; ^iter
-  while have
-
-    vmem.xstep shift,have,sizep2
-
-    len  = have shr shift
-    step = 1 shl shift
-    i    = i shr shift
-
-    repeat len
-
-      match list , args \{
-        fn list,i,i,step
-
-      \}
-
-      i = i+1
-
-    end repeat
-
-    i    = i shl shift
-    have = have - (len shl shift)
-
-  end while
-
-}
-
-; ---   *   ---   *   ---
-; errchk proto
-
-macro vmem.boundschk id,addr,size,me {
-
-  if (addr+sizeof.#size) > id#.size
-    out@err me
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; adjust meta on write
-
-macro vmem.advptr id,step {
-
-  id#.ptr=id#.ptr+step
-
-  if id#.ptr > id#.len
-    id#.len = id#.ptr
-    id#.pad = id#.size-id#.ptr
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; write step from src to dst
-
-macro vmem.BTOA dst,src,i0,i1,step,have {
-
-  local w0
-  w0 equ vmem.BTOA.w0
-
-  vmem.xld w0,src,i1,step
-  vmem.xst dst,w0,i0,step
-
-}
-
-; ---   *   ---   *   ---
-; ^write and move dst ptr
-
-macro vmem.BTOAPTR dst,src,base,i0,i1,step {
-  vmem.BTOA   dst,src,base+i0,i1,step
-  vmem.advptr dst,step
-
-}
-
-; ---   *   ---   *   ---
-; set value at ptr
-
-macro vmem.store dst,src,size=byte {
-
-  match id , dst \{
-
-    vmem.boundschk id,id\#.ptr,size,\
-      "store past end of vmem"
-
-
-    ; set and move ptr
-    store size src at id\#.base:\
-      id\#.beg+id\#.ptr
-
-    vmem.advptr id,sizeof.#size
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^arbitrary offset
+; store at arbitrary offset
 
 macro vmem.set dst,src,addr,size=byte {
 
@@ -408,27 +238,7 @@ macro vmem.set dst,src,addr,size=byte {
 }
 
 ; ---   *   ---   *   ---
-; get value at ptr
-
-macro vmem.load dst,src,size=byte {
-
-  match id , src \{
-
-    vmem.boundschk id,id\#.ptr,size,\
-      "load past end of vmem"
-
-    ; get and move ptr
-    load dst size from id\#.base:\
-      id\#.beg+id\#.ptr
-
-    id\#.ptr=id\#.ptr+sizeof.#size
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^arbitrary offset
+; ^load at arbitrary offset
 
 macro vmem.get dst,src,addr,size=byte {
 
@@ -445,264 +255,12 @@ macro vmem.get dst,src,addr,size=byte {
 }
 
 ; ---   *   ---   *   ---
-; boundless write at ptr,
-; will extend dst if too small
-
-macro vmem.cat A,B,off {
-
-  match dst src , A B \{
-
-    ; resize dst?
-    if dst\#.size < (dst\#.ptr+src\#.len)
-
-      local nchunk
-      local diff
-
-      diff equ vmem.cat.diff
-      diff = (dst\#.ptr+src\#.len) - dst\#.size
-
-      vmem.seg nchunk,dst,blk diff
-
-    end if
-
-
-    ; get base offset
-    local base
-
-    base equ vmem.cat.base
-    base = dst\#.ptr
-
-    ; ^write src to dst ptr
-    vmem.walk src\#.len,\
-      vmem.BTOAPTR,dst,src,base
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; overwrite length
-
-macro vmem.proclen dst,src,ow {
-
-  dst=src
-
-  match any , ow \{
-    dst=ow
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; write contents of one
-; buffer to another
-
-macro vmem.copy dst,src,ow= {
-
-  ; varlis
-  local w0
-  local len
-
-  w0  equ vmem.copy.w0
-  len equ vmem.copy.len
-
-  match A B , dst src \{
-
-    ; get chunk size
-    vmem.proclen len,B\#.len,ow
-
-    ; errchk
-    if len > A\#.len
-      out@err 'OOB vmem copy'
-
-    end if
-
-
-    ; walk B and set A
-    local shift
-    shift equ vmem.copy.shift
-
-    vmem.xstep    shift,len,sizep2
-    vuint.urdivp2 len,len,shift
-
-
-    repeat len
-      vmem.xld w0,B,(%-1),((len-(%-1)) shl shift)
-      vmem.xst A,w0,(%-1),((len-(%-1)) shl shift)
-
-    end repeat
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; move ptr (absolute)
-
-macro vmem.seek dst,N {
-
-  match id , dst \{
-
-    ; boundschk
-    if N >= id\#.size
-      out@err 'seek past end of vmem'
-
-    end if
-
-    id\#.ptr=N
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^wraps for seek 0
-
-macro vmem.rewind dst {
-  vmem.seek dst,$00
-
-}
-
-; ---   *   ---   *   ---
-; clear buff
-
-macro vmem.clear dst {
-
-  match id , dst \{
-
-    local len
-    local shift
-
-    len   equ vmem.clear.len
-    shift equ vmem.clear.shift
-
-    vmem.xstep    shift,id\#.len,sizep2
-    vuint.urdivp2 len,id\#.len,shift
-
-    repeat len
-      vmem.xst dst,$00,(%-1),(len shl shift)
-
-    end repeat
-
-    id\#.ptr = 0
-    id\#.len = 0
-    id\#.pad = id\#.size
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; compare two buffers
-
-macro vmem.eq dst,s0,s1,ow= {
-
-
-  local len
-  local w0
-  local w1
-
-  dst = 0
-
-  ; varlis
-  len equ vmem.eq.len
-  w0  equ vmem.eq.w0
-  w1  equ vmem.eq.w1
-
-
-  ; unroll srcs
-  match id0 id1 , s0 s1 \{
-
-    ; get chunk size
-    local _step
-    vmem.proclen len,id1\#.size,ow
-
-    ; skip on bad length
-    if ~(id0\#.len < len)
-      dst = 1
-
-    ; ^else compare
-    else
-
-      ; walk in N-sized steps
-      local shift
-      shift equ vmem.eq.shift
-
-      vmem.xstep    step,len,sizep2
-
-      vuint.urdivp2 len,len,shift
-
-      repeat len
-
-        vmem.xld w0,id0,(%-1),(len shl shift)
-        vmem.xld w1,id1,(%-1),(len shl shift)
-
-        ; compare and go next
-        dst = dst or (w0 xor w1)
-
-      end repeat
-
-
-    end if
-
-  \}
-
-
-  ; reset out
-  if ~ dst
-    dst = 1
-
-  else
-    dst = 0
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; get size left
-
-macro vmem.have dst,src,sptr {
-
-  local have
-  have equ vmem.have.X
-
-  dst=$01
-
-  match id , src \{
-
-    have=id\#.len - sptr
-
-    if have >= $08
-      dst=$08
-
-    else if have >= $04
-      dst=$04
-
-    else if have >= $02
-      dst=$02
-
-    end if
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
 ; dbout
 
-macro vmem.prich src,parshow=0 {
-
-  ; varlis
-  local c
-  local psize
-
-  c     equ vmem.prich.c
-  psize equ vmem.prich.pshow
-
+macro vmem.prich src,get_real=0 {
 
   match id , src \{
+
 
     ; give seg name/addr
     display $0A,'BUFID ',\`id,$0A
@@ -730,39 +288,22 @@ macro vmem.prich src,parshow=0 {
     out@nl  2
 
 
-    ; get print size
-    if parshow & 1
-      psize=id\#.size
+    ; varlis
+    local len
+    len equ vmem.prich.size
 
+    ; show real size?
+    if get_real = 1
+      len=id\#.size
+
+    ; ^skip child segments
     else
-      psize=(id\#.len+id\#.pad)
+      len=(id\#.len+id\#.pad)
 
     end if
 
-
-    ; walk in N-sized steps
-    local shift
-    local step
-
-    shift equ vmem.prich.shift
-    step  equ vmem.prich.step
-
-    vmem.xstep    shift,psize,sizep2
-    vmem.xstep    step,psize,sizeof
-
-    vuint.urdivp2 psize,psize,shift
-
-
     ; show raw : print
-    repeat psize
-
-      vmem.xld \c,id,(%-1),(psize shl shift)
-
-      xesay    \c,8*step
-      out@nl
-
-
-    end repeat
+    vmem.xwalk len,vmem.DBOUT,id
     out@nl 2
 
   \}
@@ -770,117 +311,12 @@ macro vmem.prich src,parshow=0 {
 }
 
 ; ---   *   ---   *   ---
-; template for operator wraps
+; load extensions
 
-macro vmem._op_proto buff,addr,size,fn,args& {
+library ARPATH '/forge/'
+  use '.inc' A9M::vmem::xop
+  use '.inc' A9M::vmem::bin
 
-  ; varlis
-  local dst
-  dst equ vmem._op_proto.dst
-
-  ; ^get current value
-  vmem.get dst,buff,addr,size
-
-  ; ^run op
-  match any , args \{
-    fn dst,args
-
-  \}
-
-  match , args \{
-    fn dst
-
-  \}
-
-
-  ; ^overwrite
-  vmem.set buff,dst,addr,size
-
-}
-
-; ---   *   ---   *   ---
-; ^generator
-
-macro vmem._gen_op MN,ct& {
-
-  match mode name list , MN ct \{
-
-
-    ; signature for unary op
-    match =u , mode \\{
-
-      ; register F name
-      commacat vmem.uops_list,name
-
-      ; execute passed code
-      macro vmem.\#name\#.inner dst \\\{
-        cline.filter list
-
-      \\\}
-
-      ; ^wraps
-      macro vmem.\#name \
-        buff,addr,size=byte \\\{
-
-        vmem._op_proto buff,addr,size,\
-          vmem.\#name\#.inner
-
-      \\\}
-
-    \\}
-
-
-    ; ^binary
-    match =b , mode \\{
-
-      ; register F name
-      commacat vmem.bops_list,name
-
-      ; execute passed code
-      macro vmem.\#name\#.inner dst,src \\\{
-        cline.filter list
-
-      \\\}
-
-      ; ^wraps
-      macro vmem.\#name \
-        buff,src,addr,size=byte \\\{
-
-        vmem._op_proto buff,addr,size,\
-          vmem.\#name\#.inner,src
-
-      \\\}
-
-    \\}
-
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; ^icebox
-
-vmem._gen_op b xor   , dst=dst xor src
-vmem._gen_op b or    , dst=dst or  src
-vmem._gen_op b and   , dst=dst and src
-
-vmem._gen_op u not   , dst=not dst
-vmem._gen_op b xnor  , dst=not (dst xor src)
-vmem._gen_op b nor   , dst=not (dst or  src)
-vmem._gen_op b nand  , dst=not (dst and src)
-
-vmem._gen_op b shr   , dst=dst shr src
-vmem._gen_op b shl   , dst=dst shl src
-
-vmem._gen_op b bsf   , dst=bsf src
-vmem._gen_op b bsr   , dst=bsr src
-
-vmem._gen_op b add   , dst=dst+src
-vmem._gen_op u inc   , dst=dst+1
-vmem._gen_op b sub   , dst=dst-src
-vmem._gen_op u dec   , dst=dst-1
-
-vmem._gen_op b mul   , dst=dst * src
+library.import
 
 ; ---   *   ---   *   ---

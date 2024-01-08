@@ -24,7 +24,7 @@ library.import
 
   TITLE     A9M
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,155 +32,56 @@ library.import
 
   IO.CTAGIT A9MTAG,'35;1','A9M'
 
-
-  ; for use by L0 rd
-  A9M.scap  = 0
-  A9M.join  = 0
-  A9M.term  = 0
-  A9M.delim = 0
-
-  ; ^nesting logic within
-  A9M.nest_curly  = 0
-  A9M.nest_parens = 0
-  A9M.nest_brak   = 0
-
-  ; makes L1
-  define   A9M.ctoken
-  vmem.new A9M.ctoken,blk $40
-
-  ; ^makes L2
-  define   A9M.cexpr
-  vmem.new A9M.cexpr,blk $40
-
-  ; ^counts L2
-  A9M.exprcnt = 0
-
   ; ^name of interpreter
   define A9M.ipret
-
 
   ; for use by all ;>
   A9M.debug = 1
 
 ; ---   *   ---   *   ---
-; terminate current token
-
-macro A9M.ctoken.end {
-
-  match token expr , A9M.ctoken A9M.cexpr \{
-
-    ; have chars to push?
-    if token\#.ptr
-      vmem.blwrite expr,token
-      vmem.clear   A9M.ctoken
-
-    end if
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; conditional maker
-
-macro A9M.make_pat dst,[item] {
-
-  common
-    define A9M.pat.#dst
-
-  forward
-
-    local s
-    local ok
-
-    ok equ 0
-
-
-    ; skip stirr?
-    match =lit b , item \{
-      s  equ b
-      ok equ 1
-
-    \}
-
-    ; ^nope, go ahead ;>
-    match =0 , ok \{
-      stirr9 s,item,$04
-
-    \}
-
-
-    ; make (*c==a) | (*c==b) ...
-    borcat A9M.pat.#dst,(A9M.CHAR=s)
-
-}
-
-; ---   *   ---   *   ---
-; ^similar, used for delimiters
-
-macro A9M.make_delim name,dbeg,dend {
-
-  A9M.delim.#name#_beg=dbeg
-  A9M.delim.#name#_end=dend
-
-  A9M.make_pat name,lit dbeg,lit dend
-
-}
-
-; ---   *   ---   *   ---
-; ^makes conditions with
+; makes conditions with
 ; expanded symbols
 
-macro A9M.make_chk name,[item] {
+macro A9M.make_chk base,name,[item] {
 
   common
     define A9M.chk.#name
 
   forward match any , item \{
-    spacecat A9M.chk.#name,any
+    spacecat A9M.#base#.chk.#name,any
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ROM
+; insert memory levels code
 
-  A9M.make_pat join_op,++,+,lit $2C
-  A9M.make_pat ws,lit $20,lit $0A
-  A9M.make_pat term,lit $3B
-  A9M.make_pat scap,lit $5C
+library ARPATH '/forge/'
+  use '.inc' A9M::L0
+  use '.inc' A9M::L1
+  use '.inc' A9M::L2
 
-  A9M.make_delim curly,$7B,$7D
+library.import
 
-
-  A9M.make_chk ws,\
-    (A9M.join|A9M.term|A9M.delim)
-
-  A9M.make_chk term,\
-    (A9M.pat.term) &~ A9M.scap
-
-  define A9M.fulnest \
-    A9M.nest_curly \
-  + A9M.nest_brak  \
-  + A9M.nest_parens
-
+; ---   *   ---   *   ---
+; TODO
+;
+;; gets interpreter from
+;; first expr
+;
+;macro A9M.load_ipret {
+;  A9M.L1.unpack_meta $00
+;  err
+;
+;}
 
 ; ---   *   ---   *   ---
 ; reset default clan state
 
 macro A9M.reset {
-
-  A9M.scap  = 0
-  A9M.join  = 0
-  A9M.term  = 0
-  A9M.delim = 0
-
-  A9M.nest_curly  = 0
-  A9M.nest_parens = 0
-  A9M.nest_brak   = 0
-
-  vmem.clear A9M.ctoken
+  A9M.L0.reset
+  A9M.L1.reset
 
 }
 
@@ -203,15 +104,11 @@ macro A9M.rd {
   A9M.reset
 
   ; read file into vmem
-  virtual at $00
+  vmem.orc A9M.FSRC,A9M.FPATH
 
-    A9M.fbeg:
-    A9M.fbase::
-      file A9M.FPATH
+  ; ^decl out blk
+  vmem.owc A9M.FDST,'p3'
 
-    A9M.flen=$-A9M.fbeg
-
-  end virtual
 
   ; ^dbout
   if A9M.debug
@@ -219,184 +116,18 @@ macro A9M.rd {
     out@EX $0A,A9MTAG,\
       ' ',~IO.FILEIT A9M.FPATH,IO.comma
 
-    hexsay A9M.flen,32
+    match id , A9M.FSRC \{
+      hexsay id\#.len,32
+
+    \}
 
     display ' bytes',$0A,$0A
 
   end if
 
 
-  ; ^decl out blk
-  virtual at $00 as 'p3'
-    A9M.fout::
-
-  end virtual
-
-
-  ; ^proc input
-  repeat A9M.flen
-
-    ; get next byte
-    load A9M.CHAR byte from A9M.fbase:%-1
-
-    ; pass
-    if A9M.pat.ws
-      A9M.logic.ws
-
-
-    ; term
-    else if A9M.chk.term
-      A9M.logic.term
-
-    ; ^scap next
-    else if A9M.pat.scap
-      A9M.logic.scap
-
-    ; ^nterm
-    else
-      A9M.logic.nterm
-
-    end if
-
-
-  end repeat
-
-}
-
-; ---   *   ---   *   ---
-; proc whitespace
-
-macro A9M.logic.ws {
-
-  match id , A9M.ctoken \{
-
-    if (id\#.ptr) &~ A9M.chk.ws
-      A9M.write $0A
-      A9M.write.nest_branch
-
-    end if
-
-  \}
-
-  A9M.ctoken.end
-  A9M.scap=0
-
-}
-
-; ---   *   ---   *   ---
-; proc terminator
-
-macro A9M.logic.term {
-
-  A9M.term=1
-  A9M.write $0A,$0A
-
-  A9M.ctoken.end
-
-  ; is this first expr?
-  if A9M.exprcnt=0
-
-  end if
-
-
-  A9M.exprcnt=A9M.exprcnt+1
-
-}
-
-; ---   *   ---   *   ---
-; proc escape char
-
-macro A9M.logic.scap {
-  A9M.scap=1
-
-}
-
-; ---   *   ---   *   ---
-; proc any non-term char
-
-macro A9M.logic.nterm {
-
-  ; joined to prev token?
-  if A9M.pat.join_op
-    A9M.join=1
-
-  ; ^else sep on next ws
-  else
-    A9M.join=0
-
-  end if
-
-
-  ; have delim?
-  if A9M.pat.curly
-    A9M.ctoken.end
-    A9M.logic.nesting curly
-
-  ; ^nope, common char
-  else
-
-    ; was last char a delim?
-    ; are we now at ident lvl 0?
-    if A9M.delim &~ A9M.fulnest
-      A9M.write.branch
-
-    end if
-
-    ; cat to current token
-    vmem.load A9M.ctoken,A9M.CHAR
-
-    ; ^cat char to fout
-    A9M.write A9M.CHAR
-
-    ; ^mark last as nterm
-    A9M.delim = 0
-    A9M.term  = 0
-
-
-  end if
-
-  ; turn off escape flag
-  A9M.scap=0
-
-}
-
-; ---   *   ---   *   ---
-; proc nesting delimiter
-
-macro A9M.logic.nesting name {
-
-  A9M.delim=1
-
-  d0=A9M.delim.#name#_beg
-  d1=A9M.delim.#name#_end
-
-
-  ; open delim, nest++
-  if (A9M.CHAR=d0)
-
-    A9M.nest_#name = A9M.nest_#name+1
-
-    A9M.write d0,$0A
-    A9M.write.nest_pad
-    A9M.write.branch
-
-
-  ; ^close, nest--
-  else
-
-    A9M.nest_#name = A9M.nest_#name-1
-
-    A9M.write $0A
-    A9M.write.nest_pad
-    A9M.write '.'
-
-    A9M.write $0A
-    A9M.write.nest_pad
-
-    A9M.write.branch d1,$0A
-    A9M.write.nest_pad
-
-  end if
+  ; consume input file
+  A9M.L0.orc
 
 }
 
@@ -406,10 +137,14 @@ macro A9M.logic.nesting name {
 macro A9M.write ct& {
 
   ; cat to file
-  virtual A9M.fout
-    db ct
+  match id , A9M.FDST \{
 
-  end virtual
+    virtual id\.#base
+      db ct
+
+    end virtual
+
+  \}
 
   ; ^optionally cout ;>
   if A9M.debug

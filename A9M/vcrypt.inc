@@ -10,6 +10,14 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
+; deps
+
+library ARPATH '/forge/'
+  use '.inc' A9M::vmc
+
+library.import
+
+; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.vcrypt

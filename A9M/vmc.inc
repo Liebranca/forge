@@ -23,8 +23,9 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
+
 ; ---   *   ---   *   ---
 ; ROM
 
@@ -169,6 +170,17 @@ macro vmc.decode.reg.inner A,B,mode {
 ; is src a pointer?
 
 macro vmc.decode.ptr ok,A,B,mode {
+
+  match =0 =lit id , ok B \{
+
+    match =read , mode \\{
+      A equ id
+
+    \\}
+
+    ok equ 1
+
+  \}
 
   match =0 =ptr id , ok B \{
     vmc.decode.ptr.inner A,mode,id
