@@ -148,22 +148,7 @@ macro A9M.read fpath?= {
 macro A9M.write ct& {
 
   ; cat to file
-  match id , A9M.FDST \{
-
-    virtual id\#.base
-
-      local len
-      local beg
-
-      beg=$
-      db ct
-
-      len=$-beg
-      id\#.size=id\#.size+len
-
-    end virtual
-
-  \}
+  vmem.write A9M.FDST,ct
 
   ; ^optionally cout ;>
   if A9M.debug

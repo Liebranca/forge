@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vreg
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -57,6 +57,16 @@ macro vreg.end {
 
     \\}
 
+    ; lis I/O
+    macro name\#.to_disk dst \\{
+      vreg.to_disk name,dst
+
+    \\}
+
+    macro name\#.from_disk dst,fpath \\{
+      vreg.from_disk dst,name,fpath
+
+    \\}
 
     ; lis dbout
     macro name\#.prich src,parshow=1 \\{
@@ -294,6 +304,35 @@ macro vreg.get_fields dst,type {
     \\}
 
     commacat dst,s d
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; write struc to file
+
+macro vreg.to_disk type,src {
+
+  local fout
+
+  match any , type \{
+    vmem.owc   fout,\`any,blk $00
+    vmem.write fout,% src
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^read from
+
+macro vreg.from_disk dst,type,fpath {
+
+  vmem.orc dst,fpath
+
+  match id , dst \{
+    vreg.cast dst,id type
 
   \}
 

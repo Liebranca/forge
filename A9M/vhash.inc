@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vhash
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -111,7 +111,41 @@ macro vhash.new dst,type,kbits,kezy=$20 {
 }
 
 ; ---   *   ---   *   ---
-; ^put id
+; ^read from file wraps
+
+macro vhash.from_disk dst,fpath {
+
+  vhash.from_disk dst,fpath
+
+  match id , dst \{
+
+    local off
+    off=sizeof.vhash
+
+    vmc.bget tmp,%[dst masksz]
+    vmem.view id\#.mask,id\#%origin,\
+      off,tmp*8*2
+
+    off=off+(tmp*8*2)
+
+    vmc.bget tmp,%[dst cap]
+    vmem.view id\#.values,id\#%origin,\
+      off,tmp
+
+    off=off+tmp
+
+    vmc.bget tmp,%[dst cnt]
+    vmc.bget kezy,%[dst kezy]
+
+    vmem.view id\#.keys,id\#%origin,\
+      off,kezy*tmp
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; put id => value
 
 macro vhash.store idex,value,chunk=qword {
 
@@ -135,7 +169,7 @@ macro vhash.store idex,value,chunk=qword {
 }
 
 ; ---   *   ---   *   ---
-; ^fetch id
+; ^fetch value from id
 
 macro vhash.load dst,idex,chunk=qword {
 
@@ -229,6 +263,17 @@ macro vhash.unpack_value dst,value {
   ; ^else make tmp
   match =0 , ok \{
     vmem.new dst,value
+
+  \}
+
+  ; override buff length if zero
+  match id , dst \{
+
+    if id\#.len = 0
+      id\#.len = id\#.size
+      id\#.pad = 0
+
+    end if
 
   \}
 
@@ -455,7 +500,7 @@ macro vhash.get_elem dst,type {
 
     ; get elem and width
     vhash.get_elem_idex
-    $mov br,%[ice size]
+    $mov br,%[ice ezy]
 
     ; get key src at offset
     local sbuf

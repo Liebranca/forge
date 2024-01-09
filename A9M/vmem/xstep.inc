@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xstep
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -40,7 +40,29 @@ macro vmem.xfn len,op,args& {
 }
 
 ; ---   *   ---   *   ---
-; ^get N-sized step/mask/shift
+; ^REPEATED
+; N-sized data declaration
+
+macro vmem.xdd src,len {
+
+  if len = 1
+    db src
+
+  else if len < 4
+    dw src
+
+  else if len < 8
+    dd src
+
+  else
+    dq src
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; get N-sized step/mask/shift
 
 macro vmem.xstep dst,len,mode=sizeof {
   vmem.xfn len,vmem._xstep,dst,mode
@@ -48,7 +70,7 @@ macro vmem.xstep dst,len,mode=sizeof {
 }
 
 ; ---   *   ---   *   ---
-; ^shorthand
+; ^guts
 
 macro vmem._xstep dst,mode,size {
 
@@ -113,18 +135,11 @@ macro vmem._xst dst,src,off,size {
 
 macro vmem.xwalk size,fn,args& {
 
-  ; varlis
   local shift
   local len
   local have
   local step
   local i
-
-  shift equ vmem.walk.shift
-  len   equ vmem.walk.len
-  have  equ vmem.walk.have
-  step  equ vmem.walk.step
-  i     equ vmem.walk.i
 
   ; save total
   have = size
@@ -146,6 +161,11 @@ macro vmem.xwalk size,fn,args& {
 
       \}
 
+      match , args \{
+        fn i,i,step
+
+      \}
+
       i = i+1
 
     end repeat
@@ -158,16 +178,30 @@ macro vmem.xwalk size,fn,args& {
 }
 
 ; ---   *   ---   *   ---
-; GBL
-
-  vmem.xstep._tmp_0=0
-  vmem.xstep._tmp_1=0
-
-; ---   *   ---   *   ---
 ; write value to dst
 
 macro vmem.WTA dst,value,i0,i1,step {
   vmem.xst dst,value,i0,step
+
+}
+
+; ---   *   ---   *   ---
+; read value from src
+
+macro vmem.LDA dst,src,i0,i1,step {
+  vmem.xld dst,src,i0,step
+
+}
+
+; ---   *   ---   *   ---
+; put into current space
+
+macro vmem.DUMPA src,i0,i1,step {
+
+  local w0
+
+  vmem.LDA w0,src,i0,i1,step
+  vmem.xdd w0,step
 
 }
 
@@ -177,7 +211,6 @@ macro vmem.WTA dst,value,i0,i1,step {
 macro vmem.BTOA dst,src,i0,i1,step {
 
   local w0
-  w0 equ vmem.xstep._tmp_0
 
   vmem.xld w0,src,i1,step
   vmem.xst dst,w0,i0,step
@@ -219,14 +252,7 @@ macro vmem.BPTRTOAPTR dst,src,b0,b1,i0,i1,step {
 ; ---   *   ---   *   ---
 ; get values
 
-macro vmem.LOADAB A,B,i0,i1,step {
-
-  local w0
-  local w1
-
-  w0 equ vmem.xstep._tmp_0
-  w1 equ vmem.xstep._tmp_1
-
+macro vmem.LOADAB A,B,w0,w1,i0,i1,step {
   vmem.xld w0,A,i0,step
   vmem.xld w1,B,i1,step
 
@@ -240,10 +266,7 @@ macro vmem.EQAB dst,A,B,i0,i1,step {
   local w0
   local w1
 
-  vmem.LOADAB A,B,i0,i1,step
-
-  w0 equ vmem.xstep._tmp_0
-  w1 equ vmem.xstep._tmp_1
+  vmem.LOADAB A,B,w0,w1,i0,i1,step
 
   dst = dst or (w0 xor w1)
 
@@ -255,7 +278,6 @@ macro vmem.EQAB dst,A,B,i0,i1,step {
 macro vmem.DBOUT id,i0,i1,step {
 
   local w0
-  w0 equ vmem.xstep._tmp_0
 
   vmem.xld w0,id,i0,step
 

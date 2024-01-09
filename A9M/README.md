@@ -27,6 +27,16 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.00.8b
+
+- Added `write` and `paste` macros to `*::vmem::bin`: these let us quickly commit the contents of a buffer to disk.
+
+- Added `to_disk` and `from_disk` macros to `*::vreg`, which similarly, provide a simplified interface to freezing and thawing structures between sessions.
+
+- `*::vhash` de-serialization wrapper in the form of `vhash.from_disk`.
+
+- Minor fixes to `*::vhash`.
+
 ### v0.00.7b
 
 - Implemented memory levels: file processing is divided into sections for chunk, array of chunk, and trees of arrays of chunks -- `*::L0`, `*::L1` and `*::L2`, respectively.

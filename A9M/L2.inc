@@ -82,8 +82,11 @@ macro A9M.L2.first_line {
 
   A9M.L1.load
 
-  local namepart
-  namepart = 0
+  local name
+  local sigil
+
+  name  = 0
+  sigil = 0
 
   match token step , A9M.L1.mem A9M.L0.CHAR_SZ \{
 
@@ -92,18 +95,24 @@ macro A9M.L2.first_line {
       A9M.L0.load
 
       if A9M.L0.chk.usrchr
-        namepart=1
+        name=name+1
 
-      else if (% > 1) & (namepart)
-        out@err 'Peso standard forbids ' \
+      else if (% > 1) & (name)
+        out@err 'peso standard forbids ' \
           #'sigils on ipret name'
 
       else
+        sigil=sigil+1
+
       end if
 
     end repeat
 
   \}
+
+  vmem.seek  A9M.L1.mem,sigil
+  vmem.prich A9M.L1.mem
+  err
 
   A9M.L1.reset
 

@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem.bin
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -42,6 +42,66 @@ macro vmem.orc dst,fpath,off=$00 {
 macro vmem.owc dst,ext,args {
   vmem.new dst,fout ext args
   match id , dst \{id\#.fpath equ '*.'#ext\}
+
+}
+
+; ---   *   ---   *   ---
+; ^cat to fout
+
+macro vmem.write dst,ct& {
+
+  match id , dst \{
+
+    virtual id\#.base
+
+      local len
+      local beg
+
+      beg=$
+
+      local ok
+      ok equ 0
+
+      ; src is a buffer
+      match =ptr src , ct \\{
+        vmem.paste src
+        ok equ 1
+
+      \\}
+
+      ; ^typecasted buffer
+      match =% src , ct \\{
+        vmem.paste src\\#%origin
+        ok equ 1
+
+      \\}
+
+      ; ^regular string
+      match =0 , ok \\{
+        db ct
+
+      \\}
+
+      len=$-beg
+      id\#.size=id\#.size+len
+
+      vmem.update_meta dst,len
+
+    end virtual
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; dump whole buffer
+
+macro vmem.paste src {
+
+  match id , src \{
+    vmem.xwalk id\#.size,vmem.DUMPA,src
+
+  \}
 
 }
 
