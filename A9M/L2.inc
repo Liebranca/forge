@@ -16,7 +16,7 @@
 
   TITLE     A9M.L2
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -26,6 +26,14 @@
   vmem.new A9M.L2.mem,blk A9M.L1.TOKEN_SZ
 
   A9M.L2.exprcnt = 0
+
+; ---   *   ---   *   ---
+; ~
+
+macro A9M.L2.reset {
+  vmem.clear A9M.L2.mem
+
+}
 
 ; ---   *   ---   *   ---
 ; write token to expr
@@ -38,12 +46,6 @@ macro A9M.L2.cat {
 
   ; ^save token
   vmem.cat A9M.L2.mem,A9M.L1.mem
-
-  ; is expr complete?
-  if A9M.L0.term
-    A9M.L2.proc_expr
-
-  end if
 
 }
 
@@ -69,6 +71,7 @@ macro A9M.L2.proc_expr {
   end if
 
   A9M.L2.exprcnt=A9M.L2.exprcnt+1
+  A9M.L2.reset
 
 }
 
@@ -79,6 +82,9 @@ macro A9M.L2.first_line {
 
   A9M.L1.load
 
+  local namepart
+  namepart = 0
+
   match token step , A9M.L1.mem A9M.L0.CHAR_SZ \{
 
     repeat token\#.len shr sizep2.\#step
@@ -86,22 +92,26 @@ macro A9M.L2.first_line {
       A9M.L0.load
 
       if A9M.L0.chk.usrchr
-        display 'USERC '
+        namepart=1
+
+      else if (% > 1) & (namepart)
+        out@err 'Peso standard forbids ' \
+          #'sigils on ipret name'
 
       else
-        display 'SIGIL '
-
       end if
-
-      hexsay A9M.L0.mem,$08
-      out@nl
 
     end repeat
 
-    err
-
   \}
 
+  A9M.L1.reset
+
 }
+
+; ---   *   ---   *   ---
+; TODO
+
+macro A9M.L2.common_line {}
 
 ; ---   *   ---   *   ---

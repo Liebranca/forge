@@ -60,8 +60,9 @@ $fpath="'$fpath'";
 
 my @call=(
 
-  qw(fasm -d),
-  'A9M.FPATH='."$fpath",
+  'fasm',
+  '-d','A9M.FPATH='."$fpath",
+
   "$SRCDIR/A9M.asm",
 
 );

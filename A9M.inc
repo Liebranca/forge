@@ -24,7 +24,7 @@ library.import
 
   TITLE     A9M
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -68,23 +68,12 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
-; TODO
-;
-;; gets interpreter from
-;; first expr
-;
-;macro A9M.load_ipret {
-;  A9M.L1.unpack_meta $00
-;  err
-;
-;}
-
-; ---   *   ---   *   ---
 ; reset default clan state
 
 macro A9M.reset {
   A9M.L0.reset
   A9M.L1.reset
+  A9M.L2.reset
 
 }
 
@@ -110,7 +99,7 @@ macro A9M.rd {
   vmem.orc A9M.FSRC,A9M.FPATH
 
   ; ^decl out blk
-  vmem.owc A9M.FDST,'p3'
+  vmem.owc A9M.FDST,'p3',blk $00
 
 
   ; ^dbout
@@ -132,7 +121,6 @@ macro A9M.rd {
   ; consume input file
   A9M.L0.orc
 
-
 }
 
 ; ---   *   ---   *   ---
@@ -144,7 +132,15 @@ macro A9M.write ct& {
   match id , A9M.FDST \{
 
     virtual id\#.base
+
+      local len
+      local beg
+
+      beg=$
       db ct
+
+      len=$-beg
+      id\#.size=id\#.size+len
 
     end virtual
 
@@ -163,7 +159,7 @@ macro A9M.write ct& {
 
 macro A9M.write.nest_pad {
 
-  repeat A9M.fulnest
+  repeat A9M.L0.fulnest
     A9M.write '.  '
 
   end repeat

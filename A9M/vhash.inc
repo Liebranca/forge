@@ -13,7 +13,6 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' A9M::vreg
   use '.inc' A9M::vcrypt
 
 library.import
@@ -58,12 +57,12 @@ vreg.end
 ; ---   *   ---   *   ---
 ; ^cstruc wraps
 
-macro vhash.new dst,ezy,kbits,kezy=$20 {
+macro vhash.new dst,type,kbits,kezy=$20 {
 
   ; cr => cnt == capacity in N of elems
   ; dr => ezy == bytesize per key
   $mov cr,1 shl kbits
-  $mov dr,ezy
+  $mov dr,sizeof.#type
 
   ; er => cap == capacity in bytes
   $mov er,cr
@@ -503,7 +502,7 @@ macro vhash.keycmp sref {
     local ok
     ok = 0
 
-    vmem.eq ok,ptr sref,ptr sbuf
+    vmem.eq ok,sref,sbuf
     $mov ar,ok
 
   \}

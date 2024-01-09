@@ -15,7 +15,7 @@
 
   TITLE     A9M.L1
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -39,8 +39,6 @@ macro A9M.L1.reset {
   vmem.clear  A9M.L1.mem
 
 }
-
-;A9M.L1.reset
 
 ; ---   *   ---   *   ---
 ; base struc

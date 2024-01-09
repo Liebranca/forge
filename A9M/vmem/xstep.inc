@@ -188,8 +188,8 @@ macro vmem.BTOA dst,src,i0,i1,step {
 ; ^write and move dst ptr
 
 macro vmem.BTOAPTR dst,src,base,i0,i1,step {
-  vmem.BTOA dst,src,base+i0,i1,step
-  vmem.seek dst,step
+  vmem.BTOA  dst,src,base+i0,i1,step
+  vmem.lseek dst,step
 
 }
 
@@ -197,9 +197,22 @@ macro vmem.BTOAPTR dst,src,base,i0,i1,step {
 ; ^apply offset to src
 
 macro vmem.BPTRTOAPTR dst,src,b0,b1,i0,i1,step {
-  vmem.BTOA dst,src,b0+i0,b1+i1,step
-  vmem.seek dst,step
-  vmem.seek src,step
+
+  vmem.BTOA  dst,src,b0+i0,b1+i1,step
+  vmem.lseek dst,step
+
+  local ok
+  ok equ 0
+
+  match =0 , b1 \{
+    ok equ 1
+
+  \}
+
+  match =0 , ok \{
+    vmem.lseek src,step
+
+  \}
 
 }
 

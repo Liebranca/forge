@@ -13,8 +13,8 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' A9M::vmem
   use '.inc' A9M::vreg
+  use '.inc' A9M::vmem
 
 library.import
 

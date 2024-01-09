@@ -21,7 +21,7 @@
 ; ROM
 
 if ~ defined A9M.STACK_SZ
-  A9M.STACK_SZ=$40
+  define A9M.STACK_SZ $40
 
 end if
 

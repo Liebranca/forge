@@ -14,7 +14,7 @@
 
   TITLE     A9M.L0
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -26,10 +26,10 @@ macro A9M.L0.reset {
   A9M.L0.mem = 0
 
   ; rd switches
-  A9M.L0.scap  = 0
-  A9M.L0.join  = 0
-  A9M.L0.term  = 0
-  A9M.L0.delim = 0
+  A9M.L0.scap    = 0
+  A9M.L0.join_op = 0
+  A9M.L0.term    = 0
+  A9M.L0.delim   = 0
 
   ; rd nesting counters
   A9M.L0.nest_curly  = 0
@@ -38,7 +38,7 @@ macro A9M.L0.reset {
 
 }
 
-;A9M.L0.reset
+A9M.L0.reset
 
 ; ---   *   ---   *   ---
 ; conditional maker
@@ -108,7 +108,7 @@ end if
 
   ; ^expanded conditionals
   A9M.make_chk L0,ws,\
-    (A9M.L0.join|A9M.L0.term|A9M.L0.delim)
+    (A9M.L0.join_op|A9M.L0.term|A9M.L0.delim)
 
   A9M.make_chk L0,term,\
     (A9M.L0.pat.term) &~ A9M.L0.scap
@@ -216,9 +216,9 @@ macro A9M.L0.orc {
 
 macro A9M.L0.logic.ws {
 
-  match id , A9M.L0.mem \{
+  match token , A9M.L1.mem \{
 
-    if (id\#.ptr) &~ A9M.L0.chk.ws
+    if (token\#.ptr) &~ A9M.L0.chk.ws
       A9M.write $0A
       A9M.write.nest_branch
 
@@ -240,6 +240,7 @@ macro A9M.L0.logic.term {
   A9M.write $0A,$0A
 
   A9M.L1.store
+  A9M.L2.proc_expr
 
 }
 
@@ -258,11 +259,11 @@ macro A9M.L0.logic.nterm {
 
   ; joined to prev token?
   if A9M.L0.pat.join_op
-    A9M.L0.join=1
+    A9M.L0.join_op=1
 
   ; ^else sep on next ws
   else
-    A9M.L0.join=0
+    A9M.L0.join_op=0
 
   end if
 

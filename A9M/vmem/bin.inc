@@ -118,10 +118,10 @@ macro vmem.cat A,B,srcptr= {
     len equ src\#.len
     off equ 0
 
-    match any , srcptr \{
+    match any , srcptr \\{
       off equ src\#.ptr
 
-    \}
+    \\}
 
     len equ (len-off)
 
@@ -142,8 +142,6 @@ macro vmem.cat A,B,srcptr= {
 
     ; get base offset
     local base
-
-    base equ vmem.cat.base
     base = dst\#.ptr
 
     ; ^write src+off to dst ptr
@@ -151,6 +149,11 @@ macro vmem.cat A,B,srcptr= {
       vmem.BPTRTOAPTR,dst,src,base,off
 
     vmem.update_meta dst,dst\#.ptr
+
+    match any , srcptr \\{
+      vmem.update_meta src,src\#.ptr
+
+    \\}
 
   \}
 
