@@ -1,10 +1,12 @@
-Let's say that the keywords of a language, any language really, are merely keys to a hash table... and that the crux of a program meant to read this language, for any purpose, is to accurately map some textual input to the values contained within a table specific to that purpose.
+# ARCANE 9 GUTS
 
-In this sense, the lexing part of a language can be thought of as a data structure, or more accurately, a buffer with some labels; hashing is only a convenient method for calculating offsets into this buffer from textual input.
+## SYNOPSIS
 
-So here's a question: what if we ourselves define this table before invoking the reader? And better yet, what if we build our table from multiple ones?
+Undending bouts of devotion-inspired theory-crafting.
 
-The only requirement for this to work is fixed syntax -- or a *default* syntax that is subject to switches, that is, live overrides to syntactical rules.
+## THE BASE LANGUAGE
+
+An Arcane 9 has a *default* syntax that is subject to switches, that is, live overrides to syntactical rules.
 
 For clarity, a "syntax rule" in this case is merely a check, or combination of checks, of whether some byte pattern is found within a block of memory, be it within an input buffer or some static region holding the reader's internal state.
 
@@ -60,30 +62,4 @@ And to further narrow down the scope of what a rule may check for, we shall defi
 
 - `tails`: `lX^B at lX+1` __and__ `lX^A at lX+1 if Y--`.
 
-This is sufficient for basic analysis. For example, 
-
-```$
-
-A is l0 '$'
-B is l0 '%'
-
-C is l1 '%$'
-
-
-pto C
-
-if A not ahead B by 1
-  ...
-
-end if
-
-
-```
-
-Would look at a level one block and... (WIPWIPWIP DONT COMMIT)
-
-- `is`: declare a block.
-
-- `pto`: point to a given block.
-
-- `by`: denote an offset for a search.
+(WIPWIPWIP)

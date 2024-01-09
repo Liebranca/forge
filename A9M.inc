@@ -90,7 +90,25 @@ macro A9M.reset {
 ;
 ; * string scap
 
-macro A9M.rd {
+macro A9M.read fpath?= {
+
+
+  ; fpath passed as arg?
+  match any , fpath? \{
+    define A9M.FPATH any
+
+  \}
+
+  ; ^ensure we *have* a file!
+  match , A9M.FPATH \{
+
+    display $0A,A9MTAG,\
+      'missing read input'
+
+    err
+
+  \}
+
 
   ; setup
   A9M.reset
@@ -106,7 +124,7 @@ macro A9M.rd {
   if A9M.debug
 
     out@EX $0A,A9MTAG,\
-      ' ',~IO.FILEIT A9M.FPATH,IO.comma
+      ~IO.FILEIT A9M.FPATH,IO.comma
 
     match id , A9M.FSRC \{
       hexsay id\#.len,32
@@ -118,8 +136,9 @@ macro A9M.rd {
   end if
 
 
-  ; consume input file
+  ; consume file and clear
   A9M.L0.orc
+  A9M.FPATH equ
 
 }
 

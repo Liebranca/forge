@@ -270,7 +270,7 @@ macro A9M.L0.logic.nterm {
 
   ; have delim?
   if A9M.L0.pat.curly
-    A9M.L1.term
+    A9M.L0.store
     A9M.L0.logic.nesting curly
 
   ; ^nope, common char

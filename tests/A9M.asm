@@ -17,6 +17,6 @@ library.import
 ; ---   *   ---   *   ---
 ; the bit ;>
 
-A9M.rd
+A9M.read
 
 ; ---   *   ---   *   ---
