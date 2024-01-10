@@ -338,16 +338,16 @@ macro vmem.prich src,get_real=0 {
 
       display   $20
 
-      hexsay    w0,$20
+      hexsay    w0 shr $20,$20
       display   $20
 
-      hexsay    w0 shr $20,$20
+      hexsay    w0,$20
       display   ' : '
 
-      hexsay    w1,$20
+      hexsay    w1 shr $20,$20
       display   $20
 
-      hexsay    w1 shr $20,$20
+      hexsay    w1,$20
       display   ' | '
 
       humansay  w0,$40

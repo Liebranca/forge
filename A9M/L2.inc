@@ -76,6 +76,7 @@ macro A9M.L2.proc_expr {
 
 macro A9M.L2.first_line {
 
+  ; get token
   A9M.L1.load
 
   local name
@@ -84,19 +85,24 @@ macro A9M.L2.first_line {
   name  = 0
   sigil = 0
 
+
+  ; walk chars of token
   match token step , A9M.L1.mem A9M.L0.CHAR_SZ \{
 
     repeat token\#.len shr sizep2.\#step
 
       A9M.L0.load
 
+      ; char is name of ipret
       if A9M.L0.chk.usrchr
         name=name+1
 
+      ; errchk
       else if (% > 1) & (name > 0)
         out@err 'peso standard forbids ' \
           #'sigils on ipret name'
 
+      ; ^sigil gives ipret mode
       else
         sigil=sigil+1
 
@@ -106,14 +112,20 @@ macro A9M.L2.first_line {
 
   \}
 
-; * we should get the ipret here,
-;   but we don't yet have an ipret table!
-;
-; * or, for that matter, a base ipret ;>
-;
-;
-;  vmem.seek  A9M.L1.mem,sigil
 
+  ; get base ipret
+  if ~name
+    vhash.from_disk A9M.L1.tab,A9M.L1.DEFTAB
+
+  ; we should get the ipret here,
+  ; but we don't yet have an ipret table!
+  else
+    vmem.seek A9M.L1.mem,sigil
+
+  end if
+
+
+  ; cleanup
   A9M.L1.reset
 
 }
@@ -127,9 +139,25 @@ macro A9M.L2.common_line {
 
     while expr\#.ptr < expr\#.len
 
+      ; get token
       A9M.L1.load
-      vmem.prich A9M.L1.mem
 
+      ; ^match against dict
+      $mov ptr ice,ptr A9M.L1.tab
+      vhash.find % A9M.L1.ctx,ptr token
+
+      ; ^is keyw?
+      $on ar = 1
+        display 'MATCH!',$0A
+
+      ; ^nope!
+      else
+        display 'NO MATCH!',$0A
+
+      end if
+
+
+      ; cleanup and go next
       A9M.L1.reset
 
     end while

@@ -28,6 +28,14 @@ library.import
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; ROM
+
+if ~ defined A9M.ROMPATH
+  define A9M.ROMPATH "%ARPATH%/forge/A9M/ROM/"
+
+end if
+
+; ---   *   ---   *   ---
 ; GBL
 
   IO.CTAGIT A9MTAG,'35;1','A9M'

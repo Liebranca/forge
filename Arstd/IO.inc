@@ -277,8 +277,15 @@ macro humansay N,bits {
 
 macro xesay N,bits {
 
-  hexsay   N,bits
-  display  $20,IO.colon,$20
+  hexsay N,bits
+
+  if IO.colorsay=1
+    display $20,IO.colon,$20
+
+  else
+    display  $20,':',$20
+
+  end if
 
   humansay N,bits
 

@@ -32,6 +32,8 @@ library.import
   define   A9M.L1.mem
   vmem.new A9M.L1.mem,blk A9M.L1.TOKEN_SZ
 
+  define   A9M.L1.dict
+
 ; ---   *   ---   *   ---
 ; decl/set default GBL
 
@@ -39,13 +41,6 @@ macro A9M.L1.reset {
   vmem.clear  A9M.L1.mem
 
 }
-
-; ---   *   ---   *   ---
-; reserve space for ctx at
-; beg of L1 buffer
-
-define          A9M.L1.ctx
-A9M.L1.head.new A9M.L1.ctx
 
 ; ---   *   ---   *   ---
 ; save token to expr
@@ -108,33 +103,42 @@ macro A9M.L1.load {
     $and dr,$0F
     $shr ar,$04
 
-    ; 1-bit brak
-    $mov cr,ar
-    $and cr,$01
-    $shr ar,$01
-
-    ; 5-bit parens
+    ; 4-bit parens
     $mov br,ar
     $and br,$1F
-    $shr ar,$05
+    $shr ar,$04
 
-    ; ^get token len
-    $mov er,ar
-    $and er,$3F
+    ; ^combine into ctx
+    $shl br,$04
+    $or  dr,br
 
-    ; ^save to ctx
-    $mov %[A9M.L1.ctx nest.curly],dr
-    $mov %[A9M.L1.ctx nest.brak],cr
-    $mov %[A9M.L1.ctx nest.parens],br
-    $mov %[A9M.L1.ctx token.len],er
+    $mov %[A9M.L1.ctx CP],dr
 
-    ; get token
-    local sbuf
+
+    ; 2-bit brak
+    $mov dr,ar
+    $and dr,$03
+    $shr ar,$02
+
+    ; ^6-bit len
+    $mov br,ar
+    $and br,$3F
+
     local len
+    $mov  len,br
 
-    $mov  len,er
+    ; ^combine into ctx
+    $shl br,$04
+    $or  dr,br
 
-    vmem.view   sbuf,A9M.L2.mem,expr\#.ptr,len
+    $mov %[A9M.L1.ctx BL],dr
+
+
+    ; get token ptr from L2
+    local     sbuf
+    vmem.view sbuf,A9M.L2.mem,expr\#.ptr,len
+
+    ; ^load to L1
     vmem.cat    A9M.L1.mem,sbuf
     vmem.lseek  A9M.L2.mem,len
     vmem.rewind A9M.L1.mem

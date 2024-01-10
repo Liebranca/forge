@@ -34,25 +34,22 @@ vhash.new tab,A9M.L1.head,$06,A9M.L1.TOKEN_SZ shr 3
 $mov      ptr ice,ptr tab
 
 ; ---   *   ---   *   ---
-; make value placeholder
-
-define          item
-A9M.L1.head.new item
-
-; ---   *   ---   *   ---
 ; table fill helper
 
 macro settab X,[tag] {
 
   common
+
     local i
     i = 0
 
-    A9M.L1.head.TRF.set item,X
+    A9M.L1.head.TRF.set A9M.L1.ctx,X
+
 
   forward
-    A9M.L1.head.SID.set item,i
-    vhash.store tag,% item
+
+    A9M.L1.head.SID.set A9M.L1.ctx,i
+    vhash.store tag,% A9M.L1.ctx
 
     i = i+1
 
@@ -77,8 +74,6 @@ settab $11,\
 ; ---   *   ---   *   ---
 ; save tab
 
-vhash.prich tab
-err
-;vhash.to_disk tab
+vhash.to_disk tab
 
 ; ---   *   ---   *   ---

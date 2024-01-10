@@ -1,5 +1,5 @@
 ; ---   *   ---   *   ---
-; A9M L1:SHARED
+; A9M L1:SHARE
 ;
 ; LIBRE SOFTWARE
 ; Licensed under GNU GPL3
@@ -11,16 +11,25 @@
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     A9M.SHARED.L1
+  TITLE     A9M.SHARE.L1
 
   VERSION   v0.00.1b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; bits
+; ROM
 
 if ~ defined A9M.L1.TOKEN_SZ
   define A9M.L1.TOKEN_SZ $40
+
+end if
+
+if ~ defined A9M.L1.DEFTAB
+
+  match __path , A9M.ROMPATH {
+    define A9M.L1.DEFTAB __path#'L1.vhash'
+
+  }
 
 end if
 
@@ -47,5 +56,11 @@ vreg.new A9M.L1.head
 
 vreg.end
 sizeof.A9M.L1.head=$04
+
+; ---   *   ---   *   ---
+; ^single ice
+
+define          A9M.L1.ctx
+A9M.L1.head.new A9M.L1.ctx
 
 ; ---   *   ---   *   ---

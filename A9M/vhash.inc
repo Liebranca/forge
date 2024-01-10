@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vhash
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -123,6 +123,9 @@ macro vhash.from_disk dst,fpath {
   match id , dst \{
 
     local off
+    local tmp
+    local kezy
+
     off=sizeof.vhash
 
     vmc.bget tmp,%[dst masksz]
@@ -138,7 +141,7 @@ macro vhash.from_disk dst,fpath {
     off=off+tmp
 
     vmc.bget tmp,%[dst cnt]
-    vmc.bget kezy,%[dst kezy]
+    vmc.bget kezy,%[dst \kezy]
 
     vmem.view id\#.keys,id\#%origin,\
       off,kezy*tmp
@@ -211,6 +214,50 @@ macro vhash.free idex,chunk=qword {
   ; ^clear idex
   vhash.keycoord
   vhash.free_occ_slot  sref
+
+}
+
+; ---   *   ---   *   ---
+; ^sugar for checking if
+; a key exists
+
+macro vhash.find dst,idex,chunk=qword {
+
+  ; is idex a buffer?
+  local sref
+  vhash.unpack_key_src sref,idex
+
+  ; is dst a buffer?
+  local vref
+  vhash.unpack_value vref,dst
+
+  ; key to idex
+  $pass ptr sref,lit chunk,%[ice kbits]
+  $call vcrypt.hash
+
+
+  ; check le length before search
+  match id , sref \{
+
+    $mov br,%[ice kezy]
+    $on id\#.len <= br
+
+      vhash.keycoord
+      vhash.have? sref
+
+      ; ^give if found
+      $on ar = 1
+        vhash.get_slot_value vref
+        $mov ar,$01
+
+      end if
+
+    else
+      ar=0
+
+    end if
+
+  \}
 
 }
 
@@ -326,7 +373,7 @@ macro vhash.keycoord {
 ; get *occupied* slot
 ; used to fetch elem
 
-macro vhash.get_occ_slot sref,fn& {
+macro vhash.get_occ_slot sref,die?,fn& {
 
   $mov   ar,%[ctx mask]
   $mov   dr,%[ctx kmask]
@@ -335,41 +382,74 @@ macro vhash.get_occ_slot sref,fn& {
 
   ; slot free?
   $on ~(ar and br)
-    vhash.throw_nokey sref
 
-  end if
+    if die? = 1
+      vhash.throw_nokey sref
 
-
-  ; ^nope, get key eq sref
-  $xor   cr,cr
-  $while ar and br
-
-    ; skip sentinels
-    $on ~(dr and br)
-      $mov ar,%[ctx kmask]
-      vhash.mask_search
-
-    ; ^actual elem, compare buffers
-    ; ^then stop if same
     else
-      vhash.keycmp sref
-      $break on ar = 1
+      $mov cr,$09
 
     end if
 
+  else
 
-    ; die if unsolvable
-    vhash.search_fail? sref
+    ; ^nope, get key eq sref
+    $xor   cr,cr
+    $while ar and br
+
+      ; skip sentinels
+      $on ~(dr and br)
+        $mov ar,%[ctx kmask]
+        vhash.mask_search
+
+      ; ^actual elem, compare buffers
+      ; ^then stop if same
+      else
+        vhash.keycmp sref
+        $break on ar = 1
+
+      end if
 
 
-  end while
+      ; die if unsolvable
+      vhash.search_fail? sref,die?
 
 
-  ; optinal footer
-  match mode , fn \{
-    vhash.set_slot_meta sref,mode
+    end while
 
-  \}
+
+    ; optinal footer
+    match mode , fn \{
+      vhash.set_slot_meta sref,mode
+
+    \}
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps for freeing
+
+macro vhash.free_occ_slot sref {
+  vhash.get_occ_slot sref,1,unset
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps for merely checking!
+
+macro vhash.have? sref {
+
+  ; search for key
+  vhash.get_occ_slot sref,0
+
+  ; ^reset out
+  $mov ar,1
+  $on  cr > 8
+    $mov ar,0
+
+  end if
 
 }
 
@@ -421,21 +501,17 @@ macro vhash.get_free_slot sref {
 }
 
 ; ---   *   ---   *   ---
-; ^wraps for freeing
-
-macro vhash.free_occ_slot sref {
-  vhash.get_occ_slot sref,unset
-
-}
-
-; ---   *   ---   *   ---
 ; quits a search loop
 
-macro vhash.search_fail? sref {
+macro vhash.search_fail? sref,die?=1 {
 
   $inc cr
   $on cr > 8
-    vhash.throw_unsolvable sref
+
+    if die? = 1
+      vhash.throw_unsolvable sref
+
+    end if
 
   end if
 
@@ -495,6 +571,7 @@ macro vhash.get_elem dst,type {
     src  equ keys
 
   \}
+
 
   match id tag , vmc.REG.ice src \{
 
