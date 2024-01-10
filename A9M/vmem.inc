@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.1b
+  VERSION   v0.01.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -225,12 +225,13 @@ macro vmem.view dst,src,addr,len {
 
 macro vmem.set dst,src,addr,size=byte {
 
-  match id , dst \{
+  match id sz , dst size \{
 
     vmem.boundschk id,addr,size,\
       "set past end of vmem"
 
-    store size src at id\#.base:\
+    store size (src and sizebm.\#sz) \
+      at id\#.base:\
       id\#.beg+addr
 
   \}

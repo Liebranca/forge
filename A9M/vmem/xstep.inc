@@ -112,7 +112,7 @@ macro vmem._xld dst,src,off,size {
   match id , src \{
 
     load dst size from id\#.base:\
-      id\#.beg+off*sizeof.#size
+      id\#.beg+(off*sizeof.#size)
 
   \}
 
@@ -121,8 +121,10 @@ macro vmem._xld dst,src,off,size {
 macro vmem._xst dst,src,off,size {
 
   match id , dst \{
-    store size src at id\#.base:\
-      id\#.beg+off*sizeof.#size
+
+    store size (src and sizebm.#size) \
+      at id\#.base:\
+      id\#.beg+(off*sizeof.#size)
 
   \}
 

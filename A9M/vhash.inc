@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vhash
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -248,7 +248,6 @@ macro vhash.find dst,idex,chunk=qword {
       ; ^give if found
       $on ar = 1
         vhash.get_slot_value vref
-        $mov ar,$01
 
       end if
 
@@ -315,6 +314,7 @@ macro vhash.unpack_value dst,value {
     vmem.new dst,value
 
   \}
+
 
   ; override buff length if zero
   match id , dst \{
@@ -510,6 +510,9 @@ macro vhash.search_fail? sref,die?=1 {
 
     if die? = 1
       vhash.throw_unsolvable sref
+
+    else
+      break
 
     end if
 

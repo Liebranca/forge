@@ -84,19 +84,7 @@ macro ANIMA.prich {
 
   define    vmc.ARGV
 
-  ; for use by instructions
-  vmc._tmp_0=0
-  vmc._tmp_1=0
-  vmc._tmp_2=0
-  vmc._tmp_3=0
 
-  ; ^for use by decoder
-  vmc._tmp_4=0
-  vmc._tmp_5=0
-  vmc._tmp_6=0
-  vmc._tmp_7=0
-
-  ; ^for use by everyone ;>
   vmc.debug=0
 
 ; ---   *   ---   *   ---
@@ -317,25 +305,29 @@ macro vmc.decode.mem.inner A,mode,size,id {
 
   ; deref base+offset
   match base op off , id \{
-    vmc.decode.mem.inner_off_0 off,op
+
+    local res
+    res=0
+
+    vmc.decode.mem.inner_off_0 res,off,op
 
     match =read , mode \\{
-      vmem.get A,base,vmc._tmp_4,size
+      vmem.get A,base,res,size
 
     \\}
 
     match =write , mode \\{
-      vmem.set base,A,vmc._tmp_4,size
+      vmem.set base,A,res,size
 
     \\}
 
     match =uop ins , mode \\{
-      vmem.\\#ins base,vmc._tmp_4,size
+      vmem.\\#ins base,res,size
 
     \\}
 
     match =bop ins , mode \\{
-      vmem.\\#ins base,A,vmc._tmp_4,size
+      vmem.\\#ins base,A,res,size
 
     \\}
 
@@ -373,35 +365,42 @@ macro vmc.decode.mem.inner A,mode,size,id {
 ; ---   *   ---   *   ---
 ; ^innards
 
-macro vmc.decode.mem.inner_off_0 N,op {
+macro vmc.decode.mem.inner_off_0 dst,N,op {
 
   local ok
   ok equ 0
 
-  vmc._tmp_4=0
-  vmc._tmp_5=0
+  local w0
+  local w1
+
+  w0=0
+  w1=1
 
   match A op2 B , N \{
 
-    vmc.decode.reg ok,vmc._tmp_4,A,read
-    vmc.decode.imm ok,vmc._tmp_4,A
+    vmc.decode.reg ok,w0,A,read
+    vmc.decode.imm ok,w0,A
 
-    vmc.decode.reg ok,vmc._tmp_5,B,read
-    vmc.decode.imm ok,vmc._tmp_5,B
+    ok equ 0
 
-    vmc._tmp_4=vmc._tmp_4 op2 vmc._tmp_5
+    vmc.decode.reg ok,w1,B,read
+    vmc.decode.imm ok,w1,B
+
+    dst=w0 op2 w1
 
     ok equ 1
 
   \}
 
   match =0 , ok \{
-    vmc.decode.reg ok,vmc._tmp_4,N,read
-    vmc.decode.imm ok,vmc._tmp_4,N
+    vmc.decode.reg ok,w0,N,read
+    vmc.decode.imm ok,w0,N
+
+    dst = w0
 
   \}
 
-  vmc._tmp_4=0 op vmc._tmp_4
+  dst=0 op dst
 
 }
 
@@ -509,7 +508,7 @@ macro vmc.decode.imm ok,A,B,mode=read {
 macro $mov dst,src {
 
   local value
-  value equ vmc._tmp_0
+  value=0
 
   vmc.decode value,src,read
   vmc.decode value,dst,write
@@ -596,13 +595,17 @@ macro vmc.bget dst,src {
 
 macro $urdivp2 dst,src,N {
 
-  vmc.decode vmc._tmp_0,src,read
-  vmc.decode vmc._tmp_1,N,read
+  local w0
+  local w1
 
-  vuint.urdivp2 vmc._tmp_0,\
-    vmc._tmp_0,vmc._tmp_1
+  w0=0
+  w1=0
 
-  vmc.decode vmc._tmp_0,dst,write
+  vmc.decode    w0,src,read
+  vmc.decode    w1,N,read
+
+  vuint.urdivp2 w0,w0,w1
+  vmc.decode    w0,dst,write
 
 }
 
@@ -611,9 +614,13 @@ macro $urdivp2 dst,src,N {
 
 macro $repeat src,step= {
 
-  vmc.decode vmc._tmp_0,src,read
-  repeat vmc._tmp_0
+  local w0
+  w0=0
 
+  vmc.decode w0,src,read
+
+
+  repeat w0
   match any , step \{$mov src,(%-1)*step\}
 
 }
@@ -695,10 +702,17 @@ macro $on EXPR,mode=if {
   macro $on.inner vars,prefix= \{
 
     match X =, op =, Y , vars \\{
-      vmc.decode vmc._tmp_0,X,read
-      vmc.decode vmc._tmp_1,Y,read
 
-      mode prefix (vmc._tmp_0 op vmc._tmp_1)
+      local w0
+      local w1
+
+      w0=0
+      w1=0
+
+      vmc.decode w0,X,read
+      vmc.decode w1,Y,read
+
+      mode prefix (w0 op w1)
 
     \\}
 
@@ -767,10 +781,16 @@ macro $eon EXPR,mode=if {
   ; do on [EXPR]
   macro inner pre,X,op,Y \{
 
-    vmc.decode vmc._tmp_0,X,read
-    vmc.decode vmc._tmp_1,Y,read
+    local w0
+    local w1
 
-    else if prefix (vmc._tmp_0 op vmc._tmp_1)
+    w0=0
+    w1=0
+
+    vmc.decode w0,X,read
+    vmc.decode w1,Y,read
+
+    else if prefix (w0 op w1)
 
   \}
 
@@ -799,7 +819,11 @@ macro vmc._gen_op type,[name] {
     match =u , type \{
 
       macro $\#name dst \\{
-        vmc.decode vmc._tmp_0,dst,type#op name
+
+        local w0
+        w0=0
+
+        vmc.decode w0,dst,type#op name
 
       \\}
 
@@ -810,8 +834,12 @@ macro vmc._gen_op type,[name] {
     match =b , type \{
 
       macro $\#name dst,src \\{
-        vmc.decode vmc._tmp_0,src,read
-        vmc.decode vmc._tmp_0,dst,type#op name
+
+        local w0
+        w0=0
+
+        vmc.decode w0,src,read
+        vmc.decode w0,dst,type#op name
 
       \\}
 

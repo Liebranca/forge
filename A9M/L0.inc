@@ -219,8 +219,8 @@ macro A9M.L0.logic.ws {
   match token , A9M.L1.mem \{
 
     if (token\#.ptr) &~ A9M.L0.chk.ws
-      A9M.write $0A
-      A9M.write.nest_branch
+      A9M.dbout $0A
+      A9M.dbout.nest_branch
 
     end if
 
@@ -237,7 +237,7 @@ macro A9M.L0.logic.ws {
 macro A9M.L0.logic.term {
 
   A9M.L0.term=1
-  A9M.write $0A,$0A
+  A9M.dbout $0A,$0A
 
   A9M.L1.store
   A9M.L2.proc_expr
@@ -279,7 +279,7 @@ macro A9M.L0.logic.nterm {
     ; was last char a delim?
     ; are we now at ident lvl 0?
     if A9M.L0.delim &~ A9M.L0.fulnest
-      A9M.write.branch
+      A9M.dbout.branch
 
     end if
 
@@ -287,7 +287,7 @@ macro A9M.L0.logic.nterm {
     A9M.L0.store
 
     ; ^cat char to fout
-    A9M.write A9M.L0.mem
+    A9M.dbout A9M.L0.mem
 
     ; ^mark last as nterm
     A9M.L0.delim = 0
@@ -323,9 +323,9 @@ macro A9M.L0.logic.nesting name {
 
     A9M.L0.nest_#name = A9M.L0.nest_#name+1
 
-    A9M.write d0,$0A
-    A9M.write.nest_pad
-    A9M.write.branch
+    A9M.dbout d0,$0A
+    A9M.dbout.nest_pad
+    A9M.dbout.branch
 
 
   ; ^close, nest--
@@ -333,15 +333,15 @@ macro A9M.L0.logic.nesting name {
 
     A9M.L0.nest_#name = A9M.L0.nest_#name-1
 
-    A9M.write $0A
-    A9M.write.nest_pad
-    A9M.write '.'
+    A9M.dbout $0A
+    A9M.dbout.nest_pad
+    A9M.dbout '.'
 
-    A9M.write $0A
-    A9M.write.nest_pad
+    A9M.dbout $0A
+    A9M.dbout.nest_pad
 
-    A9M.write.branch d1,$0A
-    A9M.write.nest_pad
+    A9M.dbout.branch d1,$0A
+    A9M.dbout.nest_pad
 
   end if
 

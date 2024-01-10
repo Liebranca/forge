@@ -117,7 +117,8 @@ macro vmem.store dst,src,size=byte {
 
 
     ; set and move ptr
-    store size src at id\#.base:\
+    store size (src and sizebm.#size) \
+      at id\#.base:\
       id\#.beg+id\#.ptr
 
     vmem.lseek       dst,sizeof.#size
@@ -252,7 +253,7 @@ macro vmem.eq dst,s0,s1,ow= {
 
   ; varlis
   local len
-  len equ vmem.eq.len
+  len = 0
 
   ; reset out
   dst = 0
@@ -265,7 +266,7 @@ macro vmem.eq dst,s0,s1,ow= {
     vuint.defval len,B\#.len,ow
 
     ; skip on bad length
-    if ~(A\#.len = len)
+    if ~(A\#.len < len)
       dst = 1
 
     ; ^else compare

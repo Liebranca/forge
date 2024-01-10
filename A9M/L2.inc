@@ -16,7 +16,7 @@
 
   TITLE     A9M.L2
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -46,6 +46,14 @@ macro A9M.L2.cat {
 
   ; ^save token
   vmem.cat A9M.L2.mem,A9M.L1.mem
+
+}
+
+; ---   *   ---   *   ---
+; write expr to fout
+
+macro A9M.L2.store ct& {
+  vmem.write A9M.FDST,ct
 
 }
 
@@ -144,18 +152,21 @@ macro A9M.L2.common_line {
 
       ; ^match against dict
       $mov ptr ice,ptr A9M.L1.tab
-      vhash.find % A9M.L1.ctx,ptr token
+      vhash.find % vmc.REG,ptr token
 
       ; ^is keyw?
-      $on ar = 1
-        display 'MATCH!',$0A
+      $on ~(ar = 0)
 
-      ; ^nope!
+        $mov %[A9M.L1.ctx TRF],ar
+        $shr ar,$08
+        $mov %[A9M.L1.ctx SID],ar
+
+        A9M.L2.store % A9M.L1.ctx
+
+      ; ^nope, assume ID
       else
-        display 'NO MATCH!',$0A
 
       end if
-
 
       ; cleanup and go next
       A9M.L1.reset

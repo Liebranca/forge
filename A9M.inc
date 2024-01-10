@@ -151,12 +151,9 @@ macro A9M.read fpath?= {
 }
 
 ; ---   *   ---   *   ---
-; ^write to fout
+; debug out
 
-macro A9M.write ct& {
-
-  ; cat to file
-  vmem.write A9M.FDST,ct
+macro A9M.dbout ct& {
 
   ; ^optionally cout ;>
   if A9M.debug
@@ -169,10 +166,10 @@ macro A9M.write ct& {
 ; ---   *   ---   *   ---
 ; ^outs ident lvl
 
-macro A9M.write.nest_pad {
+macro A9M.dbout.nest_pad {
 
   repeat A9M.L0.fulnest
-    A9M.write '.  '
+    A9M.dbout '.  '
 
   end repeat
 
@@ -181,15 +178,15 @@ macro A9M.write.nest_pad {
 ; ---   *   ---   *   ---
 ; ^outs branch beg
 
-macro A9M.write.branch ct& {
+macro A9M.dbout.branch ct& {
 
   match any , ct \{
-    A9M.write '\-->',ct
+    A9M.dbout '\-->',ct
 
   \}
 
   match , ct \{
-    A9M.write '\-->'
+    A9M.dbout '\-->'
 
   \}
 
@@ -198,9 +195,9 @@ macro A9M.write.branch ct& {
 ; ---   *   ---   *   ---
 ; ^combo
 
-macro A9M.write.nest_branch ct& {
-  A9M.write.nest_pad
-  A9M.write.branch ct
+macro A9M.dbout.nest_branch ct& {
+  A9M.dbout.nest_pad
+  A9M.dbout.branch ct
 
 }
 
