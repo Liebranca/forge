@@ -54,6 +54,9 @@ vreg.new vhash.lkp
 
 vreg.end
 
+define        vhash._lkp_0
+vhash.lkp.new vhash._lkp_0
+
 ; ---   *   ---   *   ---
 ; ^cstruc wraps
 
@@ -284,11 +287,8 @@ macro vhash.unpack_value dst,value {
 
 macro vhash.keycoord {
 
-  ; make ctx
-  local         ctx_buff
-  vhash.lkp.new ctx_buff
-
-  $mov ptr ctx,ptr ctx_buff
+  ; load ctx
+  $mov ptr ctx,ptr vhash._lkp_0
 
   ; map key to mask idex (key/64)
   $mov cr,ar

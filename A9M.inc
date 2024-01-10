@@ -36,7 +36,7 @@ library.import
   define A9M.ipret
 
   ; for use by all ;>
-  A9M.debug = 1
+  A9M.debug = 0
 
   define A9M.FSRC
   define A9M.FDST

@@ -140,9 +140,15 @@ macro A9M.L1.load {
     $mov %[A9M.L1.ctx nest.parens],br
     $mov %[A9M.L1.ctx token.len],er
 
-
     ; get token
-    vmem.cat    A9M.L1.mem,A9M.L2.mem,1
+    local sbuf
+    local len
+
+    $mov  len,er
+
+    vmem.view   sbuf,A9M.L2.mem,expr\#.ptr,len
+    vmem.cat    A9M.L1.mem,sbuf
+    vmem.lseek  A9M.L2.mem,len
     vmem.rewind A9M.L1.mem
 
   \}

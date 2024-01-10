@@ -16,7 +16,7 @@
 
   TITLE     A9M.L2
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -62,11 +62,7 @@ macro A9M.L2.proc_expr {
 
   ; ^nope, run ipret proc
   else
-
-    match id , A9M.ipret \{
-      A9M.L2.common_line
-
-    \}
+    A9M.L2.common_line
 
   end if
 
@@ -97,7 +93,7 @@ macro A9M.L2.first_line {
       if A9M.L0.chk.usrchr
         name=name+1
 
-      else if (% > 1) & (name)
+      else if (% > 1) & (name > 0)
         out@err 'peso standard forbids ' \
           #'sigils on ipret name'
 
@@ -110,17 +106,36 @@ macro A9M.L2.first_line {
 
   \}
 
-  vmem.seek  A9M.L1.mem,sigil
-  vmem.prich A9M.L1.mem
-  err
+; * we should get the ipret here,
+;   but we don't yet have an ipret table!
+;
+; * or, for that matter, a base ipret ;>
+;
+;
+;  vmem.seek  A9M.L1.mem,sigil
 
   A9M.L1.reset
 
 }
 
 ; ---   *   ---   *   ---
-; TODO
+; walk expr
 
-macro A9M.L2.common_line {}
+macro A9M.L2.common_line {
+
+  match token expr , A9M.L1.mem A9M.L2.mem \{
+
+    while expr\#.ptr < expr\#.len
+
+      A9M.L1.load
+      vmem.prich A9M.L1.mem
+
+      A9M.L1.reset
+
+    end while
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---

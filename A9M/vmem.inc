@@ -203,7 +203,7 @@ macro vmem.view dst,src,addr,len {
 
     ; ^addr is all that counts ;>
     id\#.beg = par\#.beg+addr
-    id\#.ptr = id\#.beg
+    id\#.ptr = $00
 
     ; note: no pad len on vmem view!
     id\#.len  = len

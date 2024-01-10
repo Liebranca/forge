@@ -154,7 +154,7 @@ macro vmem.clear dst {
 
   match id , dst \{
 
-    vmem.xwalk id\#.len,\
+    vmem.xwalk id\#.size,\
       vmem.WTA,dst,$00
 
     vmem.clear_meta dst
@@ -175,15 +175,15 @@ macro vmem.cat A,B,srcptr= {
     local len
     local fn
 
-    len equ src\#.len
-    off equ 0
+    len = src\#.len
+    off = 0
 
     match any , srcptr \\{
-      off equ src\#.ptr
+      off = src\#.ptr
 
     \\}
 
-    len equ (len-off)
+    len = (len-off)
 
 
     ; resize dst?
@@ -192,7 +192,6 @@ macro vmem.cat A,B,srcptr= {
       local nchunk
       local diff
 
-      diff equ vmem.cat.diff
       diff = (dst\#.ptr+len) - dst\#.size
 
       vmem.seg nchunk,dst,blk diff

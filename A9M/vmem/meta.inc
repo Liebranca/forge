@@ -128,7 +128,7 @@ macro vmem.ptr_boundschk dst {
 
   match id , dst \{
 
-    if (id\#.ptr >= id\#.size) \
+    if (id\#.ptr > id\#.size) \
     |  (id\#.ptr <  0)
 
       out@err 'seek past end of vmem'
