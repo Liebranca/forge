@@ -224,13 +224,10 @@ macro vmem.cat A,B,srcptr= {
 
 macro vmem.copy dst,src,ow= {
 
-  ; varlis
-  local len
-  len equ vmem.copy.len
-
   match A B , dst src \{
 
     ; size passed?
+    local len
     vuint.defval len,B\#.len,ow
 
     ; errchk

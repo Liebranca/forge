@@ -500,14 +500,13 @@ macro vhash.get_elem dst,type {
 
     ; get elem and width
     vhash.get_elem_idex
-    $mov br,%[ice ezy]
+    $mov br,%[ice size]
 
     ; get key src at offset
     local sbuf
     $mul  ar,br
 
     $pass ptr sbuf,ptr id\#.\#tag,ar,br
-
     $call vmem.view
 
     match any , sbuf \\{

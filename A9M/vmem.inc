@@ -303,8 +303,68 @@ macro vmem.prich src,get_real=0 {
     end if
 
     ; show raw : print
-    vmem.xwalk len,vmem.DBOUT,id
+    local i
+    i=0
+
+    IO.colorsay=0
+    repeat len shr $04
+
+      ; add blank each cache line
+      local j
+      j=(i/2)
+
+      if(~ (j mod $04))
+        out@nl
+
+      end if
+
+      if(~(j mod $10))
+
+        out@nl
+        display '$'
+        hexsay  (i/2) shr 4,$10
+
+        out@nl  2
+
+
+      end if
+
+
+      local w0
+      local w1
+
+      vmem.xld  w0,id,(i+0),8
+      vmem.xld  w1,id,(i+1),8
+
+      display   $20
+
+      hexsay    w0,$20
+      display   $20
+
+      hexsay    w0 shr $20,$20
+      display   ' : '
+
+      hexsay    w1,$20
+      display   $20
+
+      hexsay    w1 shr $20,$20
+      display   ' | '
+
+      humansay  w0,$40
+      humansay  w1,$40
+      out@nl
+
+      i = i+2
+
+    end repeat
+
+    if len < $10
+      vmem.xwalk len,vmem.DBOUT,id
+
+    end if
     out@nl 2
+
+    IO.colorsay=1
 
   \}
 

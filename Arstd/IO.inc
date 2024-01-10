@@ -18,6 +18,11 @@
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
+; GBL
+
+  IO.colorsay=1
+
+; ---   *   ---   *   ---
 ; color escape+string
 
 macro ANSIC dst,color,value& {
@@ -198,8 +203,14 @@ macro hexsay N,bits {
 
   local ._v.d
 
-  display IO.money,IO.number
+  ; display colored?
+  if IO.colorsay=1
+    display IO.money,IO.number
 
+  end if
+
+
+  ; iter nibbles
   repeat (bits)/4
 
     ._v.d = \
@@ -215,7 +226,12 @@ macro hexsay N,bits {
 
   end repeat
 
-  display IO.ncolor
+
+  ; ^close wraps
+  if IO.colorsay=1
+    display IO.ncolor
+
+  end if
 
 }
 
@@ -226,8 +242,14 @@ macro humansay N,bits {
 
   local ._v.d
 
-  display IO.string,"'"
+  ; display colored?
+  if IO.colorsay=1
+    display IO.string,"'"
 
+  end if
+
+
+  ; iter bytes
   repeat (bits)/8
 
     ._v.d = (N shr ((%-1)*8)) and $FF
@@ -241,7 +263,12 @@ macro humansay N,bits {
 
   end repeat
 
-  display "'",IO.ncolor
+
+  ; ^close wrap
+  if IO.colorsay=1
+    display "'",IO.ncolor
+
+  end if
 
 }
 

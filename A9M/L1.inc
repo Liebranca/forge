@@ -11,6 +11,14 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
+; deps
+
+library ARPATH '/forge/'
+  use '.inc' A9M::SHARE::L1
+
+library.import
+
+; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.L1
@@ -19,15 +27,7 @@
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
-; ROM I
-
-if ~ defined A9M.L1.TOKEN_SZ
-  define A9M.L1.TOKEN_SZ $40
-
-end if
-
-; ---   *   ---   *   ---
-; GBL I
+; GBL
 
   define   A9M.L1.mem
   vmem.new A9M.L1.mem,blk A9M.L1.TOKEN_SZ
@@ -39,18 +39,6 @@ macro A9M.L1.reset {
   vmem.clear  A9M.L1.mem
 
 }
-
-; ---   *   ---   *   ---
-; base struc
-
-vreg.new A9M.L1.head
-  szmy byte nest.parens
-  szmy byte nest.brak
-  szmy byte nest.curly
-  szmy byte token.len
-
-vreg.end
-sizeof.A9M.L1.head=$04
 
 ; ---   *   ---   *   ---
 ; reserve space for ctx at
@@ -75,14 +63,14 @@ macro A9M.L1.store {
       $mov br,A9M.L0.nest_curly
       $or  ar,br
 
-      ; 1-bit brak
-      $mov br,A9M.L0.nest_brak
+      ; 4-bit parens
+      $mov br,A9M.L0.nest_parens
       $shl br,$04
       $or  ar,br
 
-      ; 5-bit parens
-      $mov br,A9M.L0.nest_parens
-      $shl br,$05
+      ; 2-bit brak
+      $mov br,A9M.L0.nest_brak
+      $shl br,$08
       $or  ar,br
 
 
