@@ -1,0 +1,115 @@
+#!/usr/bin/perl
+#
+# because dhex ties bytes per line
+# to terminal size. what the f*ck?
+#
+# you guys think that's cute or sth?!
+#
+# ---   *   ---   *   ---
+# deps
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use Readonly;
+  use English qw(-no_match_vars);
+
+  use lib $ENV{'ARPATH'}.'/lib/sys/';
+
+  use Style;
+  use Arstd::IO;
+
+# ---   *   ---   *   ---
+# get input
+
+my $src   = shift @ARGV or die "No file";
+
+my $body  = orc($src);
+my $k     = 15;
+
+# ---   *   ---   *   ---
+# ^walk file
+
+while(length $body) {
+
+  # get next chunk
+  my $line=substr $body,0,16,$NULLSTR;
+
+  # setup line
+  my ($i,$j,$h)=(0,0,0);
+  my $sl=$NULLSTR;
+  my $sr=$NULLSTR;
+
+  # ^split chunk
+  my @bytes=split $NULLSTR,$line;
+
+  # ^pad to 16
+  if(@bytes < 16) {
+    my $diff=16-@bytes;
+    push @bytes,("\x{00}")x$diff;
+
+  };
+
+
+  # walk chunk
+  for my $b(@bytes) {
+
+    # get char as a number
+    my $x  = ord($b);
+    $sl   .= sprintf "%02X",$x;
+
+    # ^can we print it?
+    if($x<0x7E && 0x20<$x) {
+      $sr.=chr($x);
+
+    # else put dot
+    } else {
+      $sr.='.';
+
+    };
+
+    # go next
+    $i++;
+    $j++;
+    $h++;
+
+    # space every 4th
+    if($i > 3) {
+      $i   = 0;
+      $sl .= ' ';
+
+    };
+
+    # ^reset every 16th
+    if($h > 15) {
+      $j=$h=0;
+
+    # ^put separator every 8th
+    } elsif($j >  7) {
+      $j   = 0;
+      $sl .= ': ';
+
+    };
+
+  };
+
+
+  # add blank every (cache)line
+  # and another every 4th
+  $k+=1;
+
+
+  say "\n\n",sprintf "\$%04X",($k-16) >> 4
+
+  if ! ($k % 16);
+
+  say $NULLSTR if ! ($k %  4);
+
+  # out (human)line
+  say ' ',$sl,'| ',$sr;
+
+};
+
+# ---   *   ---   *   ---
+1; # ret

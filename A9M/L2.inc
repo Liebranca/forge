@@ -27,6 +27,12 @@
 
   A9M.L2.exprcnt = 0
 
+  vmem.new A9M.L2.STROUT,blk $00
+  vmem.new A9M.L2.SYMOUT,blk $00
+
+  commacat A9M.$$,ptr A9M.L2.STROUT
+  commacat A9M.$$,ptr A9M.L2.SYMOUT
+
 ; ---   *   ---   *   ---
 ; ~
 
@@ -42,7 +48,7 @@ macro A9M.L2.cat {
 
   ; save meta
   $pass ptr A9M.L2.mem,ar,lit word
-  $call vmem.store
+  $call vmem.bstore
 
   ; ^save token
   vmem.cat A9M.L2.mem,A9M.L1.mem
@@ -53,7 +59,7 @@ macro A9M.L2.cat {
 ; write expr to fout
 
 macro A9M.L2.store ct& {
-  vmem.write A9M.FDST,ct
+  vmem.write A9M.L2.SYMOUT,ct
 
 }
 
@@ -139,6 +145,25 @@ macro A9M.L2.first_line {
 }
 
 ; ---   *   ---   *   ---
+; hash for ids (test)
+
+vreg.new A9M.L1.id_t
+  szmy word loc
+
+vreg.end
+sizeof.A9M.L1.id_t=$02
+
+
+define          A9M.L1.idx
+A9M.L1.id_t.new A9M.L1.idx
+
+
+define    A9M.L2.idtab
+vhash.new A9M.L2.idtab,A9M.L1.id_t,\
+  $04,A9M.L1.TOKEN_SZ
+
+
+; ---   *   ---   *   ---
 ; walk expr
 
 macro A9M.L2.common_line {
@@ -155,20 +180,74 @@ macro A9M.L2.common_line {
       vhash.find % vmc.REG,ptr token
 
       ; ^is keyw?
-      $on ~(ar = 0)
+      $on br = 1
 
+        ; get token class
         $mov %[A9M.L1.ctx TRF],ar
         $shr ar,$08
         $mov %[A9M.L1.ctx SID],ar
 
+        ; ^write to out
         A9M.L2.store % A9M.L1.ctx
+
 
       ; ^nope, assume ID
       else
 
+        ; use generic ID class
+        $mov %[A9M.L1.ctx TRF],A9M.L1.ID_T
+        $mov %[A9M.L1.ctx SID],$FF
+
+        ; ^write to out
+        A9M.L2.store % A9M.L1.ctx
+
+
+        ; now we want to link to the
+        ; string itself, so...
+        ;
+        ; have we parsed this ID before?
+        $mov ptr ice,ptr A9M.L2.idtab
+        vhash.find % vmc.REG,ptr token
+
+        ; ^yes!
+        $on br = 1
+
+          ; just save ptr to string
+          ; we got from the table
+          $mov %[A9M.L1.idx loc],ar
+          A9M.L2.store % A9M.L1.idx
+
+        ; ^no :c
+        else
+
+          ; alright don't panic
+          ; we want to get the top of
+          ; STROUT and save that to the table
+          local top
+          match strout , A9M.L2.STROUT \\{
+
+            top = strout\\#.ptr
+
+            $mov %[A9M.L1.idx loc],top
+            vhash.store ptr token,% A9M.L1.idx
+
+          \\}
+
+          ; ^now write the string to STROUT!
+          local sbuf
+          vmem.view  sbuf,token,0,token\#.len
+          vmem.write A9M.L2.STROUT,ptr sbuf
+
+          ; now write ptr for *this* instance!
+          $mov %[A9M.L1.idx loc],top
+          A9M.L2.store % A9M.L1.idx
+
+        end if
+
+
       end if
 
-      ; cleanup and go next
+      ; save, cleanup and go next
       A9M.L1.reset
 
     end while

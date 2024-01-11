@@ -1,0 +1,142 @@
+#!/usr/bin/perl
+# ---   *   ---   *   ---
+# PESO
+# The WORD comes from GOD
+#
+# LIBRE SOFTWARE
+# Licensed under GNU GPL3
+# be a bro and inherit
+#
+# CONTRIBUTORS
+# lyeb,
+
+# ---   *   ---   *   ---
+# deps
+
+package main;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use Readonly;
+
+  use Cwd qw(abs_path);
+  use English qw(-no_match_words);
+
+  use lib $ENV{ARPATH}.'/lib/sys/';
+
+  use Style;
+  use Cli;
+
+  use Arstd::Path;
+  use Arstd::IO;
+  use Arstd::WLog;
+
+  use lib $ENV{ARPATH}.'/lib/';
+  use Avt::flatten;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION = v0.00.2;#b
+  our $AUTHOR  = 'IBN-3DILA';
+
+  $WLog->ex('peso');
+
+# ---   *   ---   *   ---
+# ROM
+
+  Readonly my $SRCDIR=>
+    $ENV{ARPATH}.'/forge/tests/';
+
+# ---   *   ---   *   ---
+# define arguments for commandline
+
+my $m=Cli->nit(
+
+  @{$Cli::Fstruct::ATTRS},
+  {id=>'debug',short=>'-d',argc=>0},
+
+);
+
+# ---   *   ---   *   ---
+# get/validate input
+
+my @files=map {
+
+  my $fpath=abs_path($ARG);
+
+  errout(
+    'Cannot find file %s',
+
+    args => [$fpath],
+    lvl  => $AR_FATAL,
+
+  ) unless -f $fpath;
+
+  $fpath;
+
+} Cli::Fstruct::proto_search($m);
+
+# ---   *   ---   *   ---
+# ^make call
+
+$WLog->step('reading files');
+my $errout='.peso-errlog';
+
+map {
+
+  # get path and ext
+  my $fpath = $ARG;
+  my $base  = nxbasef($fpath);
+
+  $WLog->substep(Shb7::shpath($fpath));
+
+
+  # assemble file or die
+  Shb7::Bk::flat->asm(
+
+    "$SRCDIR/A9M.asm",
+    $errout,
+
+    "-d A9M.FPATH=\"'$fpath'\""
+
+  ) or die "FATAL";
+
+
+  # ^all good, proc output
+  my @out=Avt::flatten::pproc->ffilter(
+    $SRCDIR,qr{A9M\..+$}
+
+  );
+
+  # ^move output files
+  map {
+
+    my $ext=extof($ARG);
+    my $dst="$base.$ext";
+
+    rename $ARG,$dst;
+
+    if($m->{debug} eq 1) {
+
+      my @call=('xd',$dst);
+      system {$call[0]} @call;
+
+    };
+
+  } @out;
+
+} @files;
+
+# ---   *   ---   *   ---
+# cleanup and give ;>
+
+unlink $errout;
+say    $NULLSTR;
+
+$WLog->step('done');
+
+# ---   *   ---   *   ---
+1; # ret

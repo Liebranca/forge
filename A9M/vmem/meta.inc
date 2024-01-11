@@ -112,12 +112,18 @@ macro vmem.fastfwd dst,top=len {
 ; ---   *   ---   *   ---
 ; errchk protos
 
-macro vmem.boundschk id,addr,size,me {
+macro vmem.boundschk dst,addr,sz,me {
 
-  if (addr+sizeof.#size) > id#.size
-    out@err me
+  match size id , sz dst \{
 
-  end if
+    if ((addr)+sizeof.\#size) \
+     > (id\#.size+id\#.beg)
+
+      out@err me
+
+    end if
+
+  \}
 
 }
 

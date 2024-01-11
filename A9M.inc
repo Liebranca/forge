@@ -15,6 +15,7 @@
 ; deps
 
 library ARPATH '/forge/'
+  use '.inc' A9M::vmc
   use '.inc' A9M::vhash
 
 library.import
@@ -46,8 +47,13 @@ end if
   ; for use by all ;>
   A9M.debug = 0
 
+  ; I/O buffers
   define A9M.FSRC
   define A9M.FDST
+
+  ; auxiliary list of buffers
+  ; (see: A9M.foot)
+  define A9M.$$
 
 ; ---   *   ---   *   ---
 ; makes conditions with
@@ -124,7 +130,7 @@ macro A9M.read fpath?= {
   ; read file into vmem
   vmem.orc A9M.FSRC,A9M.FPATH
 
-  ; ^decl out blk
+  ; ^decl out file
   vmem.owc A9M.FDST,'p3',blk $00
 
 
@@ -147,6 +153,22 @@ macro A9M.read fpath?= {
   ; consume file and clear
   A9M.L0.orc
   A9M.FPATH equ
+
+  ; invoke footer
+  match buffers , A9M.$$ \{
+    A9M.foot buffers
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; exec at end of program
+; generally used as a final
+; write to out
+
+macro A9M.foot [buff] {
+  vmem.write A9M.FDST,buff
 
 }
 

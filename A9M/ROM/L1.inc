@@ -29,9 +29,10 @@ library.import
 ; crux
 
 define    tab
-vhash.new tab,A9M.L1.head,$06,A9M.L1.TOKEN_SZ shr 3
+vhash.new tab,A9M.L1.head,\
+  $06,A9M.L1.TOKEN_SZ shr 3
 
-$mov      ptr ice,ptr tab
+$mov ptr ice,ptr tab
 
 ; ---   *   ---   *   ---
 ; table fill helper
@@ -59,15 +60,15 @@ macro settab X,[tag] {
 ; fill table
 
 ; top-level hierarchicals
-settab $08,\
+settab A9M.L1.HIER_T,\
   'clan','rom','reg','proc','blk'
 
 ; hier specs
-settab $01,\
+settab A9M.L1.HIER_S,\
   'iface','guts'
 
 ; width specs
-settab $11,\
+settab A9M.L1.TYPE_S,\
   'byte','wide','brad','word'
 
 

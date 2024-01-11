@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.L1
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

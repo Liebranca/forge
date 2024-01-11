@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xop
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -136,5 +136,32 @@ vmem._gen_op b sub   , dst=dst-src
 vmem._gen_op u dec   , dst=dst-1
 
 vmem._gen_op b mul   , dst=dst * src
+
+
+vmem._gen_op b badd  , vmem._badd dst,src
+
+; ---   *   ---   *   ---
+; binary add to waltzaround
+; integer overflow
+
+macro vmem._badd A,B {
+
+  local shift
+  local carry
+  local res
+
+  carry = A and B
+  res   = A xor B
+
+  while ~(carry = 0)
+    shift = (carry and 0x7FFFFFFFFFFFFFFF) shl 1
+    carry = res and shift
+    res   = res xor shift
+
+  end while
+
+  A = res
+
+}
 
 ; ---   *   ---   *   ---

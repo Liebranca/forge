@@ -34,6 +34,65 @@ if ~ defined A9M.L1.DEFTAB
 end if
 
 ; ---   *   ---   *   ---
+; lexer definitions helper
+
+macro A9M.L1.mklex_bits [item] {
+
+  forward match name value , item \{
+    A9M.L1.LEX.\#name = value
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^the bits
+
+  ; token classes (last bit reserved!)
+  A9M.L1.mklex_bits \
+    HIER $00,\
+    SPEC $01,\
+    PTR  $02,\
+    ID   $03
+
+  ; ^token attrs
+  A9M.L1.mklex_bits \
+    REPL $08
+
+  ; ^subclass!
+  rept $10 __cnt:0 {
+    A9M.L1.mklex_bits \
+      SPEC_#__cnt (__cnt shl 4)
+
+  }
+
+; ---   *   ---   *   ---
+; joins bits together
+
+macro A9M.L1.mklex name,[bit] {
+
+  common
+    A9M.L1.#name = 0
+
+  forward
+
+    local N
+    N = A9M.L1.LEX.#bit
+
+    A9M.L1.#name = A9M.L1.#name or N
+
+}
+
+; ---   *   ---   *   ---
+; ^the bytes!
+
+  A9M.L1.mklex HIER_T,HIER,REPL,SPEC_0
+  A9M.L1.mklex HIER_S,SPEC,SPEC_0
+
+  A9M.L1.mklex TYPE_S,SPEC,SPEC_1
+  A9M.L1.mklex ID_T,ID,SPEC_15
+
+; ---   *   ---   *   ---
 ; base struc
 
 vreg.new A9M.L1.head

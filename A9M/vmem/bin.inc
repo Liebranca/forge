@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem.bin
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -76,6 +76,14 @@ macro vmem.write dst,ct& {
 
       \\}
 
+
+      ; blank dump
+      match =blk sz , ct \\{
+        db sz dup $00
+        ok equ 1
+
+      \\}
+
       ; ^regular string
       match =0 , ok \\{
         db ct
@@ -108,21 +116,36 @@ macro vmem.paste src {
 ; ---   *   ---   *   ---
 ; set value at ptr
 
-macro vmem.store dst,src,size=byte {
+macro vmem.store dst,src,sz=byte {
 
-  match id , dst \{
+  match size id , sz dst \{
 
     vmem.boundschk id,id\#.ptr,size,\
       "store past end of vmem"
 
+    local w0
+    w0 = (src) and sizebm.\#size
 
     ; set and move ptr
-    store size (src and sizebm.#size) \
-      at id\#.base:\
+    store size w0 at id\#.base:\
       id\#.beg+id\#.ptr
 
-    vmem.lseek       dst,sizeof.#size
+    vmem.lseek       dst,sizeof.\#size
     vmem.update_meta dst,id\#.ptr
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^boundless
+; careful, this one resizes!
+
+macro vmem.bstore dst,src,sz=byte {
+
+  match size id , sz dst \{
+    vmem.resize_chk dst,sizeof.\#size
+    vmem.store      dst,src,size
 
   \}
 
@@ -165,6 +188,27 @@ macro vmem.clear dst {
 }
 
 ; ---   *   ---   *   ---
+; resize dst?
+
+macro vmem.resize_chk dst,len {
+
+  match id , dst \{
+
+    if id\#.size < (id\#.ptr+len)
+
+      local diff
+      diff = ((id\#.ptr+len) - id\#.size)*$04
+
+      vuint.align diff,diff,$06
+      vmem.write  dst,blk diff
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; boundless write at ptr,
 ; will extend dst if too small
 
@@ -184,20 +228,10 @@ macro vmem.cat A,B,srcptr= {
 
     \\}
 
+
+    ; resize dst if need
     len = (len-off)
-
-
-    ; resize dst?
-    if dst\#.size < (dst\#.ptr+len)
-
-      local nchunk
-      local diff
-
-      diff = (dst\#.ptr+len) - dst\#.size
-
-      vmem.seg nchunk,dst,blk diff
-
-    end if
+    vmem.resize_chk A,len
 
 
     ; get base offset
@@ -266,7 +300,7 @@ macro vmem.eq dst,s0,s1,ow= {
     vuint.defval len,B\#.len,ow
 
     ; skip on bad length
-    if ~(A\#.len < len)
+    if (A\#.size < len)
       dst = 1
 
     ; ^else compare
@@ -279,7 +313,7 @@ macro vmem.eq dst,s0,s1,ow= {
 
 
   ; reset out
-  if ~ dst
+  if dst = 0
     dst = 1
 
   else

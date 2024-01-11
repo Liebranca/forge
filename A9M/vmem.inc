@@ -202,7 +202,7 @@ macro vmem.view dst,src,addr,len {
     id\#.base equ par\#.base
 
     ; ^addr is all that counts ;>
-    id\#.beg = par\#.beg+addr
+    id\#.beg = (par\#.beg)+(addr)
     id\#.ptr = $00
 
     ; note: no pad len on vmem view!
@@ -223,16 +223,19 @@ macro vmem.view dst,src,addr,len {
 ; ---   *   ---   *   ---
 ; store at arbitrary offset
 
-macro vmem.set dst,src,addr,size=byte {
+macro vmem.set dst,src,addr,sz=byte {
 
-  match id sz , dst size \{
+  match size id , sz dst \{
 
     vmem.boundschk id,addr,size,\
       "set past end of vmem"
 
-    store size (src and sizebm.\#sz) \
-      at id\#.base:\
-      id\#.beg+addr
+    local w0
+    local w1
+    w0 = (src) and sizebm.\#size
+    w1 = id\#.beg+(addr)
+
+    store size w0 at id\#.base:w1
 
   \}
 
@@ -241,15 +244,17 @@ macro vmem.set dst,src,addr,size=byte {
 ; ---   *   ---   *   ---
 ; ^load at arbitrary offset
 
-macro vmem.get dst,src,addr,size=byte {
+macro vmem.get dst,src,addr,sz=byte {
 
-  match id , src \{
+  match size id , sz src \{
 
     vmem.boundschk id,addr,size,\
       "get past end of vmem"
 
-    load dst size from id\#.base:\
-      id\#.beg+addr
+    local w0
+    w0 = id\#.beg+(addr)
+
+    load dst size from id\#.base:w0
 
   \}
 
@@ -267,25 +272,25 @@ macro vmem.prich src,get_real=0 {
     display $0A,'BUFID ',\`id,$0A
 
     display 'SEGAT '
-    hexsay  id\#.beg,$10
+    hexsay  id\#.beg,$20
     out@nl  2
 
 
     ; give seg attrs
     display '  size '
-    hexsay  id\#.size,$08
+    hexsay  id\#.size,$20
     out@nl
 
     display '  len  '
-    hexsay  id\#.len,$08
+    hexsay  id\#.len,$20
     out@nl
 
     display '  pad  '
-    hexsay  id\#.pad,$08
+    hexsay  id\#.pad,$20
     out@nl
 
     display '  ptr  '
-    hexsay  id\#.ptr,$08
+    hexsay  id\#.ptr,$20
     out@nl  2
 
 
@@ -333,6 +338,8 @@ macro vmem.prich src,get_real=0 {
 
       local w0
       local w1
+      w0=0
+      w1=0
 
       vmem.xld  w0,id,(i+0),8
       vmem.xld  w1,id,(i+1),8

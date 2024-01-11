@@ -105,26 +105,89 @@ macro vmem.xst dst,src,off,len {
 }
 
 ; ---   *   ---   *   ---
-; ^shorthands
+; ^guts
 
-macro vmem._xld dst,src,off,size {
+macro vmem._xld dst,src,off,sz {
 
-  match id , src \{
+  match size id , sz src \{
 
-    load dst size from id\#.base:\
-      id\#.beg+(off*sizeof.#size)
+    local w0
+    w0=id\#.beg+((off) * sizeof.\#size)
+
+    vmem.boundschk id,w0,size,\
+      "load past end of vmem"
+
+    load dst size from id\#.base:w0
 
   \}
 
 }
 
-macro vmem._xst dst,src,off,size {
+macro vmem._xst dst,src,off,sz {
 
-  match id , dst \{
+  match size id , sz dst \{
 
-    store size (src and sizebm.#size) \
-      at id\#.base:\
-      id\#.beg+(off*sizeof.#size)
+    local w0
+    local w1
+
+    w0=(src) and sizebm.\#size
+    w1=id\#.beg+((off) * sizeof.\#size)
+
+    vmem.boundschk id,w1,size,\
+      "store past end of vmem"
+
+    store size w0 at id\#.base:w1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^N-sized ld/st (unscaled)
+
+macro vmem.xldus dst,src,off,len {
+  vmem.xfn len,vmem._xldus,dst,src,off
+
+}
+
+macro vmem.xstus dst,src,off,len {
+  vmem.xfn len,vmem._xstus,dst,src,off
+
+}
+
+; ---   *   ---   *   ---
+; ^guts
+
+macro vmem._xldus dst,src,off,sz {
+
+  match size id , sz src \{
+
+    local w0
+    w0=id\#.beg+(off)
+
+    vmem.boundschk id,w0,size,\
+      "load past end of vmem"
+
+    load dst size from id\#.base:w0
+
+  \}
+
+}
+
+macro vmem._xstus dst,src,off,sz {
+
+  match size id , sz dst \{
+
+    local w0
+    local w1
+
+    w0=(src) and sizebm.\#size
+    w1=id\#.beg+(off)
+
+    vmem.boundschk id,w1,size,\
+      "store past end of vmem"
+
+    store size w0 at id\#.base:w1
 
   \}
 
@@ -144,8 +207,11 @@ macro vmem.xwalk size,fn,args& {
   local i
 
   ; save total
-  have = size
-  i    = 0
+  have  = size
+  i     = 0
+  step  = 0
+  shift = 0
+  len   = 0
 
   ; ^iter
   while have
@@ -201,6 +267,7 @@ macro vmem.LDA dst,src,i0,i1,step {
 macro vmem.DUMPA src,i0,i1,step {
 
   local w0
+  w0 = 0
 
   vmem.LDA w0,src,i0,i1,step
   vmem.xdd w0,step
@@ -213,6 +280,7 @@ macro vmem.DUMPA src,i0,i1,step {
 macro vmem.BTOA dst,src,i0,i1,step {
 
   local w0
+  w0 = 0
 
   vmem.xld w0,src,i1,step
   vmem.xst dst,w0,i0,step
@@ -233,7 +301,12 @@ macro vmem.BTOAPTR dst,src,base,i0,i1,step {
 
 macro vmem.BPTRTOAPTR dst,src,b0,b1,i0,i1,step {
 
-  vmem.BTOA  dst,src,b0+i0,b1+i1,step
+  local w0
+  w0 = 0
+
+  vmem.xldus w0,src,b1+i1,step
+  vmem.xstus dst,w0,b0+i0,step
+
   vmem.lseek dst,step
 
   local ok
@@ -268,6 +341,9 @@ macro vmem.EQAB dst,A,B,i0,i1,step {
   local w0
   local w1
 
+  w0 = 0
+  w1 = 0
+
   vmem.LOADAB A,B,w0,w1,i0,i1,step
 
   dst = dst or (w0 xor w1)
@@ -280,6 +356,7 @@ macro vmem.EQAB dst,A,B,i0,i1,step {
 macro vmem.DBOUT id,i0,i1,step {
 
   local w0
+  w0=0
 
   vmem.xld w0,id,i0,step
 

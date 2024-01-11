@@ -21,11 +21,22 @@ A9M.read filepath
 
 If the argument is omitted, `A9M.read` will use `A9M.FPATH`, which can simply be set through `define A9M.FPATH 'path/to/file'` or `A9M.FPATH equ 'path/to/file'`. Alternatively, the path can be passed through the commandline, eg `fasm -d A9M.FPATH="'path/to/file'"`.
 
+A commandline util to do this is also provided in this repo, in `bin/peso`; `peso path/to/file` is more or less equivalent to the previously mentioned methods.
+
 ## DESCRIPTION
 
 The Arcane 9 is a *theoretical* virtual machine and compiler, which right here and now, we have begun implementing with flat assembler macros. In essence: this a framework for code generation from within the assembler itself.
 
 ## CHANGELOG
+
+### v0.00.9b
+
+- Generating token tables using `*::vhash`.
+
+- Matching `L1` tokens against the default token table.
+- Subdivided the output buffer into symbols and strings. Useful for storing identifiers that are syntactically valid but don't match against any reserved token.
+
+- Added commandline utils for running test `A9M` compilations.
 
 ### v0.00.8b
 

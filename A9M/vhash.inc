@@ -14,6 +14,7 @@
 
 library ARPATH '/forge/'
   use '.inc' A9M::vcrypt
+  use '.inc' A9M::vmpart
 
 library.import
 
@@ -22,7 +23,7 @@ library.import
 
   TITLE     A9M.vhash
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -43,19 +44,8 @@ vreg.end
 ; ---   *   ---   *   ---
 ; ^holds lookup vars
 
-vreg.new vhash.lkp
-
-  szmy qword mask
-  szmy qword kmask
-  szmy qword elem
-
-  szmy byte  bit
-  szmy byte  idex
-
-vreg.end
-
-define        vhash._lkp_0
-vhash.lkp.new vhash._lkp_0
+define         vhash._lkp_0
+vmpart.lkp.new vhash._lkp_0
 
 ; ---   *   ---   *   ---
 ; ^cstruc wraps
@@ -97,14 +87,17 @@ macro vhash.new dst,type,kbits,kezy=$20 {
 
     local tmp
 
-    vmc.bget tmp,%[dst masksz]
-    vmem.seg id\#.mask,id\#%origin,\
-      blk tmp*8*2
+    ; make masks
+    vmc.bget   tmp,%[dst masksz]
+    vmpart.new id\#.mask,tmp,seg id\#%origin
+    vmpart.new id\#.kmask,tmp,seg id\#%origin
 
+    ; make value array
     vmc.bget tmp,%[dst cap]
     vmem.seg id\#.values,id\#%origin,\
       blk tmp
 
+    ; make key array
     vmc.bget tmp,%[dst cnt]
     vmem.seg id\#.keys,id\#%origin,\
       blk kezy*tmp
@@ -128,21 +121,25 @@ macro vhash.from_disk dst,fpath {
 
     off=sizeof.vhash
 
-    vmc.bget tmp,%[dst masksz]
-    vmem.view id\#.mask,id\#%origin,\
-      off,tmp*8*2
+    ; get masks
+    vmc.bget   tmp,%[dst masksz]
 
-    off=off+(tmp*8*2)
+    vmpart.new id\#.mask,tmp,view off id\#%origin
+    off=off+(tmp*8)
 
+    vmpart.new id\#.kmask,tmp,view off id\#%origin
+    off=off+(tmp*8)
+
+    ; get value array
     vmc.bget tmp,%[dst cap]
     vmem.view id\#.values,id\#%origin,\
       off,tmp
 
     off=off+tmp
 
+    ; get key array
     vmc.bget tmp,%[dst cnt]
     vmc.bget kezy,%[dst \kezy]
-
     vmem.view id\#.keys,id\#%origin,\
       off,kezy*tmp
 
@@ -151,24 +148,44 @@ macro vhash.from_disk dst,fpath {
 }
 
 ; ---   *   ---   *   ---
+; map buffer to idex
+
+macro vhash.hashf sref,chunk {
+
+  $pass ptr sref,ptr chunk,%[ice kbits]
+  $call vcrypt.hash
+
+  vhash.keycoord
+
+}
+
+; ---   *   ---   *   ---
+; ^wraps for vmpart.keycoord ;>
+
+macro vhash.keycoord {
+  vmpart.keycoord ptr vhash._lkp_0
+  vmpart.get_mask vmc.REG.ice,mask,dual
+
+}
+
+; ---   *   ---   *   ---
 ; put id => value
 
-macro vhash.store idex,value,chunk=qword {
+macro vhash.store key,value,chunk=qword {
 
   ; is key a buffer?
   local sref
-  vhash.unpack_key_src sref,idex
+  vhash.unpack_key_src sref,key
 
   ; is value a buffer?
   local vref
   vhash.unpack_value vref,value
 
+
   ; key to idex
-  $pass ptr sref,ptr chunk,%[ice kbits]
-  $call vcrypt.hash
+  vhash.hashf sref,chunk
 
   ; ^write at idex
-  vhash.keycoord
   vhash.get_free_slot  sref
   vhash.set_slot_value vref
 
@@ -177,22 +194,21 @@ macro vhash.store idex,value,chunk=qword {
 ; ---   *   ---   *   ---
 ; ^fetch value from id
 
-macro vhash.load dst,idex,chunk=qword {
+macro vhash.load dst,key,chunk=qword {
 
   ; is idex a buffer?
   local sref
-  vhash.unpack_key_src sref,idex
+  vhash.unpack_key_src sref,key
 
   ; is dst a buffer?
   local vref
   vhash.unpack_value vref,dst
 
+
   ; key to idex
-  $pass ptr sref,ptr chunk,%[ice kbits]
-  $call vcrypt.hash
+  vhash.hashf sref,chunk
 
   ; ^write at idex
-  vhash.keycoord
   vhash.get_occ_slot   sref
   vhash.get_slot_value vref
 
@@ -201,18 +217,16 @@ macro vhash.load dst,idex,chunk=qword {
 ; ---   *   ---   *   ---
 ; ^sugar for freeing slot
 
-macro vhash.free idex,chunk=qword {
+macro vhash.free key,chunk=qword {
 
   ; is idex a buffer?
   local sref
-  vhash.unpack_key_src sref,idex
+  vhash.unpack_key_src sref,key
 
   ; key to idex
-  $pass ptr sref,ptr chunk,%[ice kbits]
-  $call vcrypt.hash
+  vhash.hashf sref,chunk
 
   ; ^clear idex
-  vhash.keycoord
   vhash.free_occ_slot  sref
 
 }
@@ -221,11 +235,11 @@ macro vhash.free idex,chunk=qword {
 ; ^sugar for checking if
 ; a key exists
 
-macro vhash.find dst,idex,chunk=qword {
+macro vhash.find dst,key,chunk=qword {
 
   ; is idex a buffer?
   local sref
-  vhash.unpack_key_src sref,idex
+  vhash.unpack_key_src sref,key
 
   ; is dst a buffer?
   local vref
@@ -248,11 +262,12 @@ macro vhash.find dst,idex,chunk=qword {
       ; ^give if found
       $on ar = 1
         vhash.get_slot_value vref
+        $mov br,$01
 
       end if
 
     else
-      ar=0
+      $mov br,$00
 
     end if
 
@@ -325,45 +340,13 @@ macro vhash.unpack_value dst,value {
 
     end if
 
-  \}
+    local top
+    $mov  top,%[ice ezy]
 
-}
+    if id\#.len > top
+      id\#.len = top
 
-; ---   *   ---   *   ---
-; map key to bitmask coords
-
-macro vhash.keycoord {
-
-  ; load ctx
-  $mov ptr ctx,ptr vhash._lkp_0
-
-  ; map key to mask idex (key/64)
-  $mov cr,ar
-  $shr cr,sizep2.line
-  $mov %[ctx idex],cr
-
-  ; map key to mask *bit* idex
-  $mov dr,cr
-  $shl dr,sizep2.line
-
-  $mov er,ar
-  $sub er,dr
-  $mov %[ctx bit],er
-
-  ; get mask *elem* bit
-  $mov dr,1
-  $shl dr,er
-
-  $mov %[ctx elem],dr
-
-
-  ; get mask
-  match id , vmc.REG.ice \{
-
-    $mov %[ctx mask],qword [id\#.mask+cr*8]
-
-    $add cr,%[ice masksz]
-    $mov %[ctx kmask],qword [id\#.mask+cr*8]
+    end if
 
   \}
 
@@ -400,7 +383,7 @@ macro vhash.get_occ_slot sref,die?,fn& {
       ; skip sentinels
       $on ~(dr and br)
         $mov ar,%[ctx kmask]
-        vhash.mask_search
+        vmpart.search
 
       ; ^actual elem, compare buffers
       ; ^then stop if same
@@ -479,7 +462,7 @@ macro vhash.get_free_slot sref {
       $mov  ar,%[ctx kmask]
       $not  ar
 
-      vhash.mask_search
+      vmpart.search
 
     ; ^same key, overwrite
     else
@@ -517,33 +500,6 @@ macro vhash.search_fail? sref,die?=1 {
     end if
 
   end if
-
-}
-
-; ---   *   ---   *   ---
-; tries to find free slot
-
-macro vhash.mask_search {
-
-  ; R search
-  $bsf br,ar
-
-  ; ^L search on fail
-  $on br > $3F
-    $mov br,ar
-    $mov dr,%[ctx bit]
-    $shr br,dr
-    $bsf br,ar
-
-  end if
-
-
-  ; ^recalc element pos
-  $mov %[ctx bit],br
-
-  $mov dr,1
-  $shl dr,br
-  $mov %[ctx elem],dr
 
 }
 
@@ -656,9 +612,7 @@ macro vhash.set_slot_meta sref,mode {
 
       ; set mask bits
       $or  qword [id\#.mask+cr*8],ar
-
-      $add cr,br
-      $or  qword [id\#.mask+cr*8],ar
+      $or  qword [id\#.kmask+cr*8],ar
 
       ; get elem key
       local sbuf
@@ -675,8 +629,7 @@ macro vhash.set_slot_meta sref,mode {
       ; actually, free nothing
       ; just put a sentinel ;>
       $not ar
-      $add cr,br
-      $and qword [id\#.mask+cr*8],ar
+      $and qword [id\#.kmask+cr*8],ar
 
     \\}
 
@@ -745,3 +698,4 @@ macro vhash.throw_unsolvable sref {
 }
 
 ; ---   *   ---   *   ---
+

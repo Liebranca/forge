@@ -25,7 +25,7 @@
 
 macro uid.new dst,prefix,_nullarg& {
   local UID
-  dst equ UID
+  dst equ prefix#UID
 
 }
 

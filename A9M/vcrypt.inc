@@ -10,14 +10,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-library ARPATH '/forge/'
-  use '.inc' A9M::vmc
-
-library.import
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.vcrypt
@@ -50,10 +42,10 @@ macro vcrypt.xorkey src,size {
       $mov dr,size [src+cr]
 
       ; ^add encoding offset
-      $sub dr,vcrypt.ASCII_MIN and sizebm.#size
-      $add dr,br
+      $sub  dr,vcrypt.ASCII_MIN and sizebm.#size
+      $badd dr,br
 
-      $xor br,vcrypt.ASCII_MAX and sizebm.#size
+      $xor  br,vcrypt.ASCII_MAX and sizebm.#size
 
       ; ^xor to accum
       $xor ar,dr
