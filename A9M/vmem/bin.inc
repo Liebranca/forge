@@ -238,16 +238,28 @@ macro vmem.cat A,B,srcptr= {
     local base
     base = dst\#.ptr
 
-    ; ^write src+off to dst ptr
-    vmem.xwalk len,\
-      vmem.BPTRTOAPTR,dst,src,base,off
 
-    vmem.update_meta dst,dst\#.ptr
+    ; ^write src+off to dst ptr
+    local ok
+    ok equ 0
 
     match any , srcptr \\{
+      vmem.xwalk len,\
+        vmem.BPTRTOAPTR,dst,src,base,off
+
       vmem.update_meta src,src\#.ptr
 
+      ok equ 1
+
     \\}
+
+    match =0 , ok \\{
+      vmem.xwalk len,\
+        vmem.BTOAPTR,dst,src,base
+
+    \\}
+
+    vmem.update_meta dst,dst\#.ptr
 
   \}
 

@@ -282,8 +282,8 @@ macro vmem.BTOA dst,src,i0,i1,step {
   local w0
   w0 = 0
 
-  vmem.xld w0,src,i1,step
-  vmem.xst dst,w0,i0,step
+  vmem.xldus w0,src,i1,step
+  vmem.xstus dst,w0,i0,step
 
 }
 
@@ -308,19 +308,7 @@ macro vmem.BPTRTOAPTR dst,src,b0,b1,i0,i1,step {
   vmem.xstus dst,w0,b0+i0,step
 
   vmem.lseek dst,step
-
-  local ok
-  ok equ 0
-
-  match =0 , b1 \{
-    ok equ 1
-
-  \}
-
-  match =0 , ok \{
-    vmem.lseek src,step
-
-  \}
+  vmem.lseek src,step
 
 }
 

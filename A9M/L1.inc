@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.L1
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -74,7 +74,8 @@ match __strout , A9M.STROUT {
 ; decl/set default GBL
 
 macro A9M.L1.reset {
-  vmem.clear  A9M.L1.mem
+  vmem.clear A9M.L1.mem
+  A9M.postcall_ptr = $00
 
 }
 
@@ -409,6 +410,7 @@ macro A9M.L1.postcall {
 
   else if A9M.L1.postcall_ptr = $02
     A9M.L1.serialize
+    A9M.L1.postcall_ptr = $00
 
   end if
 

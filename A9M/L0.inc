@@ -14,7 +14,7 @@
 
   TITLE     A9M.L0
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
