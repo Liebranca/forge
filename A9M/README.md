@@ -29,6 +29,16 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.01.0b
+
+- Slight modification to `L0` which takes token and expression processing out of the main switch.
+
+- `L1` memory serialization happens before the expression itself is processed; and so now syntactical analysis is performed directly on serialized tokens.
+
+- Added `*::SHARE::OUTBUF` file for defining output buffers, all catted to `*::$$` via footer.
+
+- Combine, consume and reverse macros for `*::vmc`.
+
 ### v0.00.9b
 
 - Generating token tables using `*::vhash`.

@@ -135,7 +135,7 @@ macro vmpart.search {
     $mov br,ar
     $mov dr,%[ctx bit]
     $shr br,dr
-    $bsf br,ar
+    $bsf br,br
 
   end if
 

@@ -264,10 +264,13 @@ macro vhash.find dst,key,chunk=qword {
         vhash.get_slot_value vref
         $mov br,$01
 
+      else
+        $xor br,br
+
       end if
 
     else
-      $mov br,$00
+      $xor br,br
 
     end if
 

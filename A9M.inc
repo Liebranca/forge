@@ -25,7 +25,7 @@ library.import
 
   TITLE     A9M
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,14 +47,6 @@ end if
   ; for use by all ;>
   A9M.debug = 0
 
-  ; I/O buffers
-  define A9M.FSRC
-  define A9M.FDST
-
-  ; auxiliary list of buffers
-  ; (see: A9M.foot)
-  define A9M.$$
-
 ; ---   *   ---   *   ---
 ; makes conditions with
 ; expanded symbols
@@ -70,6 +62,14 @@ macro A9M.make_chk base,name,[item] {
   \}
 
 }
+
+; ---   *   ---   *   ---
+; insert I/O code
+
+library ARPATH '/forge/'
+  use '.inc' A9M::SHARE::OUTBUF
+
+library.import
 
 ; ---   *   ---   *   ---
 ; insert memory levels code
@@ -168,7 +168,13 @@ macro A9M.read fpath?= {
 ; write to out
 
 macro A9M.foot [buff] {
-  vmem.write A9M.FDST,buff
+
+  ; invoke module footers
+  common
+   A9M.L1.foot
+
+  ; ^perform final write
+  forward vmem.write A9M.FDST,buff
 
 }
 

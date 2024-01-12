@@ -226,6 +226,7 @@ macro vreg.ice dst,type,seg= {
 
   ; ^typecast vmem ptr
   match id , dst \{
+    id\#.len = id\#.size
     vreg.cast dst,id type
 
   \}

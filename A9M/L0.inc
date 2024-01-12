@@ -203,7 +203,15 @@ macro A9M.L0.orc {
   match id step , A9M.FSRC A9M.L0.CHAR_SZ \{
 
     repeat id\#.len shr sizep2.\#step
+
       A9M.L0.chrin
+      A9M.L1.postcall
+
+      if A9M.L0.term=1
+        A9M.L2.proc_expr
+
+      end if
+
 
     end repeat
 
@@ -240,7 +248,6 @@ macro A9M.L0.logic.term {
   A9M.dbout $0A,$0A
 
   A9M.L1.store
-  A9M.L2.proc_expr
 
 }
 
