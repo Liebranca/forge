@@ -51,10 +51,7 @@ macro A9M.L2.proc_expr {
   ; do the dance
   vmem.rewind A9M.L2.mem
 
-  if A9M.L2.exprcnt > 0
-    A9M.L2.walk_expr
-
-  end if
+  A9M.L2.walk_expr
 
   ; cleanup and go next
   A9M.L2.exprcnt=A9M.L2.exprcnt+1

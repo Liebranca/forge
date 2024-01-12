@@ -57,8 +57,7 @@ sizeof.A9M.L1.id_t=$02
   define A9M.L1.keywtab
 
   ; ^this is how we know
-  A9M.L1.tokencnt     = 0
-  A9M.L1.postcall_ptr = 0
+  A9M.L1.tokencnt = 0
 
 ; ---   *   ---   *   ---
 ; reserve len bytes in
@@ -75,7 +74,6 @@ match __strout , A9M.STROUT {
 
 macro A9M.L1.reset {
   vmem.clear A9M.L1.mem
-  A9M.postcall_ptr = $00
 
 }
 
@@ -84,26 +82,13 @@ macro A9M.L1.reset {
 
 macro A9M.L1.store {
 
-  ; have chars to push?
   match token , A9M.L1.mem \{
 
     if token\#.ptr > 0
-
-      ; load ipret on first token
-      if A9M.L1.tokencnt = 0
-        A9M.L1.postcall_ptr = $01
-
-      ; ^else store serial
-      else if A9M.L1.tokencnt > 0
-        A9M.L1.postcall_ptr = $02
-
-      end if
-
-      ; up counter
+      A9M.L1.serialize
       A9M.L1.tokencnt=A9M.L1.tokencnt+1
 
-    else
-      A9M.L1.postcall_ptr=$00
+      A9M.dbout $0A,$0A
 
     end if
 
@@ -320,63 +305,6 @@ macro A9M.L1.to_strout {
 }
 
 ; ---   *   ---   *   ---
-; first thing in an arcane file!
-
-macro A9M.L1.load_ipret {
-
-  ; get token
-
-  local name
-  local sigil
-
-  name  = 0
-  sigil = 0
-
-
-  ; walk chars of token
-  match token step , A9M.L1.mem A9M.L0.CHAR_SZ \{
-
-    repeat token\#.len shr sizep2.\#step
-
-      A9M.L0.load
-
-      ; char is name of ipret
-      if A9M.L0.chk.usrchr
-        name=name+1
-
-      ; errchk
-      else if (% > 1) & (name > 0)
-        out@err 'peso standard forbids ' \
-          #'sigils on ipret name'
-
-      ; ^sigil gives ipret mode
-      else
-        sigil=sigil+1
-
-      end if
-
-    end repeat
-
-  \}
-
-
-  ; get base ipret
-  if name = 0
-    vhash.from_disk A9M.L1.keywtab,A9M.L1.DEFTAB
-
-  ; we should get the ipret here,
-  ; but we don't yet have an ipret table!
-  else
-    vmem.seek A9M.L1.mem,sigil
-
-  end if
-
-  ; cleanup
-  A9M.L1.reset
-
-}
-
-; ---   *   ---   *   ---
 ; invoked at end of file read
 
 macro A9M.L1.foot {
@@ -395,24 +323,6 @@ macro A9M.L1.foot {
     end if
 
   \}
-
-}
-
-; ---   *   ---   *   ---
-; takes this bit out of
-; another conditional
-
-macro A9M.L1.postcall {
-
-  if A9M.L1.postcall_ptr = $01
-    A9M.L1.load_ipret
-    A9M.L1.postcall_ptr=$02
-
-  else if A9M.L1.postcall_ptr = $02
-    A9M.L1.serialize
-    A9M.L1.postcall_ptr = $00
-
-  end if
 
 }
 

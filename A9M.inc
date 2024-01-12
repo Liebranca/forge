@@ -78,6 +78,7 @@ library ARPATH '/forge/'
   use '.inc' A9M::L0
   use '.inc' A9M::L1
   use '.inc' A9M::L2
+  use '.inc' A9M::FE
 
 library.import
 
@@ -175,6 +176,16 @@ macro A9M.foot [buff] {
 
   ; ^perform final write
   forward vmem.write A9M.FDST,buff
+
+  common if A9M.debug
+
+    display $0A,'__________________',$0A,$0A
+    display 'fout:',$0A
+
+    vmem.bprich A9M.FDST,1
+    err
+
+  end if
 
 }
 

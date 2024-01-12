@@ -29,6 +29,16 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.01.1b
+
+- Moved first expression logic into `*::FE`; this makes it so we don't have to check for it every single time, and in turns simplifies the logic at all three levels. Quite obvious in retrospect ;>
+
+- Added `ahead` and `tail` to `*::L0`; we use these to look at neighboring bytes while reading tokens.
+
+- Heavily modified `L0` logic for operators.
+
+- Added `lseek_s` and `rseek_s` to `*::vmem::meta` for when you explicitly want to skip ahead or backwards without crossing buffer bounds.
+
 ### v0.01.0b
 
 - Slight modification to `L0` which takes token and expression processing out of the main switch.

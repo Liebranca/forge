@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xstep
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -348,6 +348,7 @@ macro vmem.DBOUT id,i0,i1,step {
 
   vmem.xld w0,id,i0,step
 
+  display  $20
   xesay    w0,8*step
   out@nl
 

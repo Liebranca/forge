@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -511,6 +511,25 @@ macro $mov dst,src {
 
   vmc.decode value,src,read
   vmc.decode value,dst,write
+
+}
+
+; ---   *   ---   *   ---
+; ^swap em!
+
+macro $swap dst,src {
+
+  local value
+  local tmp
+
+  value = 0
+  tmp   = 0
+
+  vmc.decode value,src,read
+  vmc.decode tmp,dst,read
+
+  vmc.decode value,dst,write
+  vmc.decode tmp,src,write
 
 }
 

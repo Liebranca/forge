@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.2b
+  VERSION   v0.01.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -267,7 +267,6 @@ macro vmem.prich src,get_real=0 {
 
   match id , src \{
 
-
     ; give seg name/addr
     display $0A,'BUFID ',\`id,$0A
 
@@ -294,9 +293,22 @@ macro vmem.prich src,get_real=0 {
     out@nl  2
 
 
-    ; varlis
+    ; give buffer
+    vmem.bprich src,get_real
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^just the buffer
+
+macro vmem.bprich src,get_real=0 {
+
+  match id , src \{
+
     local len
-    len equ vmem.prich.size
+    len = 0
 
     ; show real size?
     if get_real = 1
@@ -362,11 +374,12 @@ macro vmem.prich src,get_real=0 {
       humansay  w1,$40
       out@nl
 
-      i = i+2
+      i   = i+2
+      len = len-$10
 
     end repeat
 
-    if len < $10
+    if (len > 0) & (len < $10)
       vmem.xwalk len,vmem.DBOUT,id
 
     end if

@@ -81,6 +81,43 @@ macro vmem.rseek dst,step,top=len {
 }
 
 ; ---   *   ---   *   ---
+; "safe" walk. stops at bounds
+
+macro vmem.lseek_s dst,step {
+
+  match id , dst \{
+
+    id\#.ptr=id\#.ptr+step
+
+    if id\#.ptr > id\#.size
+      id\#.ptr = id\#.size
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^inverse direction
+
+macro vmem.rseek_s dst,step {
+
+  match id , dst \{
+
+    vmem.fastfwd dst,top
+    id\#.ptr=id\#.ptr-step
+
+    if id\#.ptr < 0
+      id\#.ptr = 0
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; move ptr (absolute)
 
 macro vmem.seek dst,N {
