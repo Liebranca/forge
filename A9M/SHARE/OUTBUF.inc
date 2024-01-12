@@ -70,7 +70,7 @@ macro A9M.MKOUTBUFS [name] {
     \}
 
     ; add to fout list
-    commacat A9M.$$,ptr A9M.#name
+    commacat A9M.$$,A9M.#name
 
 }
 

@@ -75,6 +75,12 @@ macro ANIMA.prich {
 
 }
 
+macro ANIMA.bprich {
+  display $0A,'ANIMA:'
+  ANIMA.bprich vmc.REG
+
+}
+
 ; ---   *   ---   *   ---
 ; GBL
 

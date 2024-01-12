@@ -93,6 +93,7 @@ macro vmem.write dst,ct& {
       len=$-beg
       id\#.size=id\#.size+len
 
+      vmem.lseek_s     dst,len
       vmem.update_meta dst,len
 
     end virtual
@@ -194,13 +195,42 @@ macro vmem.resize_chk dst,len {
 
   match id , dst \{
 
-    if id\#.size < (id\#.ptr+len)
+    if id\#.size <= (id\#.ptr+len)
 
       local diff
-      diff = ((id\#.ptr+len) - id\#.size)*$04
+      local reset
 
-      vuint.align diff,diff,$06
-      vmem.write  dst,blk diff
+      diff  = ((id\#.ptr+len) - id\#.size)
+      reset = id\#.ptr
+
+      vmem.write dst,blk diff
+      vmem.seek  dst,reset
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^to a multiple of pow2
+; careful, doesn't rewind!
+
+macro vmem.align dst,N=1 {
+
+  match id , dst \{
+
+    local bound
+    bound = id\#.size
+
+    vuint.align bound,bound,N
+
+    if bound > id\#.size
+
+      local diff
+      diff  = bound-id\#.size
+
+      vmem.write dst,blk diff
 
     end if
 
@@ -336,3 +366,4 @@ macro vmem.eq dst,s0,s1,ow= {
 }
 
 ; ---   *   ---   *   ---
+

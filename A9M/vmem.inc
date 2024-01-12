@@ -356,23 +356,8 @@ macro vmem.bprich src,get_real=0 {
       vmem.xld  w0,id,(i+0),8
       vmem.xld  w1,id,(i+1),8
 
-      display   $20
+      vmem.qwordsay w0,w1
 
-      hexsay    w0 shr $20,$20
-      display   $20
-
-      hexsay    w0,$20
-      display   ' : '
-
-      hexsay    w1 shr $20,$20
-      display   $20
-
-      hexsay    w1,$20
-      display   ' | '
-
-      humansay  w0,$40
-      humansay  w1,$40
-      out@nl
 
       i   = i+2
       len = len-$10
@@ -380,7 +365,7 @@ macro vmem.bprich src,get_real=0 {
     end repeat
 
     if (len > 0) & (len < $10)
-      vmem.xwalk len,vmem.DBOUT,id
+      vmem.xwalk len,vmem.DBOUT,id,i*8
 
     end if
     out@nl 2
@@ -388,6 +373,37 @@ macro vmem.bprich src,get_real=0 {
     IO.colorsay=1
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; show 32 bits
+
+macro vmem.dwordsay X {
+
+  display   $20
+
+  hexsay    X shr $20,$20
+  display   $20
+
+  hexsay    X,$20
+
+}
+
+; ---   *   ---   *   ---
+; ^show 64 ;>
+
+macro vmem.qwordsay X,Y {
+
+  vmem.dwordsay X
+  display ' :'
+
+  vmem.dwordsay Y
+  display ' | '
+
+  humansay  X,$40
+  humansay  Y,$40
+  out@nl
 
 }
 

@@ -69,8 +69,13 @@ macro vreg.end {
     \\}
 
     ; lis dbout
-    macro name\#.prich src,parshow=1 \\{
-      vreg.prich src,parshow
+    macro name\#.prich src,get_real=1 \\{
+      vreg.prich src,get_real
+
+    \\}
+
+    macro name\#.bprich src,get_real=1 \\{
+      vreg.bprich src,get_real
 
     \\}
 
@@ -342,13 +347,23 @@ macro vreg.from_disk dst,type,fpath {
 ; ---   *   ---   *   ---
 ; dbout wraps
 
-macro vreg.prich src,parshow=1 {
+macro vreg.prich src,get_real=1 {
 
   match id , src \{
-    vmem.prich id\#%origin,parshow
+    vmem.prich id\#%origin,get_real
 
   \}
 
 }
+
+macro vreg.bprich src,get_real=1 {
+
+  match id , src \{
+    vmem.bprich id\#%origin,get_real
+
+  \}
+
+}
+
 
 ; ---   *   ---   *   ---

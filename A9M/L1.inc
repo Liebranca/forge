@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.L1
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -60,16 +60,6 @@ sizeof.A9M.L1.id_t=$02
   A9M.L1.tokencnt = 0
 
 ; ---   *   ---   *   ---
-; reserve len bytes in
-; string buffer
-
-match __strout , A9M.STROUT {
-  A9M.STROUT.write $00,$00,$00,$00
-  __strout#.ptr = $04
-
-}
-
-; ---   *   ---   *   ---
 ; decl/set default GBL
 
 macro A9M.L1.reset {
@@ -85,10 +75,20 @@ macro A9M.L1.store {
   match token , A9M.L1.mem \{
 
     if token\#.ptr > 0
-      A9M.L1.serialize
-      A9M.L1.tokencnt=A9M.L1.tokencnt+1
 
-      A9M.dbout $0A,$0A
+      $xor er,er
+      vcstring.length token
+
+      $on er > 0
+        A9M.L1.serialize
+        A9M.L1.tokencnt=A9M.L1.tokencnt+1
+
+        A9M.dbout $0A,$0A
+
+      else
+        A9M.L1.reset
+
+      end if
 
     end if
 
@@ -107,8 +107,8 @@ macro A9M.L1.load {
     local meta
     meta = 0
 
-    vmem.load   meta,A9M.L2.mem,dword
-    vmem.bstore A9M.L1.mem,meta,dword
+    vmem.load   meta,A9M.L2.mem,word
+    vmem.bstore A9M.L1.mem,meta,word
 
 
     ; ^back to ctx buff
@@ -116,8 +116,6 @@ macro A9M.L1.load {
 
     $cons %[ctx TRF],byte ar
     $cons %[ctx SID],byte ar
-    $cons %[ctx  CP],byte ar
-    $cons %[ctx  BL],byte ar
 
     ; is token a generic id?
     $combr br,byte %[ctx TRF],byte %[ctx SID]
@@ -133,8 +131,11 @@ macro A9M.L1.load {
       local len
       len = 0
 
-      $mov len,%[ctx BL]
-      $shr len,$02
+      $mov er,addr
+      vcstring.length A9M.STROUT
+
+      $mov len,ar
+
 
       ; ^load string from buff
       local      sbuf
@@ -160,7 +161,6 @@ macro A9M.L1.serialize {
   Q equ
 
   ; ^build queue
-  A9M.L1.serial_state
   A9M.L1.serial_token Q
 
   ; ^pass to L2
@@ -171,45 +171,6 @@ macro A9M.L1.serialize {
 
   ; cleanup
   A9M.L1.reset
-
-}
-
-; ---   *   ---   *   ---
-; write relevant bits of
-; current program state
-; to serialized output
-
-macro A9M.L1.serial_state {
-
-  match token , A9M.L1.mem \{
-
-    $xor ar,ar
-
-    ; 4-bit curly
-    $mov br,A9M.L0.nest_curly
-    $or  ar,br
-
-    ; 4-bit parens
-    $mov br,A9M.L0.nest_parens
-    $shl br,$04
-    $or  ar,br
-
-    $mov %[A9M.L1.ctx CP],ar
-
-
-    ; 2-bit brak
-    $mov br,A9M.L0.nest_brak
-    $or  ar,br
-
-
-    ; get token length
-    $mov br,token\#.len
-    $shl br,$02
-    $or  ar,br
-
-    $mov %[A9M.L1.ctx BL],ar
-
-  \}
 
 }
 
@@ -297,30 +258,13 @@ macro A9M.L1.to_strout {
 
     vhash.store ptr token,% A9M.L1.idx
 
+
+    ; "add" nullterm ;>
+    token\#.len = token\#.len+1
+
     ; ^add new string at pos
     A9M.STROUT.cat token
 
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; invoked at end of file read
-
-macro A9M.L1.foot {
-
-  match strout , A9M.STROUT \{
-
-    local pos
-    pos = strout\#.size - 4
-
-    if pos > 0
-      A9M.STROUT.set dword pos at $00
-
-    else
-      strout\#.size=0
-
-    end if
 
   \}
 

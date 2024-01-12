@@ -16,6 +16,7 @@
 
 library ARPATH '/forge/'
   use '.inc' A9M::vmc
+  use '.inc' A9M::vcstring
   use '.inc' A9M::vhash
 
 library.import
@@ -172,11 +173,20 @@ macro A9M.foot [buff] {
 
   ; invoke module footers
   common
-   A9M.L1.foot
 
-  ; ^perform final write
-  forward vmem.write A9M.FDST,buff
+  ; perform final write
+  forward match id , buff \{
 
+    vmem.bstore A9M.FDST,id\#.size,dword
+    vmem.align  A9M.FDST
+
+    vmem.write  A9M.FDST,ptr buff
+    vmem.align  A9M.FDST
+
+  \}
+
+
+  ; dbout
   common if A9M.debug
 
     display $0A,'__________________',$0A,$0A

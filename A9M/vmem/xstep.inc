@@ -341,16 +341,14 @@ macro vmem.EQAB dst,A,B,i0,i1,step {
 ; ---   *   ---   *   ---
 ; writes buff repr to tty
 
-macro vmem.DBOUT id,i0,i1,step {
+macro vmem.DBOUT id,off,i0,i1,step {
 
   local w0
+
   w0=0
 
-  vmem.xld w0,id,i0,step
-
-  display  $20
-  xesay    w0,8*step
-  out@nl
+  vmem.xldus    w0,id,i0+off,step
+  vmem.qwordsay w0,$00
 
 }
 

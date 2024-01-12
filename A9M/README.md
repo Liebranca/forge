@@ -29,6 +29,18 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.01.2b
+
+- `*::vmem` tweaks for `cat`, `align` and `resize`. Fixed the `bstore` mistake were resizing would crash the subsequent write!
+
+- Ported `*::vcstring` from `peso`: it just gives a quick way to calculate the length of C strings, but that's enough for now.
+
+- Reworked the string buffer used to collect identifiers into a standard `char**`; there's no longer a need to encode the length of each token.
+
+- Turns out that the additional metadata that was encoded with each token can also be inferred by the time `L2` gets to need that information, so tokens are now 16-bit for keywords and 32-bit for identifiers. We might revisit this later, but good enough for now.
+
+- `*::$$` buffers are now padded to a 16-bit boundary and their length is stored automatically to final output.
+
 ### v0.01.1b
 
 - Moved first expression logic into `*::FE`; this makes it so we don't have to check for it every single time, and in turns simplifies the logic at all three levels. Quite obvious in retrospect ;>

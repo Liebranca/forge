@@ -13,7 +13,7 @@
 
   TITLE     A9M.SHARE.L1
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -105,16 +105,8 @@ vreg.new A9M.L1.head
   ; 8-bit sub-id
   szmy byte SID
 
-  ; 4-bit curly
-  ; 4-bit parens
-  szmy byte CP
-
-  ; 2-bit brak
-  ; 6-bit len
-  szmy byte BL
-
 vreg.end
-sizeof.A9M.L1.head=$04
+sizeof.A9M.L1.head=$02
 
 ; ---   *   ---   *   ---
 ; ^single ice
