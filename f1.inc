@@ -14,7 +14,7 @@
 
   TITLE     f1
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -168,15 +168,23 @@ macro f1.cend {
 }
 
 ; ---   *   ---   *   ---
-; make local
+; make local value
 
 macro f1.local name,value='' {
-
-  local ok
-  ok equ 0
-
   f1.line 'local '#`name
   f1.line `name,' equ ',`value,$0A
+
+}
+
+; ---   *   ---   *   ---
+; makes global definition
+
+macro f1.define name,value='' {
+
+  f1.line     'define '
+
+  f1.stirrout $20,name
+  f1.stirrout $20,value
 
 }
 
@@ -257,6 +265,27 @@ macro f1.stirrout catchar,src& {
     \\}
 
 
+    ; vmem passed (continued...)
+    match =0 =ptr id next , ok rem \\{
+
+      f1.cout ptr id
+
+      rem equ next
+      ok  equ 1
+
+    \\}
+
+    ; vmem passed (end)
+    match =0 =ptr id , ok rem \\{
+
+      f1.cout ptr id
+
+      rem equ
+      ok  equ 1
+
+    \\}
+
+
     ; sym (continued)
     match =0 any next , ok rem \\{
 
@@ -297,12 +326,10 @@ macro f1.macro fa?,[arg] {
 
     local fa
     local name
-    local cnt
 
     fa   equ
     name equ fa?
 
-    cnt  equ 0
 
     ; have first arg?
     match any arg0 , fa? \{
@@ -325,12 +352,11 @@ macro f1.macro fa?,[arg] {
 
 
   ; put any other arguments!
-  forward
-
+  forward match any , arg \{
     f1.cout     ','
     f1.stirrout $00,arg
 
-    cnt equ 1
+  \}
 
   ; ^open curly
   common
@@ -384,11 +410,13 @@ macro f1.commit {
 ; ---   *   ---   *   ---
 ; put to file
 
-macro f1.to_disk ext=inc {
+macro f1.to_disk ext=pinc {
 
   local dst
 
-  vmem.owc   dst,'.'#`ext,blk $00
+  f1.commit
+
+  vmem.owc   dst,`ext,blk $00
   vmem.write dst,ptr f1.OUTBUF
 
 }

@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.4b
+  VERSION   v0.01.5a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -432,23 +432,32 @@ macro vmem.stringsay src {
 
 macro symstirr dst,X {
 
+  ; the easy way
   if (X > $1F) & (X < $7F)
     vmem.write dst,$27,X,$27
 
+  ; the hard way...
   else
 
-    local steps
-    vuint.urdivp2 steps,X/8,sizep2.byte
-    vmem.write    dst,$24
+    ; get closest bit (L -> R)
+    ; then flip that
+    local bits
+    bits = $40-($3F-(bsr X))
 
-    repeat steps
+    ; round up to a multiple of 8 ;>
+    vuint.align bits,bits,$03
+    vmem.write  dst,$24
+
+
+    ; convert X to hex notation
+    ; 4-bits at a time
+    repeat bits/4
 
       local elem
-      local nib
 
-      nib  = (steps-%)*4
+      elem = X shr (bits-(%*4))
 
-      elem = (X shr nib) and $F
+      elem = elem and $F
       elem = elem + '0'
 
       if elem > '9'

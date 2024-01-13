@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vmc
 
-  VERSION   v0.00.8b
+  VERSION   v0.00.9b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -501,6 +501,18 @@ macro vmc.decode.imm ok,A,B,mode=read {
 
     \\}
 
+
+    ; ^oww-well, wat the hell! ;>
+    match =uop op , mode \\{
+      vmem.\\#op\\#.inner B
+
+    \\}
+
+    match =bop op , mode \\{
+      vmem.\\#op\\#.inner B,A
+
+    \\}
+
     ok equ 1
 
   \}
@@ -581,11 +593,13 @@ macro vmc._comb_proto dst,total,cmd {
 
     ; get elem
     $mov value,src
+
     $and value,mask
     $shl value,total
 
     ; ^join with dst
     $or dst,value
+
 
     ; go next
     total = total+bits
@@ -608,7 +622,7 @@ macro $combf dst,[cmd] {
     ; clear dst
     $xor dst,dst
 
- forward vmc._comb_proto dst,total,cmd
+  forward vmc._comb_proto dst,total,cmd
 
 }
 
@@ -622,7 +636,7 @@ macro $combr dst,[cmd] {
     total = 0
     $xor dst,dst
 
- reverse vmc._comb_proto dst,total,cmd
+  reverse vmc._comb_proto dst,total,cmd
 
 }
 
