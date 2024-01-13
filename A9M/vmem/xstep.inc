@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xstep
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -194,61 +194,142 @@ macro vmem._xstus dst,src,off,sz {
 }
 
 ; ---   *   ---   *   ---
-; iter through buff in
-; progressively smaller
-; steps, as required
+; caps len to bounds
 
-macro vmem.xwalk size,fn,args& {
+macro vmem.xwall dst,src,addr {
 
+  match id , src \{
+
+    local diff
+
+    ; assume qword read
+    diff = id\#.size-addr
+
+    if diff < 0
+      diff = -diff
+
+    end if
+
+    ; ^cap to bounds
+    if diff < dst
+      dst = diff
+
+    end if
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; gutsof a walk!
+
+macro vmem.xhave.next have,len,i,step,shift {
+
+  vmem.xstep shift,have,sizep2
+
+  len  = have shr shift
+  step = 1 shl shift
+  i    = i shr shift
+
+}
+
+macro vmem.xhave.cnt have,len,i,step,shift {
+
+  i    = i shl shift
+  have = have - (len shl shift)
+
+}
+
+; ---   *   ---   *   ---
+; goes through buff
+
+macro vmem.xhave have,fn,args& {
+
+  ; lotsa vars
   local shift
-  local len
-  local have
   local step
+  local len
   local i
 
-  ; save total
-  have  = size
   i     = 0
   step  = 0
   shift = 0
   len   = 0
 
-  ; ^iter
+
+  ; iter until all consumed
   while have
 
-    vmem.xstep shift,have,sizep2
-
-    len  = have shr shift
-    step = 1 shl shift
-    i    = i shr shift
+    vmem.xhave.next have,\
+      len,i,step,shift
 
     repeat len
-
-      match list , args \{
-        fn list,i,i,step
-
-      \}
-
-      match , args \{
-        fn i,i,step
-
-      \}
-
+      vmem.xcall i,step,fn,args
       i = i+1
 
     end repeat
 
-    i    = i shl shift
-    have = have - (len shl shift)
+    vmem.xhave.cnt have,\
+      len,i,step,shift
 
   end while
 
 }
 
 ; ---   *   ---   *   ---
+; ^the call itself
+
+macro vmem.xcall i,step,fn,args& {
+
+  ; have args
+  match list , args \{
+    fn list,i,i,step
+
+  \}
+
+  ; no args
+  match , args \{
+    fn i,i,step
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; iter through buff in
+; progressively smaller
+; steps, as required
+
+macro vmem.xwalk size,fn,args& {
+
+  ; save total
+  local have
+  have = size
+
+  ; default walk
+  vmem.xhave have,fn,args
+
+}
+
+; ---   *   ---   *   ---
+; ^bounded
+
+macro vmem.xwalk_s size,src,addr,fn,args& {
+
+  ; save total
+  local have
+  have = size
+
+  ; default walk
+  vmem.xwall have,src,addr
+  vmem.xhave have,fn,args,src,addr
+
+}
+
+; ---   *   ---   *   ---
 ; write value to dst
 
-macro vmem.WTA dst,value,i0,i1,step {
+macro vmem.STA dst,value,i0,i1,step {
   vmem.xst dst,value,i0,step
 
 }
@@ -258,6 +339,33 @@ macro vmem.WTA dst,value,i0,i1,step {
 
 macro vmem.LDA dst,src,i0,i1,step {
   vmem.xld dst,src,i0,step
+
+}
+
+; ---   *   ---   *   ---
+; bounded, piece-by-piece write
+
+macro vmem.STAP dst,bits,src,addr,i0,i1,step {
+
+  local      w0
+
+  w0   = src shr bits
+  bits = bits + (step*8)
+
+  vmem.xstus dst,w0,i0,step
+
+}
+
+; ---   *   ---   *   ---
+; ^same for load
+
+macro vmem.LDAP dst,bits,src,addr,i0,i1,step {
+
+  local      w0
+  vmem.xldus w0,src,i0,step
+
+  dst  = dst or (w0 shl bits)
+  bits = bits + (step*8)
 
 }
 

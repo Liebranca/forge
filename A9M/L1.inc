@@ -139,7 +139,7 @@ macro A9M.L1.load {
 
       ; ^load string from buff
       local      sbuf
-      A9M.STROUT sbuf,addr,len
+      vmem.view  sbuf,A9M.STROUT,addr,len
 
       ; ^load to L1
       vmem.cat    A9M.L1.mem,sbuf

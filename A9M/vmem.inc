@@ -227,15 +227,36 @@ macro vmem.set dst,src,addr,sz=byte {
 
   match size id , sz dst \{
 
-    vmem.boundschk id,addr,size,\
-      "set past end of vmem"
+    local ok
+    ok equ 0
 
-    local w0
-    local w1
-    w0 = (src) and sizebm.\#size
-    w1 = id\#.beg+(addr)
+    ; possibly multiple writes
+    match =bounded , size \\{
 
-    store size w0 at id\#.base:w1
+      local bits
+      bits=0
+
+      vmem.xwalk_s 8,dst,addr,\
+        vmem.STAP,src,bits
+
+      ok equ 1
+
+    \\}
+
+    ; ^single write
+    match =0 , ok \\{
+
+      vmem.boundschk id,addr,size,\
+        "set past end of vmem"
+
+      local w0
+      local w1
+      w0 = (src) and sizebm.\#size
+      w1 = id\#.beg+(addr)
+
+      store size w0 at id\#.base:w1
+
+    \\}
 
   \}
 
@@ -248,13 +269,33 @@ macro vmem.get dst,src,addr,sz=byte {
 
   match size id , sz src \{
 
-    vmem.boundschk id,addr,size,\
-      "get past end of vmem"
+    local ok
+    ok equ 0
 
-    local w0
-    w0 = id\#.beg+(addr)
+    ; possibly multiple reads
+    match =bounded , size \\{
 
-    load dst size from id\#.base:w0
+      local bits
+      bits=0
+
+      vmem.xwalk_s 8,src,addr,\
+        vmem.LDAP,dst,bits
+
+      ok equ 1
+
+    \\}
+
+    ; ^single read
+    match =0 , ok \\{
+      vmem.boundschk id,addr,size,\
+        "get past end of vmem"
+
+      local w0
+      w0 = id\#.beg+(addr)
+
+      load dst size from id\#.base:w0
+
+    \\}
 
   \}
 

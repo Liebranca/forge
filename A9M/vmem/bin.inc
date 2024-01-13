@@ -180,7 +180,7 @@ macro vmem.clear dst {
   match id , dst \{
 
     vmem.xwalk id\#.size,\
-      vmem.WTA,dst,$00
+      vmem.STA,dst,$00
 
     vmem.clear_meta dst
 

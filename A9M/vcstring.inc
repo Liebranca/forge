@@ -62,7 +62,7 @@ macro vcstring.length src {
       $break on er >= id\#.size
 
       ; get null in qword
-      $mov fr,qword [id+er]
+      $mov fr,bounded [id+er]
       vcstring.ziw
 
       ; have?
