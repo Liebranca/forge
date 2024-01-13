@@ -177,6 +177,12 @@ macro A9M.foot [buff] {
   ; perform final write
   forward match id , buff \{
 
+;    match dst , A9M.FDST \\{
+;      hexsay dst\\#.ptr,$10
+;      out@nl
+;
+;    \\}
+
     vmem.bstore A9M.FDST,id\#.size,dword
     vmem.align  A9M.FDST
 

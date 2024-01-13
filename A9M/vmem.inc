@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.3b
+  VERSION   v0.01.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -404,6 +404,63 @@ macro vmem.qwordsay X,Y {
   humansay  X,$40
   humansay  Y,$40
   out@nl
+
+}
+
+; ---   *   ---   *   ---
+; treat buffer as a string
+
+macro vmem.stringsay src {
+
+  match id , src \{
+
+    repeat id\#.size
+
+      local w0
+      vmem.xld w0,id,(%-1),1
+
+      display w0
+
+    end repeat
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; stringify symbol
+
+macro symstirr dst,X {
+
+  if (X > $1F) & (X < $7F)
+    vmem.write dst,$27,X,$27
+
+  else
+
+    local steps
+    vuint.urdivp2 steps,X/8,sizep2.byte
+    vmem.write    dst,$24
+
+    repeat steps
+
+      local elem
+      local nib
+
+      nib  = (steps-%)*4
+
+      elem = (X shr nib) and $F
+      elem = elem + '0'
+
+      if elem > '9'
+        elem = elem+('A'-'9'-1)
+
+      end if
+
+      vmem.write dst,elem
+
+    end repeat
+
+  end if
 
 }
 

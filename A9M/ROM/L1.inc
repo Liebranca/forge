@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.ROM.L1
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,7 +38,7 @@ $mov ptr ice,ptr tab
 ; ---   *   ---   *   ---
 ; table fill helper
 
-macro settab X,[tag] {
+macro settab X,[item] {
 
   common
 
@@ -48,12 +48,14 @@ macro settab X,[tag] {
     A9M.L1.head.TRF.set A9M.L1.ctx,X
 
 
-  forward
+  forward match tag value \{
 
     A9M.L1.head.SID.set A9M.L1.ctx,i
-    vhash.store tag,% A9M.L1.ctx
+    vhash.store value,% A9M.L1.ctx
 
     i = i+1
+
+  \}
 
 }
 
@@ -71,6 +73,25 @@ settab A9M.L1.HIER_S,\
 ; width specs
 settab A9M.L1.TYPE_S,\
   'byte','wide','brad','word'
+
+;; operators
+;settab A9M.L1.OP_T,\
+;\
+;  '.'  ,','  ,'...',\
+;  '::' ,'->' ,\
+;\
+;  '^'  ,'|'  ,'&'  ,\
+;  '~'  ,'!'  ,\
+;\
+;  '^~' ,'|~' ,'&~' ,\
+;  '<<' ,'>>' ,'||' ,'&&' ,\
+;  '^^!','||!','&&!',\
+;\
+;  '<'  ,'>'  ,'<=' ,'>=' ,\
+;  '==' ,'!=' ,\
+;\
+;  '*^' ,'*'  ,'*!' ,'/'  ,\
+;  '++' ,'+'  ,'--' ,'-'  ,
 
 
 ; ---   *   ---   *   ---

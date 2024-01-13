@@ -90,6 +90,8 @@ macro A9M.L1.mklex name,[bit] {
   A9M.L1.mklex HIER_S,SPEC,SPEC_0
 
   A9M.L1.mklex TYPE_S,SPEC,SPEC_1
+
+  A9M.L1.mklex METAOP_T,HIER,SPEC_1
   A9M.L1.mklex ID_T,ID,SPEC_15
 
 ; ---   *   ---   *   ---

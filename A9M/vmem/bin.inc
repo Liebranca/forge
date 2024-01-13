@@ -228,7 +228,7 @@ macro vmem.align dst,N=1 {
     if bound > id\#.size
 
       local diff
-      diff  = bound-id\#.size
+      diff = bound-id\#.size
 
       vmem.write dst,blk diff
 
