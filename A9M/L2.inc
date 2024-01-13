@@ -16,7 +16,7 @@
 
   TITLE     A9M.L2
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,8 +38,30 @@ macro A9M.L2.reset {
 ; ---   *   ---   *   ---
 ; write data to expr
 
-macro A9M.L2.cat [item] {
-  forward vmem.cat A9M.L2.mem,item
+macro A9M.L2.cat {
+
+
+  ; put serialized token
+  match ctx , A9M.L1.ctx \{
+    vmem.cat A9M.L2.mem,ctx\#%origin
+
+  \}
+
+  ; have ptr to str?
+  local loc
+  loc = 0
+
+  $mov loc,%[A9M.L1.idx \loc]
+
+  ; ^put ptr if so
+  if ~(loc = $FFFF)
+
+    match id , A9M.L1.idx \{
+      vmem.cat A9M.L2.mem,id\#%origin
+
+    \}
+
+  end if
 
 }
 
@@ -71,8 +93,20 @@ macro A9M.L2.walk_expr {
       ; get serialized token
       A9M.L1.load
 
-      ; TODO: proc token
-      ; for now just write as-is
+      local value
+      value = 0
+
+      A9M.L1.get_token_id value
+
+      ; we have proc token now!
+      ;
+      ; what we don't have done yet
+      ; is *implemented* the methods
+      ; this generated entry point
+      ; branches off to ;>
+      ;
+      ; A9M.L1.proc_token   value
+
       A9M.SYMOUT.cat A9M.L1.mem
 
       ; save, cleanup and go next

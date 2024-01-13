@@ -14,7 +14,7 @@
 
   TITLE     A9M.FE
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -112,7 +112,13 @@ macro A9M.FE.run {
 
   ; get base ipret
   if name = 0
+
     vhash.from_disk A9M.L1.keywtab,A9M.L1.DEFTAB
+
+    match any , A9M.ROMPATH \{
+      include any\#'L1.pinc'
+
+    \}
 
   ; we should get the ipret here,
   ; but we don't yet have an ipret table!

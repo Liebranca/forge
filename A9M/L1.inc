@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.L1
 
-  VERSION   v0.00.7b
+  VERSION   v0.00.8b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -80,15 +80,18 @@ macro A9M.L1.store {
       vcstring.length token
 
       $on er > 0
+
         A9M.L1.serialize
+        A9M.L2.cat
+
         A9M.L1.tokencnt=A9M.L1.tokencnt+1
 
         A9M.dbout $0A,$0A
 
-      else
-        A9M.L1.reset
-
       end if
+
+      ; cleanup
+      A9M.L1.reset
 
     end if
 
@@ -97,7 +100,41 @@ macro A9M.L1.store {
 }
 
 ; ---   *   ---   *   ---
+; reads token header
+
+macro A9M.L1.get_token_id dst {
+
+  match ctx , A9M.L1.ctx \{
+    $combf dst,byte %[ctx TRF],byte %[ctx SID]
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; reads string if the token
+; has one
+
+macro A9M.L1.get_token_str dst {
+
+  ; get strlen
+  local len
+  len = 0
+
+  $mov er,%[A9M.L1.idx loc]
+  vcstring.length A9M.STROUT
+
+  $mov len,ar
+
+
+  ; ^load string from buff
+  vmem.view dst,A9M.STROUT,addr,len
+
+}
+
+; ---   *   ---   *   ---
 ; retrieve serialized token from L2
+; put read values in ctx buffs
 
 macro A9M.L1.load {
 
@@ -118,8 +155,8 @@ macro A9M.L1.load {
     $cons %[ctx SID],byte ar
 
     ; is token a generic id?
-    $combr br,byte %[ctx TRF],byte %[ctx SID]
-    $on br = $F3FF
+    A9M.L1.get_token_id br
+    $on br = $FFF3
 
       ; read ptr
       local addr
@@ -127,23 +164,8 @@ macro A9M.L1.load {
 
       vmem.load addr,A9M.L2.mem,word
 
-      ; ^get strlen
-      local len
-      len = 0
-
-      $mov er,addr
-      vcstring.length A9M.STROUT
-
-      $mov len,ar
-
-
-      ; ^load string from buff
-      local      sbuf
-      vmem.view  sbuf,A9M.STROUT,addr,len
-
-      ; ^load to L1
-      vmem.cat    A9M.L1.mem,sbuf
-      vmem.rewind A9M.L1.mem
+      ; ^save to co-ctx
+      $mov %[A9M.L1.idx loc],addr
 
     end if
 
@@ -152,38 +174,13 @@ macro A9M.L1.load {
 }
 
 ; ---   *   ---   *   ---
-; selfex
+; get numrepr of string
 
 macro A9M.L1.serialize {
 
-  ; queue of output buffs
-  local Q
-  Q equ
-
-  ; ^build queue
-  A9M.L1.serial_token Q
-
-  ; ^pass to L2
-  match list , Q \{
-    A9M.L2.cat list
-
-  \}
-
-  ; cleanup
-  A9M.L1.reset
-
-}
-
-; ---   *   ---   *   ---
-; ^get numrepr of string
-
-macro A9M.L1.serial_token Q {
-
-  ; add state to output queue
-  match id , A9M.L1.ctx \{
-    commacat Q,id\#%origin
-
-  \}
+  ; signal that this field should
+  ; not be saved unless overwritten
+  $mov %[A9M.L1.idx loc],$FFFF
 
 
   ; get the promised data
@@ -205,12 +202,6 @@ macro A9M.L1.serial_token Q {
 
       $mov %[A9M.L1.ctx TRF],A9M.L1.ID_T
       $mov %[A9M.L1.ctx SID],$FF
-
-      ; add string ptr to output queue
-      match id , A9M.L1.idx \\{
-        commacat Q,id\\#%origin
-
-      \\}
 
 
       ; have we parsed this ID before?
