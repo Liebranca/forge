@@ -456,7 +456,7 @@ macro vmem.DBOUT id,off,i0,i1,step {
   w0=0
 
   vmem.xldus    w0,id,i0+off,step
-  vmem.qwordsay w0,$00
+  vmem.xwordsay w0,$00
 
 }
 

@@ -1,7 +1,7 @@
 ; ---   *   ---   *   ---
 ; A9M L2
 ; K-sized tree of
-; J-sized array of
+; J-sized arrays of
 ; I-sized chunks!
 ;
 ; LIBRE SOFTWARE

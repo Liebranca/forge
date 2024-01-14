@@ -1,10 +1,10 @@
 #!/usr/bin/perl
-#
+# ---   *   ---   *   ---
 # because dhex ties bytes per line
 # to terminal size. what the f*ck?
 #
 # you guys think that's cute or sth?!
-#
+
 # ---   *   ---   *   ---
 # deps
 
@@ -19,6 +19,12 @@
 
   use Style;
   use Arstd::IO;
+
+# ---   *   ---   *   ---
+# info
+
+  our $VERSION = v0.00.4;#b
+  our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # get input
@@ -38,15 +44,18 @@ while(length $body) {
 
   # setup line
   my ($i,$j,$h)=(0,0,0);
-  my $sl=$NULLSTR;
-  my $sr=$NULLSTR;
+
+  my $sl   = $NULLSTR;
+  my $sr   = $NULLSTR;
+
+  my $diff = 0;
 
   # ^split chunk
   my @bytes=split $NULLSTR,$line;
 
   # ^pad to 16
   if(@bytes < 16) {
-    my $diff=16-@bytes;
+    $diff=16-@bytes;
     push @bytes,("\x{00}")x$diff;
 
   };
@@ -100,16 +109,24 @@ while(length $body) {
   $k+=1;
 
 
-  say "\n\n",sprintf "\$%04X",($k-16) >> 4
+  if($diff && $k > 16) {
+    say "\n",sprintf "+%01X",$diff if $diff;
 
-  if ! ($k % 16);
+  } else {
 
-  say $NULLSTR if ! ($k %  4);
+    say "\n\n",sprintf "\$%04X :>",($k-16) >> 4
+    if ! ($k % 16);
+
+    say $NULLSTR if ! ($k %  4);
+
+  };
 
   # out (human)line
   say ' ',$sl,'| ',$sr;
 
 };
+
+say $NULLSTR;
 
 # ---   *   ---   *   ---
 1; # ret

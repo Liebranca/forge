@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.5a
+  VERSION   v0.01.6a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -383,6 +383,8 @@ macro vmem.bprich src,get_real=0 {
         display '$'
         hexsay  (i/2) shr 4,$10
 
+        display ' <:'
+
         out@nl  2
 
 
@@ -394,10 +396,10 @@ macro vmem.bprich src,get_real=0 {
       w0=0
       w1=0
 
-      vmem.xld  w0,id,(i+0),8
-      vmem.xld  w1,id,(i+1),8
+      vmem.xldus  w0,src,(i+0)*8,8
+      vmem.xldus  w1,src,(i+1)*8,8
 
-      vmem.qwordsay w0,w1
+      vmem.xwordsay w0,w1
 
 
       i   = i+2
@@ -405,8 +407,53 @@ macro vmem.bprich src,get_real=0 {
 
     end repeat
 
-    if (len > 0) & (len < $10)
-      vmem.xwalk len,vmem.DBOUT,id,i*8
+
+    ; read bytes left
+    i=i*8
+
+    if len > 0
+
+      local w0
+      local w1
+
+      w0 = 0
+      w1 = 0
+
+      display $0A,'+'
+
+      hexsay  len,$04
+      out@nl
+
+      while len > 0
+
+
+        ; get next char
+        local char
+        char=0
+
+        vmem.xldus char,src,i,1
+
+
+        ; L qword if first 8 bytes
+        if (%-1) < 8
+          w0 = w0 or (char shl ((%-1)*8))
+
+        ; ^then R qword from 9th onwards
+        else
+          w1 = w1 or (char shl ((%-9)*8))
+
+        end if
+
+        ; go next
+        i   = i+1
+        len = len-1
+
+      end while
+
+
+      ; prich it all
+      vmem.xwordsay w0,w1
+
 
     end if
     out@nl 2
@@ -418,9 +465,9 @@ macro vmem.bprich src,get_real=0 {
 }
 
 ; ---   *   ---   *   ---
-; show 32 bits
+; show 64 bits
 
-macro vmem.dwordsay X {
+macro vmem.qwordsay X {
 
   display   $20
 
@@ -432,14 +479,14 @@ macro vmem.dwordsay X {
 }
 
 ; ---   *   ---   *   ---
-; ^show 64 ;>
+; ^show 128 ;>
 
-macro vmem.qwordsay X,Y {
+macro vmem.xwordsay X,Y {
 
-  vmem.dwordsay X
+  vmem.qwordsay X
   display ' :'
 
-  vmem.dwordsay Y
+  vmem.qwordsay Y
   display ' | '
 
   humansay  X,$40

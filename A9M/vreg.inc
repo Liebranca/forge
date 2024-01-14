@@ -316,6 +316,21 @@ macro vreg.get_fields dst,type {
 }
 
 ; ---   *   ---   *   ---
+; gets ptr of base vmem
+
+macro vreg.get_ptr dst,src {
+
+  match id , src \{
+    match oid , id\#%origin \\{
+      dst=oid\\#.ptr
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; write struc to file
 
 macro vreg.to_disk type,src {
