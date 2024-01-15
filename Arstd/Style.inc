@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.5a
+  VERSION   v0.02.6a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -194,6 +194,14 @@ macro bincho dst,x,a,b {
     dst equ b
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; flattens a value
+
+macro flatn dst,X {
+  rept 1 Y:X \{dst equ Y\}
 
 }
 
@@ -868,7 +876,7 @@ macro protocut dst,sep,src& {
     \\}
 
     match =0 , ok \\{
-      dst equ 0
+      dst equ
 
     \\}
 
@@ -897,6 +905,41 @@ macro pluscut dst,src& {
   sep equ +
 
   protocut dst,sep,src
+
+}
+
+; ---   *   ---   *   ---
+; not so straightforward
+
+macro spacecut dst,src& {
+
+  local ok
+
+  dst   equ
+  ok    equ 0
+
+  ; A [sep] B
+  match any next , src \{
+    src equ next
+    dst equ any
+
+    ok  equ 1
+
+  \}
+
+  ; ^A [end]
+  match =0 any , ok src \{
+    src equ
+    dst equ any
+
+    ok  equ 1
+
+  \}
+
+  match =0 , ok \{
+    dst equ
+
+  \}
 
 }
 
@@ -1003,6 +1046,114 @@ macro stirr9 dst,src,len=$10 {
 
 macro prefix a,b {
   a equ b#a
+
+}
+
+; ---   *   ---   *   ---
+; an annoying, repeating pattern
+;
+; in essence:
+;
+; * you pass T0 [SPACE] TN
+;   to a macro
+;
+; * you then want to conditionally
+;   break it down into multiple locals,
+;   IF multiple tokens were indeed passed
+;
+; * so you want to have default
+;   values for when the common form
+;   is used, that is, a single token
+
+macro cunpack base,[item] {
+
+  ; nit arglist state
+  common
+
+    local have
+    local need
+
+    local list
+    local give
+
+    have equ 0
+    need equ 0
+
+    list equ base
+    give equ
+
+
+  ; assume defaults
+  forward match _var ===> defv , item \{
+
+    local ok
+    ok equ 0
+
+    ; leave blank
+    match =$NULL , defv \\{
+      \\_var equ
+      ok   equ 1
+
+    \\}
+
+    ; base IS default!
+    match =- =BASE , defv \\{
+      \\_var equ base
+      ok   equ 1
+
+    \\}
+
+    ; ^else fill
+    match =0 , ok \\{
+      \\_var equ defv
+
+    \\}
+
+
+    ; value passed?
+    match any , list \\{
+
+      local next
+      spacecut next,list
+
+      match X , next \\\{
+        commacat give,X
+        have equ have+1
+
+      \\\}
+
+    \\}
+
+    need equ need+1
+
+  \}
+
+
+  ; got enough?
+  common
+
+    flatn have,have
+    flatn need,need
+
+    local good
+    tokis good,have,need
+
+  ; overwrite defaults if so!
+  forward match =1 _var ===> defv , good item \{
+
+    local passv
+    passv equ
+
+    match any , give \\{
+      commacut passv,give
+      match X , passv \\\{
+        _var equ X
+
+      \\\}
+
+    \\}
+
+  \}
 
 }
 

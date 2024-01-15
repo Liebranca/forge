@@ -1,6 +1,6 @@
 ; ---   *   ---   *   ---
-; A9M VSTK
-; Phantom piles!
+; A9M VMC STACK
+; A plate on another ;>
 ;
 ; LIBRE SOFTWARE
 ; Licensed under GNU GPL3
@@ -12,7 +12,7 @@
 ; ---   *   ---   *   ---
 ; info
 
-  TITLE     A9M.vstk
+  TITLE     A9M.vmc.stack
 
   VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
@@ -48,7 +48,7 @@ macro $push src {
   ; ^paste ops
   match sz v , size value \{
     $sub sp,sizeof.\#sz
-    $mov sz [vmc.STK+sp],v
+    $mov sz [vmc.STACK+sp],v
 
   \}
 
@@ -76,7 +76,7 @@ macro $pop dst {
 
   ; ^paste ops
   match sz v , size value \{
-    $mov v,sz [vmc.STK+sp]
+    $mov v,sz [vmc.STACK+sp]
     $add sp,sizeof.\#sz
 
   \}
@@ -89,10 +89,10 @@ macro $pop dst {
 macro $enter {
 
   ; save old block size
-  vmc.STK.frame_sz.back equ \
-    vmc.STK.frame_sz
+  vmc.STACK.frame_sz.back equ \
+    vmc.STACK.frame_sz
 
-  vmc.STK.frame_sz equ 0
+  vmc.STACK.frame_sz equ 0
 
 
   ; make varlises
@@ -106,7 +106,7 @@ macro $enter {
   \}
 
   ; ^run
-  match list , vmc.STK.frame_vars \{
+  match list , vmc.STACK.frame_vars \{
     inner list
 
   \}
@@ -121,7 +121,7 @@ macro $enter {
   local ali
   ali equ 1
 
-  match =0 , vmc.STK.frame_sz \{
+  match =0 , vmc.STACK.frame_sz \{
     ali equ 0
 
   \}
@@ -129,13 +129,13 @@ macro $enter {
   ; ^grow downwards ;>
   match =1 , ali \{
 
-    vmc.STK.frame_sz equ \
-      (((vmc.STK.frame_sz+1) shr 1) shl 1)
+    vmc.STACK.frame_sz equ \
+      (((vmc.STACK.frame_sz+1) shr 1) shl 1)
 
-    $sub sp,vmc.STK.frame_sz
+    $sub sp,vmc.STACK.frame_sz
 
     ; set default values
-    match list , vmc.STK.frame_set \\{
+    match list , vmc.STACK.frame_set \\{
       cline.filter list
 
     \\}
@@ -144,12 +144,12 @@ macro $enter {
 
 
   ; save lissing data
-  vmc.STK.frame_vars.back equ \
-    vmc.STK.frame_vars
+  vmc.STACK.frame_vars.back equ \
+    vmc.STACK.frame_vars
 
   ; ^clear
-  vmc.STK.frame_vars equ
-  vmc.STK.frame_set equ
+  vmc.STACK.frame_vars equ
+  vmc.STACK.frame_set equ
 
 }
 
@@ -162,14 +162,14 @@ macro $leave {
   local ali
   ali equ 1
 
-  match =0 , vmc.STK.frame_sz \{
+  match =0 , vmc.STACK.frame_sz \{
     ali equ 0
 
   \}
 
   ; ^yes, adjust stack ptr
   match =1 , ali \{
-    $add sp,vmc.STK.frame_sz
+    $add sp,vmc.STACK.frame_sz
     $pop sb
 
   \}
@@ -182,10 +182,10 @@ macro $leave {
 
 
   ; undo lises
-  vmc.STK.frame_vars equ \
-    vmc.STK.frame_vars.back
+  vmc.STACK.frame_vars equ \
+    vmc.STACK.frame_vars.back
 
-  restore vmc.STK.frame_vars.back
+  restore vmc.STACK.frame_vars.back
 
   macro rmdef lis \{
     restore @\#lis
@@ -214,17 +214,17 @@ macro $leave {
   \}
 
   ; ^run
-  match list , vmc.STK.frame_vars \{
+  match list , vmc.STACK.frame_vars \{
     inner list
 
   \}
 
 
   ; ^get old block size
-  vmc.STK.frame_sz equ \
-    vmc.STK.frame_sz.back
+  vmc.STACK.frame_sz equ \
+    vmc.STACK.frame_sz.back
 
-  restore vmc.STK.frame_sz.back
+  restore vmc.STACK.frame_sz.back
 
 }
 
@@ -236,7 +236,7 @@ macro vmc._icedecl type,name,value= {
 
   ; calc and flatten offset
   local off
-  off equ vmc.STK.frame_sz-sizeof.#type
+  off equ vmc.STACK.frame_sz-sizeof.#type
 
   rept 1 x:off \{
     off equ x
@@ -246,24 +246,24 @@ macro vmc._icedecl type,name,value= {
 
   ; ^make label
   match id x , name off \{
-    define @\#id vmc.STK+sb x
+    define @\#id vmc.STACK+sb x
 
   \}
 
   ; ^set defval if passed
   match id any , name value \{
-    eolcat vmc.STK.frame_set, \
+    eolcat vmc.STACK.frame_set, \
       $mov type [@\#id],any
 
   \}
 
 
   ; ^inc and flatten frame size
-  vmc.STK.frame_sz equ \
-    vmc.STK.frame_sz+sizeof.#type
+  vmc.STACK.frame_sz equ \
+    vmc.STACK.frame_sz+sizeof.#type
 
-  rept 1 x:vmc.STK.frame_sz \{
-    vmc.STK.frame_sz equ x
+  rept 1 x:vmc.STACK.frame_sz \{
+    vmc.STACK.frame_sz equ x
 
   \}
 
@@ -296,7 +296,7 @@ macro vmc._gen_icedecl type {
 
   ; ^entry point
   macro $#type NV \{
-    commacat vmc.STK.frame_vars,type NV
+    commacat vmc.STACK.frame_vars,type NV
 
   \}
 
@@ -309,5 +309,21 @@ vmc._gen_icedecl byte
 vmc._gen_icedecl word
 vmc._gen_icedecl dword
 vmc._gen_icedecl qword
+
+; ---   *   ---   *   ---
+; nit yourself!
+
+define   vmc.STACK
+define   vmc.STACK.args
+
+define   vmc.STACK.frame_sz      0
+define   vmc.STACK.frame_sz.back 0
+
+define   vmc.STACK.frame_vars
+define   vmc.STACK.frame_vars.back
+define   vmc.STACK.frame_set
+
+vmem.new vmc.STACK,blk A9M.STACK_SZ
+$mov     sp,A9M.STACK_SZ
 
 ; ---   *   ---   *   ---

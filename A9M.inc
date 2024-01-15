@@ -15,7 +15,7 @@
 ; deps
 
 library ARPATH '/forge/'
-  use '.inc' A9M::vmc
+  use '.inc' A9M::vmem
   use '.inc' A9M::vcstring
   use '.inc' A9M::vhash
 

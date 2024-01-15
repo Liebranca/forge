@@ -565,8 +565,17 @@ macro symstirr dst,X {
 ; load extensions
 
 library ARPATH '/forge/'
+
   use '.inc' A9M::vmem::xop
   use '.inc' A9M::vmem::bin
+
+
+; conditionally load allocator
+if defined A9M.USE_VALLOC
+  use '.inc' A9M::valloc
+
+end if
+
 
 library.import
 

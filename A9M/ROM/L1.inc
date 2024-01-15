@@ -13,7 +13,7 @@
 
 library ARPATH '/forge/'
 
-  use '.inc' A9M::vmc
+  use '.inc' A9M::vmem
   use '.inc' A9M::vhash
 
   use '.inc' A9M::SHARE::L1

@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmpart
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -146,6 +146,75 @@ macro vmpart.search {
   $mov dr,1
   $shl dr,br
   $mov %[ctx elem],dr
+
+}
+
+; ---   *   ---   *   ---
+; find first free bit
+
+macro vmpart.get_free {
+
+  ; get first unset
+  $xor cr,cr
+  $not er
+  $bsf fr,er
+
+  ; ^skip if all set
+  $on ~(fr=0)
+    $mov cr,fr
+
+  else
+    $mov cr,-1
+
+  end if
+
+  $mov ar,cr
+  $not er
+
+}
+
+; ---   *   ---   *   ---
+; ^shift to fred
+
+macro vmpart.shr_free {
+
+  ; get first unset
+  vmpart.get_free
+
+  $on cr >= 0
+
+    ; ^shift to start of free space
+    shr rdi,cl
+
+    add rdx,rax
+    mov rax,rdi
+
+    ; ^add shift-sized stop
+    mov rdi,$01
+    shl rdi,cl
+    dec rdi
+    ror rdi,cl
+
+    or  rax,rdi
+
+  else
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; fit block of size on
+; mask array
+
+macro vmpart.fit {
+
+  ; get mask for N elems
+  $mov ar,$01
+  $shl ar,fr
+  $dec ar
+
+  ; -
 
 }
 

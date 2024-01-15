@@ -14,7 +14,6 @@
 
 library ARPATH '/forge/'
   use '.inc' peso::reg
-  use '.inc' A9M::vmem
 
 library.import
 

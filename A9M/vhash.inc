@@ -14,7 +14,6 @@
 
 library ARPATH '/forge/'
   use '.inc' A9M::vcrypt
-  use '.inc' A9M::vmpart
 
 library.import
 
