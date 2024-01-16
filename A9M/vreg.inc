@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vreg
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -43,6 +43,12 @@ macro vreg.end {
     ; lis cstruc
     macro name\#.new dst,seg= \\{
       vreg.ice dst,name,seg
+
+    \\}
+
+    ; lis reloc
+    macro name\#.reloc dst,addr \\{
+      vreg.reloc name,dst,addr
 
     \\}
 
@@ -205,12 +211,18 @@ macro vreg.lisops type,size,tag {
 macro vreg.ice dst,type,seg= {
 
   local ok
-  ok equ 0
+  local par?
+
+  ok   equ 0
+  par? equ
 
   ; use previously allocated memory
   match par =at addr , seg \{
+
     vmem.view dst,par,addr,sizeof.#type
-    ok equ 1
+
+    par? equ par
+    ok   equ 1
 
   \}
 
@@ -232,6 +244,8 @@ macro vreg.ice dst,type,seg= {
   match id , dst \{
     id\#.len = id\#.size
     vreg.cast dst,id type
+
+    id\#%par equ par?
 
   \}
 
@@ -324,6 +338,29 @@ macro vreg.get_ptr dst,src {
       dst=oid\\#.ptr
 
     \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; not to be confused with
+; realloc ;>
+;
+; this moves the origin of
+; a *view*, that is, a slice
+; of a buffer
+;
+; essentially, you ipret
+; a new memory location within
+; the same buffer as a different
+; element of same type
+
+macro vreg.reloc type,dst,addr {
+
+  match id , dst \{
+    vmem.view id\#%origin,\
+      id\#%par,addr,sizeof.#type
 
   \}
 

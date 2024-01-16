@@ -91,7 +91,6 @@ proc.cpr rbx
   proc.enter
 
   ; get idex
-  xor    rbx,rbx
   xor    rcx,rcx
   bsr    rsi,rdi
 

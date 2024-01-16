@@ -14,7 +14,7 @@
 
   TITLE     A9M.valloc.part
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -25,6 +25,33 @@ vreg.new valloc.part
   szmy qword ahead
 
 vreg.end
+
+; ---   *   ---   *   ---
+; make partition
+
+macro valloc.part.new {
+
+  local size
+  size = 0
+
+  match id , VALLOCM \{
+    $mov qword [VALLOCM+er],id\#.ptr
+    $mov ar,id\#.ptr
+
+  \}
+
+  ; extend buff by size of partition head
+  vmem.write VALLOCM,blk sizeof.valloc.part
+
+  ; get partition size
+  $mov size,sizeof.line
+  $shl size,fr
+
+  ; ^extend buff by size times elems
+  size = size shl 2;sizep2.line
+  vmem.write VALLOCM,blk size
+
+}
 
 ; ---   *   ---   *   ---
 ; get size of partition to
@@ -66,76 +93,142 @@ macro valloc.get_part_size req {
 ; get partition to use for
 ; a new block
 
-macro valloc.part.search req {
+macro valloc.part.search dst,req {
+
+  $qword lice $00
+  $enter
 
   ; get partition size as idex
   valloc.get_part_size req
+  $mov %[dst idex],ar
+
+
+  ; map requested size to
+  ; block cnt bitmask
+  $add     ar,$06
+  $mov     cr,req
+
+  $urdivp2 cr,cr,ar
+  $bones   %[dst reqm],cr
+  $sub     ar,$06
+
 
   ; ^get ptr to beg of partition table
-  $mov er,[VALLOCM+ar*8]
+  $mov fr,ar
+  $mov er,ar
+  $shl er,$03
+
+  $mov br,qword [VALLOCM+er]
 
 
   ; is first entry on table?
-  $on er = 0
+  $on br = 0
 
-    match id , VALLOCM \{
-      $mov qword [VALLOCM+ar*8],id\#.ptr
-      valloc.part.new
+    valloc.part.new
 
-    \}
+    $mov %[dst head],$00
+    $mov %[dst pos],$00
 
-  ; ^get
+    $mov qword [@lice],ar
+
+  ; ^nope, get existing
   else
 
-    ; save tmp
-    $qword ezy ar
-    $mov   ar,er
+    $mov qword [@lice],br
 
-    ; iter existing partitions
-    local have
-    have = 0
+    ; walk partitions
+    while 1
 
-    while have=0
+      ; get occupation mask
+      $mov br,qword [@lice]
+      valloc.part.get_mask fr,br
 
-      ; get ahead
-      $mov er,ar
-      valloc.part.get_next
+      ; block fits?
+      $mov er,%[dst reqm]
+      vmpart.fit
 
-      ; ^block fits?
-      vmpart.get_free
+      ; ^yes, write to this partition
+      $on ar < $3F
+        $mov %[dst pos],ar
+        break
+
+      ; ^nope, get another partition
+      else
+
+        valloc.part.get_next br,br
+
+        ; ^none left; make new
+        $on br=0
+
+          $mov er,qword [@lice]
+          $add er,valloc.part.ahead
+
+          $mov fr,%[dst idex]
+
+          valloc.part.new
+
+          $mov %[dst pos],$00
+
+          break
+
+        end if
+
+        ; got one, keep going
+        $mov qword [@lice],br
+        $inc %[dst head]
+
+      end if
+
 
     end while
 
   end if
 
-}
 
-; ---   *   ---   *   ---
-; make partition
+  ; reset out
+  $mov ar,qword [@lice]
 
-macro valloc.part.new {
-
-  local size
-  size = 0
-
-  ; extend buff by size of partition head
-  vmem.write VALLOCM,blk sizeof.valloc.part
-
-  ; get partition size
-  $mov size,sizeof.line
-  $shl size,ar
-
-  ; ^extend buff by size times elems
-;  size = size shl sizep2.line
-  vmem.write VALLOCM,blk size
+  ; cleanup
+  $leave
 
 }
 
 ; ---   *   ---   *   ---
-; get next partition of size
+; getset protos
 
-macro valloc.part.get_next {
-  $mov ar,qword [VALLOCM+er+valloc.part.ahead]
+macro valloc.part.get dst,src,what {
+  $mov dst,qword [VALLOCM+src+valloc.part.#what]
+
+}
+
+macro valloc.part.set dst,src,what {
+  $mov qword [VALLOCM+dst+valloc.part.#what],src
+
+}
+
+; ---   *   ---   *   ---
+; getset next partition of size
+
+macro valloc.part.get_next dst=ar,src=er {
+  valloc.part.get dst,src,ahead
+
+}
+
+macro valloc.part.set_next dst=ar,src=er {
+  valloc.part.set dst,src,ahead
+
+}
+
+; ---   *   ---   *   ---
+; ^get partition occu mask
+
+macro valloc.part.get_mask dst=ar,src=er {
+  valloc.part.get dst,src,mask
+
+}
+
+macro valloc.part.set_mask dst=ar,src=er {
+  valloc.part.set dst,src,mask
 
 }
 
@@ -159,6 +252,20 @@ macro valloc.part.get_last {
     end if
 
   end while
+
+}
+
+; ---   *   ---   *   ---
+; ^get Nth partition of size
+
+macro valloc.part.get_nth idex,N {
+
+  $mov ar,qword [VALLOCM+idex*8]
+
+  $repeat N
+    valloc.part.get_next ar,ar
+
+  end repeat
 
 }
 

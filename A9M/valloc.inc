@@ -16,6 +16,9 @@ library ARPATH '/forge/'
   use '.inc' A9M::vmc
   use '.inc' A9M::vmpart
 
+  use '.inc' A9M::valloc::part
+  use '.inc' A9M::valloc::block
+
 library.import
 
 ; ---   *   ---   *   ---
@@ -23,7 +26,7 @@ library.import
 
   TITLE     A9M.valloc
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -38,23 +41,14 @@ vreg.new valloc.head
 vreg.end
 
 ; ---   *   ---   *   ---
-; block header
-
-vreg.new valloc.block
-
-  szmy dword size
-  szmy dword idex
-
-  szmy qword addr
-
-vreg.end
-
-; ---   *   ---   *   ---
 ; GBL
 
   define     VALLOCM
   vmem.new   VALLOCM,blk sizeof.valloc.head
   vmem.seek  VALLOCM,sizeof.valloc.head
+
+  ; static lookup ctx
+  valloc.block.new valloc._lkp_0
 
 ; ---   *   ---   *   ---
 ; crux
@@ -65,33 +59,33 @@ macro valloc dst,sz {
   local req
   req = sz+sizeof.valloc.block
 
-  ; get partition block
-  valloc.get_block req
+  ; get partition
+  valloc.part.search valloc._lkp_0,req
+
+  ; ^occupy
+  valloc.block.take valloc._lkp_0
+
+  ; give beg of buffer
+  $mov dst,ar
 
 }
 
 ; ---   *   ---   *   ---
-; get slot in partition
+; ^undo
 
-macro valloc.get_block req {
+macro vfree addr {
 
-  local have
-  have = 0
+  match id , valloc._lkp_0 \{
 
-  $xor fr,fr
+    $mov ar,addr
+    $sub ar,sizeof.valloc.block
+    $mov dword [id\#%origin],dword [VALLOCM+ar]
 
-  ; get partition
-  valloc.get_part req
+    valloc.block.give valloc._lkp_0
 
-;  ; ^scour!
-;  while have = 0
-;
-;    ; read mask
-;    $mov er,req
-;    vmpart.fit VALLOCM
-;
-;
-;  end while
+  \}
+
+  $mov addr,$00
 
 }
 

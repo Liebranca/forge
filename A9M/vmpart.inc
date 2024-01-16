@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmpart
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -163,9 +163,6 @@ macro vmpart.get_free {
   $on ~(fr=0)
     $mov cr,fr
 
-  else
-    $mov cr,-1
-
   end if
 
   $mov ar,cr
@@ -181,40 +178,139 @@ macro vmpart.shr_free {
   ; get first unset
   vmpart.get_free
 
-  $on cr >= 0
+  ; ^shift to start of free space
+  $shr er,cr
 
-    ; ^shift to start of free space
-    shr rdi,cl
+  $add dr,ar
+  $mov ar,er
 
-    add rdx,rax
-    mov rax,rdi
+  ; ^add shift-sized stop
+  $mov er,$01
+  $shl er,cr
+  $dec er
+  $ror er,cr
 
-    ; ^add shift-sized stop
-    mov rdi,$01
-    shl rdi,cl
-    dec rdi
-    ror rdi,cl
-
-    or  rax,rdi
-
-  else
-
-  end if
+  $or  ar,er
 
 }
 
 ; ---   *   ---   *   ---
-; fit block of size on
-; mask array
+; ^find last occupied bit
+
+macro vmpart.get_occu {
+
+  ; get idex
+  $xor cr,cr
+  $bsr fr,er
+
+  ; conditional mov && add
+  $mov br,$01
+
+  $on fr = 0
+    $mov br,cr
+
+  else
+    $mov cr,fr
+
+  end if
+
+
+  ; ^A+(1*?A)
+  $add cr,br
+
+  ; cleanup and give
+  $mov ar,cr
+
+}
+
+; ---   *   ---   *   ---
+; ^shift them out
+
+macro vmpart.shr_occu {
+
+  ; get first set
+  vmpart.get_occu
+
+  ; ^shift it out
+  $shr er,cr
+  $add dr,ar
+
+
+  ; cleanup and give
+  $mov ar,er
+
+}
+
+; ---   *   ---   *   ---
+; get N free bits
 
 macro vmpart.fit {
 
-  ; get mask for N elems
-  $mov ar,$01
-  $shl ar,fr
-  $dec ar
+  ; save tmp
+  $push  br
+  $qword reqm er
+  $qword mask fr
 
-  ; -
+  $enter
+
+
+  ; reset counters
+  $xor dr,dr
+
+  ; get next free section
+  while 1
+
+    ; save tmp
+    $mov qword [@mask],fr
+
+    ; get next free chunk
+    $mov er,fr
+
+    vmpart.shr_free
+    $mov fr,ar
+
+    ; ^compare to requested
+    ; repeat if free chunk is too small
+    $mov ar,qword [@reqm]
+    $and ar,fr
+
+    $break on ar  = $00
+    $break on dr >= $3F
+
+
+    ; ^get bits to shift if no fit
+    ; skip occupied portion
+    $mov er,ar
+    vmpart.get_occu
+
+
+    ; ^shift it out
+    $dec ar
+    $mov fr,qword [@mask]
+    $shr fr,cr
+    $add dr,ar
+
+    ; ^add shift-sized stop
+    $mov ar,$01
+    $shl ar,cr
+    $dec ar
+    $ror ar,cr
+
+    $or  fr,ar
+
+    ; rept on X < 63
+    $break on dr >= $3F
+
+
+  end while
+
+
+  ; cleanup and give
+  $mov ar,dr
+  $mov er,qword [@reqm]
+
+  $leave
+  $pop br
 
 }
 

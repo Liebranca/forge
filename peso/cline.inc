@@ -154,10 +154,7 @@ macro cline.filter [item] {
 
     ; ^EOL, paste and clear
     match ="\n" , item \{
-
-      line
-      line equ
-
+      cline.paste_cmd_args line
       ok equ 1
 
     \}
@@ -166,9 +163,7 @@ macro cline.filter [item] {
     match =0 any ="\n" , ok item \{
 
       commacat line,any
-
-      line
-      line equ
+      cline.paste_cmd_args line
 
       ok equ 1
 
@@ -181,21 +176,27 @@ macro cline.filter [item] {
     \}
 
   ; ^paste
-  common
+  common cline.paste_cmd_args line
 
-    local ok
-    ok equ 0
+}
 
-    match cmd args , line \{
-      cmd args
-      ok equ 1
+; ---   *   ---   *   ---
+; ^shorthand
 
-    \}
+macro cline.paste_cmd_args src {
 
-    match =0 any , ok line \{
-      any
+  match cmd args , src \{
+    cmd args
+    src equ
 
-    \}
+  \}
+
+  match cmd , src \{
+    cmd
+    src equ
+
+
+  \}
 
 }
 

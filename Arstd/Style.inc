@@ -14,7 +14,7 @@
 
   TITLE     Arstd.Style
 
-  VERSION   v0.02.6a
+  VERSION   v0.02.7a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -1086,30 +1086,6 @@ macro cunpack base,[item] {
   ; assume defaults
   forward match _var ===> defv , item \{
 
-    local ok
-    ok equ 0
-
-    ; leave blank
-    match =$NULL , defv \\{
-      \\_var equ
-      ok   equ 1
-
-    \\}
-
-    ; base IS default!
-    match =- =BASE , defv \\{
-      \\_var equ base
-      ok   equ 1
-
-    \\}
-
-    ; ^else fill
-    match =0 , ok \\{
-      \\_var equ defv
-
-    \\}
-
-
     ; value passed?
     match any , list \\{
 
@@ -1139,19 +1115,48 @@ macro cunpack base,[item] {
     tokis good,have,need
 
   ; overwrite defaults if so!
-  forward match =1 _var ===> defv , good item \{
+  forward
 
-    local passv
-    passv equ
+    match =1 _var ===> defv , good item \{
 
-    match any , give \\{
-      commacut passv,give
-      match X , passv \\\{
-        _var equ X
+      local passv
+      passv equ
 
-      \\\}
+      match any , give \\{
+        commacut passv,give
+        match X , passv \\\{
+          _var equ X
 
-    \\}
+        \\\}
+
+      \\}
+
+    \}
+
+    match =0 _var ===> defv , good item \{
+
+      local ok
+      ok equ 0
+
+      ; leave blank
+      match =$NULL , defv \\{
+        _var equ
+        ok   equ 1
+
+      \\}
+
+      ; base IS default!
+      match =- =BASE , defv \\{
+        _var equ base
+        ok   equ 1
+
+      \\}
+
+      ; ^else fill
+      match =0 , ok \\{
+        _var equ defv
+
+      \\}
 
   \}
 

@@ -54,9 +54,13 @@ macro $swap dst,src {
 ; get N-bits, all set to one
 ; ie, BONES
 
-macro $bones dst,bits {
+macro $bones dst,src {
 
   local mask
+  local bits
+
+  vmc.decode bits,src,read
+
   if bits > $3F
     mask=sizebm.qword
 

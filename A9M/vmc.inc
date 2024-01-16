@@ -41,6 +41,11 @@ library ARPATH '/forge/'
 library.import
 
 ; ---   *   ---   *   ---
+; not sure where to put
+; these... we'll leave
+; em here for now
+
+; ---   *   ---   *   ---
 ; rounded-up division by
 ; a power of 2
 

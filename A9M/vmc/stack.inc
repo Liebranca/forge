@@ -21,7 +21,7 @@
 ; ROM
 
 if ~ defined A9M.STACK_SZ
-  define A9M.STACK_SZ $40
+  define A9M.STACK_SZ $100
 
 end if
 
@@ -125,6 +125,7 @@ macro $enter {
     ali equ 0
 
   \}
+
 
   ; ^grow downwards ;>
   match =1 , ali \{
@@ -236,17 +237,14 @@ macro vmc._icedecl type,name,value= {
 
   ; calc and flatten offset
   local off
-  off equ vmc.STACK.frame_sz-sizeof.#type
+  off equ (-(vmc.STACK.frame_sz))-sizeof.#type
 
-  rept 1 x:off \{
-    off equ x
-
-  \}
+  flatn off,off
 
 
   ; ^make label
   match id x , name off \{
-    define @\#id vmc.STACK+sb x
+    define @\#id vmc.STACK+sb+x
 
   \}
 
@@ -325,5 +323,19 @@ define   vmc.STACK.frame_set
 
 vmem.new vmc.STACK,blk A9M.STACK_SZ
 $mov     sp,A9M.STACK_SZ
+
+; ---   *   ---   *   ---
+; dbout wraps
+
+macro STACK.prich {
+  vmem.prich vmc.STACK,1
+
+}
+
+macro STACK.bprich {
+  display $0A,'STACK:'
+  vmem.bprich vmc.STACK,1
+
+}
 
 ; ---   *   ---   *   ---
