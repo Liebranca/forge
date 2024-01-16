@@ -293,7 +293,6 @@ macro vmpart.fit {
     ; ^add shift-sized stop
     $mov ar,$01
     $shl ar,cr
-    $dec ar
     $ror ar,cr
 
     $or  fr,ar

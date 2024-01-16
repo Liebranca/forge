@@ -34,6 +34,7 @@ macro valloc.part.new {
   local size
   size = 0
 
+  ; make note of header addr
   match id , VALLOCM \{
     $mov qword [VALLOCM+er],id\#.ptr
     $mov ar,id\#.ptr
@@ -48,7 +49,7 @@ macro valloc.part.new {
   $shl size,fr
 
   ; ^extend buff by size times elems
-  size = size shl 2;sizep2.line
+  size = size shl sizep2.line
   vmem.write VALLOCM,blk size
 
 }

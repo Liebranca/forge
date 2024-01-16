@@ -26,7 +26,7 @@ library.import
 
   TITLE     A9M.valloc
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -47,9 +47,6 @@ vreg.end
   vmem.new   VALLOCM,blk sizeof.valloc.head
   vmem.seek  VALLOCM,sizeof.valloc.head
 
-  ; static lookup ctx
-  valloc.block.new valloc._lkp_0
-
 ; ---   *   ---   *   ---
 ; crux
 
@@ -60,10 +57,10 @@ macro valloc dst,sz {
   req = sz+sizeof.valloc.block
 
   ; get partition
-  valloc.part.search valloc._lkp_0,req
+  valloc.part.search valloc.ctx,req
 
   ; ^occupy
-  valloc.block.take valloc._lkp_0
+  valloc.block.take valloc.ctx
 
   ; give beg of buffer
   $mov dst,ar
@@ -75,17 +72,54 @@ macro valloc dst,sz {
 
 macro vfree addr {
 
-  match id , valloc._lkp_0 \{
+  ; get block header
+  valloc.block.deref valloc.ctx,addr
 
-    $mov ar,addr
-    $sub ar,sizeof.valloc.block
-    $mov dword [id\#%origin],dword [VALLOCM+ar]
+  ; ^find part and release
+  valloc.block.give valloc.ctx
 
-    valloc.block.give valloc._lkp_0
-
-  \}
-
+  ; nullout
   $mov addr,$00
+
+}
+
+; ---   *   ---   *   ---
+; ^a bit of both ;>
+
+macro vrealloc addr,sz {
+
+  ; save tmp
+  local old
+  old = addr
+
+
+  ; release old
+  vfree addr
+
+  ; ^get old size
+  local len
+
+  valloc.block.get_size valloc.ctx
+  $mov len,br
+
+
+  ; get new
+  valloc addr,sz
+
+  ; ^copy data if addr changed
+  if ~(old = addr)
+
+    $xor ar,ar
+    repeat len shr $03
+
+      $mov qword [VALLOCM+addr+ar],\
+        qword [VALLOCM+old+ar]
+
+      $add ar,$08
+
+    end repeat
+
+  end if
 
 }
 

@@ -28,7 +28,12 @@ vreg.new valloc.block
   szmy byte reqm
 
 vreg.end
-sizeof.valloc.block=$04
+sizeof.valloc.block=$08
+
+; ---   *   ---   *   ---
+; GBL
+
+  valloc.block.new valloc.ctx
 
 ; ---   *   ---   *   ---
 ; occupies block
@@ -99,16 +104,78 @@ macro valloc.block.give src {
 
 macro valloc.block.get_head src {
 
-  $mov br,%[src idex]
-  $add br,$06
-  $mov dr,1
-  $shl dr,br
+  ; get sub-block size
+  valloc.block.get_sb_size src
 
-  ; ^scale up to partition size
+  ; scale up to partition size
   $mov cr,%[src pos]
   $mul cr,dr
 
 }
 
 ; ---   *   ---   *   ---
+; get size of a sub-block,
+; ie ezy per bit of the
+; partition mask
 
+macro valloc.block.get_sb_size src {
+
+  $mov br,%[src idex]
+  $add br,$06
+  $mov dr,1
+  $shl dr,br
+
+}
+
+; ---   *   ---   *   ---
+; get sub-block count accto
+; block mask
+
+macro valloc.block.get_sb_cnt src {
+  $mov br,%[src reqm]
+  $not br
+  $bsf br,br
+
+}
+
+; ---   *   ---   *   ---
+; get full size of block,
+; that includes the header
+
+macro valloc.block.get_real_size src {
+
+  ; get sub-block count and size
+  valloc.block.get_sb_size src
+  valloc.block.get_sb_cnt src
+
+  ; ^mul by each other
+  $mul br,dr
+
+}
+
+; ---   *   ---   *   ---
+; get size of buffer, ie
+; total minus block header
+
+macro valloc.block.get_size src {
+  valloc.block.get_real_size src
+  $sub br,sizeof.valloc.block
+
+}
+
+; ---   *   ---   *   ---
+; copies block header to
+; struc, based on addr
+
+macro valloc.block.deref dst,addr {
+
+  match id , dst \{
+    $mov ar,addr
+    $sub ar,sizeof.valloc.block
+    $mov dword [id\#%origin],dword [VALLOCM+ar]
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
