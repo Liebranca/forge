@@ -14,7 +14,7 @@
 
   TITLE     A9M.valloc.part
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -35,14 +35,14 @@ macro valloc.part.new {
   size = 0
 
   ; make note of header addr
-  match id , VALLOCM \{
-    $mov qword [VALLOCM+er],id\#.ptr
+  match id , vmc.USRMEM \{
+    $mov qword [vmc.USRMEM:er],id\#.ptr
     $mov ar,id\#.ptr
 
   \}
 
-  ; extend buff by size of partition head
-  vmem.write VALLOCM,blk sizeof.valloc.part
+  ; extend brk by size of partition head
+  $caswrite vmc.USRMEM,blk sizeof.valloc.part
 
   ; get partition size
   $mov size,sizeof.line
@@ -50,7 +50,7 @@ macro valloc.part.new {
 
   ; ^extend buff by size times elems
   size = size shl sizep2.line
-  vmem.write VALLOCM,blk size
+  $caswrite vmc.USRMEM,blk size
 
 }
 
@@ -94,14 +94,14 @@ macro valloc.get_part_size req {
 ; get partition to use for
 ; a new block
 
-macro valloc.part.search dst,req {
+macro valloc.part.search req {
 
   $qword lice $00
   $enter
 
   ; get partition size as idex
   valloc.get_part_size req
-  $mov %[dst idex],ar
+  $mov byte [@blk.idex],ar
 
 
   ; map requested size to
@@ -110,7 +110,7 @@ macro valloc.part.search dst,req {
   $mov     cr,req
 
   $urdivp2 cr,cr,ar
-  $bones   %[dst reqm],cr
+  $bones   byte [@blk.reqm],cr
   $sub     ar,$06
 
 
@@ -119,7 +119,7 @@ macro valloc.part.search dst,req {
   $mov er,ar
   $shl er,$03
 
-  $mov br,qword [VALLOCM+er]
+  $mov br,qword [vmc.USRMEM:er]
 
 
   ; is first entry on table?
@@ -127,8 +127,8 @@ macro valloc.part.search dst,req {
 
     valloc.part.new
 
-    $mov %[dst head],$00
-    $mov %[dst pos],$00
+    $mov byte [@blk.head],$00
+    $mov byte [@blk.pos],$00
 
     $mov qword [@lice],ar
 
@@ -145,12 +145,12 @@ macro valloc.part.search dst,req {
       valloc.part.get_mask fr,br
 
       ; block fits?
-      $mov er,%[dst reqm]
+      $mov er,byte [@blk.reqm]
       vmpart.fit
 
       ; ^yes, write to this partition
       $on ar < $3F
-        $mov %[dst pos],ar
+        $mov byte [@blk.pos],ar
         break
 
       ; ^nope, get another partition
@@ -164,11 +164,11 @@ macro valloc.part.search dst,req {
           $mov er,qword [@lice]
           $add er,valloc.part.ahead
 
-          $mov fr,%[dst idex]
+          $mov fr,byte [@blk.idex]
 
           valloc.part.new
 
-          $mov %[dst pos],$00
+          $mov byte [@blk.pos],$00
 
           break
 
@@ -176,7 +176,7 @@ macro valloc.part.search dst,req {
 
         ; got one, keep going
         $mov qword [@lice],br
-        $inc %[dst head]
+        $inc byte [@blk.head]
 
       end if
 
@@ -198,12 +198,12 @@ macro valloc.part.search dst,req {
 ; getset protos
 
 macro valloc.part.get dst,src,what {
-  $mov dst,qword [VALLOCM+src+valloc.part.#what]
+  $mov dst,qword [vmc.USRMEM:src+valloc.part.#what]
 
 }
 
 macro valloc.part.set dst,src,what {
-  $mov qword [VALLOCM+dst+valloc.part.#what],src
+  $mov qword [vmc.USRMEM:dst+valloc.part.#what],src
 
 }
 
@@ -261,7 +261,7 @@ macro valloc.part.get_last {
 
 macro valloc.part.get_nth idex,N {
 
-  $mov ar,qword [VALLOCM+idex*8]
+  $mov ar,qword [vmc.USRMEM:idex*8]
 
   $repeat N
     valloc.part.get_next ar,ar

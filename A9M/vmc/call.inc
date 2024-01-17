@@ -11,14 +11,6 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
-; deps
-
-library ARPATH '/forge/'
-  use '.inc' A9M::vrecurse
-
-library.import
-
-; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.vmc.call
@@ -72,10 +64,9 @@ $RECURSIVE $call,fn
     local ok
     ok equ 0
 
-    ; setup the F "addresses" ;>
-    vmc.REG.xp equ vmc.REG.xs
-    vmc.REG.xs equ fn
-
+;    ; setup the F "addresses" ;>
+;    vmc.REG.xp equ vmc.REG.xs
+;    vmc.REG.xs equ fn
 
     ; have args, pass and clear
     match list , vmc.ARGV \\{
@@ -91,9 +82,9 @@ $RECURSIVE $call,fn
     match =0 , ok \\{fn\\}
 
 
-    ; remember who you are, simba!
-    restore vmc.REG.xs
-    restore vmc.REG.xp
+;    ; remember who you are, simba!
+;    restore vmc.REG.xs
+;    restore vmc.REG.xp
 
   \}
 

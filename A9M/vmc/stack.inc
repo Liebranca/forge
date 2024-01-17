@@ -48,7 +48,7 @@ macro $push src {
   ; ^paste ops
   match sz v , size value \{
     $sub sp,sizeof.\#sz
-    $mov sz [vmc.STACK+sp],v
+    $mov sz [vmc.STACK:sp],v
 
   \}
 
@@ -76,7 +76,7 @@ macro $pop dst {
 
   ; ^paste ops
   match sz v , size value \{
-    $mov v,sz [vmc.STACK+sp]
+    $mov v,sz [vmc.STACK:sp]
     $add sp,sizeof.\#sz
 
   \}
@@ -96,7 +96,7 @@ macro $enter {
 
 
   ; make varlises
-  macro inner [TNV] \{
+  macro $enter.inner [TNV] \{
 
     forward match type NV , TNV \\{
       $\\#type\\#%vmc_stknew NV
@@ -107,7 +107,7 @@ macro $enter {
 
   ; ^run
   match list , vmc.STACK.frame_vars \{
-    inner list
+    $enter.inner list
 
   \}
 
@@ -125,7 +125,6 @@ macro $enter {
     ali equ 0
 
   \}
-
 
   ; ^grow downwards ;>
   match =1 , ali \{
@@ -188,11 +187,6 @@ macro $leave {
 
   restore vmc.STACK.frame_vars.back
 
-  macro rmdef lis \{
-    restore @\#lis
-
-  \}
-
   macro inner [item] \{
 
     forward match type name , item \\{
@@ -206,7 +200,7 @@ macro $leave {
       \\}
 
       match any , lis \\\{
-        rmdef any
+        $undef any
 
       \\\}
 
@@ -237,21 +231,31 @@ macro vmc._icedecl type,name,value= {
 
   ; calc and flatten offset
   local off
-  off equ (-(vmc.STACK.frame_sz))-sizeof.#type
-
-  flatn off,off
+  off = (-(vmc.STACK.frame_sz))-sizeof.#type
 
 
-  ; ^make label
-  match id x , name off \{
-    define @\#id vmc.STACK+sb+x
+  ; is iceof struc?
+  local ok
+  ok equ 0
+
+  match id =% , name value \{
+    $cast type name vmc.STACK:sb+off
+    ok equ 1
 
   \}
 
-  ; ^set defval if passed
-  match id any , name value \{
-    eolcat vmc.STACK.frame_set, \
-      $mov type [@\#id],any
+
+  ; ^nope, primitive
+  match =0 id , ok name \{
+
+    $def id vmc.STACK:sb+off
+
+    ; set defval if passed
+    match any , value \\{
+      eolcat vmc.STACK.frame_set, \
+        $mov type [@\#id],any
+
+    \\}
 
   \}
 
@@ -259,11 +263,6 @@ macro vmc._icedecl type,name,value= {
   ; ^inc and flatten frame size
   vmc.STACK.frame_sz equ \
     vmc.STACK.frame_sz+sizeof.#type
-
-  rept 1 x:vmc.STACK.frame_sz \{
-    vmc.STACK.frame_sz equ x
-
-  \}
 
 }
 
@@ -276,19 +275,37 @@ macro vmc._gen_icedecl type {
   ; *promised* innards
   macro $#type#%vmc_stknew NV \{
 
+    local ok
+    local t
     local v
     local n
 
-    n equ NV
-    v equ
+    ok equ 0
+    t  equ type
+    n  equ NV
+    v  equ
 
-    match name value , NV \\{
+    ; is iceof struc?
+    match =struc rtype name , type NV \\{
+
+      t  equ rtype
+      n  equ name
+      v  equ %
+
+      ok equ 1
+
+    \\}
+
+    match =0 name value , ok NV \\{
       n equ name
       v equ value
 
     \\}
 
-    vmc._icedecl type,n,v
+    match rtype name value , t n v \\{
+      vmc._icedecl rtype,name,value
+
+    \\}
 
   \}
 
@@ -307,22 +324,32 @@ vmc._gen_icedecl byte
 vmc._gen_icedecl word
 vmc._gen_icedecl dword
 vmc._gen_icedecl qword
+vmc._gen_icedecl struc
 
 ; ---   *   ---   *   ---
 ; nit yourself!
 
-define   vmc.STACK
-define   vmc.STACK.args
+macro vmc.stack.new {
 
-define   vmc.STACK.frame_sz      0
-define   vmc.STACK.frame_sz.back 0
+  define   vmc.STACK
+  define   vmc.STACK.args
 
-define   vmc.STACK.frame_vars
-define   vmc.STACK.frame_vars.back
-define   vmc.STACK.frame_set
+  define   vmc.STACK.frame_sz      0
+  define   vmc.STACK.frame_sz.back 0
 
-vmem.new vmc.STACK,blk A9M.STACK_SZ
-$mov     sp,A9M.STACK_SZ
+  define   vmc.STACK.frame_vars
+  define   vmc.STACK.frame_vars.back
+  define   vmc.STACK.frame_set
+
+
+  ; put stack on current addressing space
+  vmem.view vmc.STACK,\
+    vmc.CAS,sizeof.ANIMA,A9M.STACK_SZ
+
+  ; ^reset stack ptr
+  $mov sp,A9M.STACK_SZ
+
+}
 
 ; ---   *   ---   *   ---
 ; dbout wraps

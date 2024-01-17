@@ -257,7 +257,7 @@ macro vreg.ice dst,type,seg= {
 macro vreg.cast dst,PT {
 
   ; walk fields
-  macro inner lis,lis_t,[item] \{
+  macro vreg.cast.inner lis,lis_t,[item] \{
 
     forward match size tag , item \\{
 
@@ -283,7 +283,7 @@ macro vreg.cast dst,PT {
 
     ; ^make lis.[X],lis.[X].size
     match name list , uid fields \\{
-      inner name,type,list
+      vreg.cast.inner name,type,list
 
       ; save parent id and overwrite dst
       define name\\#%origin par
@@ -309,20 +309,63 @@ macro vreg.get_fields dst,type {
 
   dst equ
 
-  rept type#.$reg.fields_len \{
+  macro vreg.get_fields.inner [item] \{
 
-    local d
-    local s
+    forward
 
-    commacut d,decl
-    commacut s,size
+      local d
+      local s
 
-    match name any , d \\{
-      d equ name
+      commacut d,decl
+      commacut s,size
+
+      match name any , d \\{
+        d equ name
+
+      \\}
+
+      commacat dst,s d
+
+  \}
+
+  match list , type#.$reg.fields \{
+    vreg.get_fields.inner list
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; label (un)maker for an
+; alias to straight memory
+
+macro vreg.from_ptr dst,type,mode {
+
+  ; walk fields
+  macro inner [item] \{
+    forward match size tag , item \\{
+
+      match =define , mode \\\{
+        define dst\\#tag dst+type\\#tag
+
+      \\\}
+
+      match =restore , mode \\\{
+        restore dst\\#tag
+
+      \\\}
 
     \\}
 
-    commacat dst,s d
+  \}
+
+  ; ^get em
+  local fields
+  vreg.get_fields fields,type
+
+  ; ^then walk
+  match list , fields \{
+    inner list
 
   \}
 

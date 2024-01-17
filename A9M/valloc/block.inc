@@ -14,7 +14,7 @@
 
   TITLE     A9M.valloc.block
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -31,69 +31,68 @@ vreg.end
 sizeof.valloc.block=$08
 
 ; ---   *   ---   *   ---
-; GBL
-
-  valloc.block.new valloc.ctx
-
-; ---   *   ---   *   ---
 ; occupies block
 
-macro valloc.block.take src {
+macro valloc.block.take {
 
   ; set bits
-  $mov cr,%[src reqm]
-  $shl cr,%[src pos]
+  $mov cr,byte [@blk.reqm]
+  $shl cr,byte [@blk.pos]
 
-  $or  qword [VALLOCM+ar+valloc.part.mask],cr
+  $or  qword [vmc.USRMEM:ar+valloc.part.mask],cr
 
 
   ; write block header
-  match id , src \{
+  valloc.block.get_head
 
-    valloc.block.get_head src
+  $add ar,sizeof.valloc.part
+  $mov dword [vmc.USRMEM:ar+cr],dword [@blk]
 
-    $add ar,sizeof.valloc.part
-    $mov dword [VALLOCM+ar+cr],dword [id\#%origin]
-
-  \}
 
   ; reset out
   $add ar,cr
   $add ar,sizeof.valloc.block
+
+  ; make addr absolute
+  match id , vmc.USRMEM \{
+    $add ar,id\#.beg
+
+  \}
 
 }
 
 ; ---   *   ---   *   ---
 ; ^undo
 
-macro valloc.block.give src {
+macro valloc.block.give {
 
-  $mov er,%[src idex]
-  $mov fr,%[src head]
+  $mov er,byte [@blk.idex]
+  $mov fr,byte [@blk.head]
 
   valloc.part.get_nth er,fr
 
-  $mov cr,%[src reqm]
-  $shl cr,%[src pos]
+  $mov cr,byte [@blk.reqm]
+  $shl cr,byte [@blk.pos]
   $not cr
 
-  $and qword [VALLOCM+ar+valloc.part.mask],cr
+  $and qword [vmc.USRMEM:ar+valloc.part.mask],cr
+  $add ar,sizeof.valloc.part
 
   ; clear block header
   match id , src \{
 
-    valloc.block.get_head src
+    valloc.block.get_head
 
     ; die on null
-    $mov br,dword [VALLOCM+ar+cr]
+    $mov br,dword [vmc.USRMEM:ar+cr]
+
     $on br = 0
       out@err 'vfree called on a fred block'
 
     end if
 
     ; ^else *set* to null
-    $add ar,sizeof.valloc.part
-    $mov dword [VALLOCM+ar+cr],$00
+    $mov dword [vmc.USRMEM:ar+cr],$00
 
   \}
 
@@ -102,13 +101,13 @@ macro valloc.block.give src {
 ; ---   *   ---   *   ---
 ; get addr of block
 
-macro valloc.block.get_head src {
+macro valloc.block.get_head {
 
   ; get sub-block size
-  valloc.block.get_sb_size src
+  valloc.block.get_sb_size
 
   ; scale up to partition size
-  $mov cr,%[src pos]
+  $mov cr,byte [@blk.pos]
   $mul cr,dr
 
 }
@@ -118,9 +117,9 @@ macro valloc.block.get_head src {
 ; ie ezy per bit of the
 ; partition mask
 
-macro valloc.block.get_sb_size src {
+macro valloc.block.get_sb_size {
 
-  $mov br,%[src idex]
+  $mov br,byte [@blk.idex]
   $add br,$06
   $mov dr,1
   $shl dr,br
@@ -131,8 +130,8 @@ macro valloc.block.get_sb_size src {
 ; get sub-block count accto
 ; block mask
 
-macro valloc.block.get_sb_cnt src {
-  $mov br,%[src reqm]
+macro valloc.block.get_sb_cnt {
+  $mov br,byte [@blk.reqm]
   $not br
   $bsf br,br
 
@@ -142,11 +141,11 @@ macro valloc.block.get_sb_cnt src {
 ; get full size of block,
 ; that includes the header
 
-macro valloc.block.get_real_size src {
+macro valloc.block.get_real_size {
 
   ; get sub-block count and size
-  valloc.block.get_sb_size src
-  valloc.block.get_sb_cnt src
+  valloc.block.get_sb_size
+  valloc.block.get_sb_cnt
 
   ; ^mul by each other
   $mul br,dr
@@ -157,22 +156,28 @@ macro valloc.block.get_real_size src {
 ; get size of buffer, ie
 ; total minus block header
 
-macro valloc.block.get_size src {
-  valloc.block.get_real_size src
+macro valloc.block.get_size {
+  valloc.block.get_real_size
   $sub br,sizeof.valloc.block
 
 }
 
 ; ---   *   ---   *   ---
-; copies block header to
-; struc, based on addr
+; copies header from usrmem
+; to ctx on stack
 
-macro valloc.block.deref dst,addr {
+macro valloc.block.deref addr {
 
   match id , dst \{
     $mov ar,addr
     $sub ar,sizeof.valloc.block
-    $mov dword [id\#%origin],dword [VALLOCM+ar]
+    $mov dword [@blk],dword [ar]
+
+  \}
+
+  ; make addr relative
+  match id , vmc.USRMEM \{
+    $sub ar,id\#.beg
 
   \}
 

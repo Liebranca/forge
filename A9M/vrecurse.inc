@@ -15,7 +15,7 @@
 
   TITLE     A9M.vrecurse
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -68,7 +68,12 @@ macro vrecurse.CRASH {
 ; ^crux
 
 macro vrecurse.head name,args& {
-  macro name _nullarg& \{vrecurse.CRASH\}
+
+  match , name\#._vrecurse \{
+    macro name _nullarg& \\{vrecurse.CRASH\\}
+    define name#\._vrecurse 1
+
+  \}
 
 }
 

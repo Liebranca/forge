@@ -26,7 +26,7 @@ library.import
 
   TITLE     A9M.valloc
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -43,27 +43,64 @@ vreg.end
 ; ---   *   ---   *   ---
 ; GBL
 
-  define     VALLOCM
-  vmem.new   VALLOCM,blk sizeof.valloc.head
-  vmem.seek  VALLOCM,sizeof.valloc.head
+  define    vmc.USRMEM
+
+  $casseg   vmc.USRMEM,blk sizeof.valloc.head
+  vmem.seek vmc.USRMEM,sizeof.valloc.head
+
+  define    valloc.have_blk 0
+
+; ---   *   ---   *   ---
+; load/set ctx struc
+
+macro valloc.loadctx {
+
+  match =0 , valloc.have_blk \{
+
+    $enter
+
+    $loadctx valloc.block blk
+    $mov     dword [@blk],$00
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; ^undo
+
+macro valloc.unloadctx {
+
+  match =0 , valloc.have_blk \{
+    $unloadctx
+    $leave
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; crux
 
-macro valloc dst,sz {
+macro valloc sz {
+
+  ; setup
+  valloc.loadctx
 
   ; add size of block header
+  ; to requested
   local req
   req = sz+sizeof.valloc.block
 
   ; get partition
-  valloc.part.search valloc.ctx,req
+  valloc.part.search req
 
   ; ^occupy
-  valloc.block.take valloc.ctx
+  valloc.block.take
 
-  ; give beg of buffer
-  $mov dst,ar
+
+  ; cleanup
+  valloc.unloadctx
 
 }
 
@@ -72,14 +109,21 @@ macro valloc dst,sz {
 
 macro vfree addr {
 
+  ; setup
+  valloc.loadctx
+
   ; get block header
-  valloc.block.deref valloc.ctx,addr
+  valloc.block.deref addr
 
   ; ^find part and release
-  valloc.block.give valloc.ctx
+  valloc.block.give
 
   ; nullout
   $mov addr,$00
+
+
+  ; cleanup
+  valloc.unloadctx
 
 }
 
@@ -87,6 +131,11 @@ macro vfree addr {
 ; ^a bit of both ;>
 
 macro vrealloc addr,sz {
+
+
+  ; setup
+  valloc.loadctx
+  valloc.have_blk equ 1
 
   ; save tmp
   local old
@@ -99,27 +148,33 @@ macro vrealloc addr,sz {
   ; ^get old size
   local len
 
-  valloc.block.get_size valloc.ctx
+  valloc.block.get_size
   $mov len,br
 
 
   ; get new
-  valloc addr,sz
+  valloc sz
+  $mov   addr,ar
 
   ; ^copy data if addr changed
   if ~(old = addr)
 
-    $xor ar,ar
+    $xor br,br
     repeat len shr $03
 
-      $mov qword [VALLOCM+addr+ar],\
-        qword [VALLOCM+old+ar]
+      $mov qword [addr+br],\
+        qword [old+br]
 
-      $add ar,$08
+      $add br,$08
 
     end repeat
 
   end if
+
+
+  ; cleanup
+  valloc.have_blk equ 0
+  valloc.unloadctx
 
 }
 

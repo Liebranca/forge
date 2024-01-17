@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmc.isbasic
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -32,44 +32,15 @@ macro $mov dst,src {
 }
 
 ; ---   *   ---   *   ---
-; ^swap em!
+; ^second most used i think...
 
-macro $swap dst,src {
+macro $lea dst,src {
 
   local value
-  local tmp
+  value=0
 
-  value = 0
-  tmp   = 0
-
-  vmc.decode value,src,read
-  vmc.decode tmp,dst,read
-
-  vmc.decode value,dst,write
-  vmc.decode tmp,src,write
-
-}
-
-; ---   *   ---   *   ---
-; get N-bits, all set to one
-; ie, BONES
-
-macro $bones dst,src {
-
-  local mask
-  local bits
-
-  vmc.decode bits,src,read
-
-  if bits > $3F
-    mask=sizebm.qword
-
-  else
-    mask=(1 shl bits)-1
-
-  end if
-
-  vmc.decode mask,dst,write
+  vmc.decode.addr value,src
+  vmc.decode      value,dst,write
 
 }
 
@@ -99,7 +70,7 @@ macro $ror SD,src {
     vmc.decode value,dst,read
 
     ; get a mask N-bits wide
-    local mask
+    local  mask
     $bones mask,bits
 
     ; get shift to end of value

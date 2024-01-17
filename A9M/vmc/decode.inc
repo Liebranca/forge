@@ -10,11 +10,19 @@
 ; lyeb,
 
 ; ---   *   ---   *   ---
+; deps
+
+library ARPATH '/forge/'
+  use '.inc' A9M::vrecurse
+
+library.import
+
+; ---   *   ---   *   ---
 ; info
 
   TITLE     A9M.vmc.decode
 
-  VERSION   v0.00.1a
+  VERSION   v0.00.2a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -114,26 +122,6 @@ macro vmc.decode.ptr ok,A,B,mode {
 
 macro vmc.decode.ptr.inner A,mode,id {
 
-  ; is id a named ptr? (fake regs ;>)
-  local ok
-  tokin ok,id,ice,ctx
-
-  match =1 , ok \{
-
-    match =read , mode \\{
-      A equ vmc.REG.#id
-
-    \\}
-
-    match =write , mode \\{
-      vmc.REG.#id equ A
-
-    \\}
-
-  \}
-
-
-  ; ^nope, regular id
   match =0 , ok \{
 
     match =read , mode \\{
@@ -168,20 +156,8 @@ macro vmc.decode.struc ok,A,B,mode {
 
 macro vmc.decode.struc.inner A,mode,id {
 
-  local lis
-  lis equ id
-
-  ; is id a named ptr? (fake regs ;>)
-  local ok
-  tokin ok,id,ice,ctx
-
-  match =1 , ok \{
-    lis equ vmd.REG.#id
-
-  \}
-
   ; deref by macro!
-  match btr , lis \{
+  match btr , id \{
 
     match =read , mode \\{
       A equ btr\#%origin
@@ -231,107 +207,146 @@ macro vmc.decode.mem ok,A,B,mode {
 
 macro vmc.decode.mem.inner A,mode,size,id {
 
+  ; deref CAS(?+addr) by default
   local ok
-  ok equ 0
+  local base
+  local expr
+  local addr
 
-  ; deref base+offset
-  match base op off , id \{
+  ok   equ 0
+  base equ vmc.CAS
+  expr equ id
 
-    local res
-    res=0
+  addr = 0
 
-    vmc.decode.mem.inner_off_0 res,off,op
 
-    match =read , mode \\{
-      vmem.get A,base,res,size
-
-    \\}
-
-    match =write , mode \\{
-      vmem.set base,A,res,size
-
-    \\}
-
-    match =uop ins , mode \\{
-      vmem.\\#ins base,res,size
-
-    \\}
-
-    match =bop ins , mode \\{
-      vmem.\\#ins base,A,res,size
-
-    \\}
-
-    ok equ 1
+  ; ^get addr is segment-relative
+  match seg =: any , id \{
+    base equ seg
+    expr equ any
 
   \}
 
-  ; ^deref base addr
-  match =0 , ok \{
 
-    match =read , mode \\{
-      vmem.get A,id,$00,size
+  ; get addr from expr
+  match any , expr \{
+    vmc.decode.calc addr,any
 
-    \\}
+  \}
 
-    match =write , mode \\{
-      vmem.set id,A,$00,size
 
-    \\}
+  ; now deref
+  match =read , mode \{
+    vmem.get A,base,addr,size
 
-    match =uop op , mode \\{
-      vmem.\\#op base,$00,size
+  \}
 
-    \\}
+  match =write , mode \{
+    vmem.set base,A,addr,size
 
-    match =bop op , mode \\{
-      vmem.\\#op base,A,$00,size
+  \}
 
-    \\}
+  match =uop op , mode \{
+    vmem.\#op base,addr,size
+
+  \}
+
+  match =bop op , mode \{
+    vmem.\#op base,A,addr,size
 
   \}
 
 }
 
 ; ---   *   ---   *   ---
-; ^innards
+; solves operations from
+; right to left
 
-macro vmc.decode.mem.inner_off_0 dst,N,op {
+$RECURSIVE vmc.decode.calc,dst,X
 
-  local ok
-  ok equ 0
+  macro vmc.decode.calc dst,X \{
 
-  local w0
-  local w1
-
-  w0=0
-  w1=1
-
-  match A op2 B , N \{
-
-    vmc.decode.reg ok,w0,A,read
-    vmc.decode.imm ok,w0,A
-
+    local ok
     ok equ 0
 
-    vmc.decode.reg ok,w1,B,read
-    vmc.decode.imm ok,w1,B
+    local w0
+    local w1
 
-    dst=w0 op2 w1
+    w0=0
+    w1=0
 
-    ok equ 1
+
+    ; expr is operation
+    match lh op rh , X \\{
+
+      ; get left hand
+      vmc.decode.reg ownok,w0,lh,read
+      vmc.decode.imm ownok,w0,lh,read
+
+      ; get right hand by recursing
+      vmc.decode.calc w1,rh
+
+      ; get result
+      dst=w0 op w1
+
+      ok equ 1
+
+    \\}
+
+
+    ; ^expr is a plain value
+    match =0 , ok \\{
+      vmc.decode.reg ok,w0,X,read
+      vmc.decode.imm ok,w0,X
+
+      dst = w0
+
+    \\}
 
   \}
 
-  match =0 , ok \{
-    vmc.decode.reg ok,w0,N,read
-    vmc.decode.imm ok,w0,N
+$RECURSIVE.end
 
-    dst = w0
+; ---   *   ---   *   ---
+; special-case decode for lea ;>
+
+macro vmc.decode.addr dst,src {
+
+  local ok
+  local base
+  local expr
+  local addr
+
+  ok equ 0
+  addr=0
+
+  ; get addr is segment-relative
+  match =[ seg =: any =] , src \{
+    base equ seg
+    expr equ any
+    ok   equ 1
 
   \}
 
-  dst=0 op dst
+  ; ^nope, plain addr
+  match =0 =[ any =] , ok src \{
+    base equ vmc.CAS
+    expr equ any
+
+  \}
+
+
+  ; get addr from expr
+  match any , expr \{
+    vmc.decode.calc addr,any
+
+  \}
+
+  ; ^now get base+addr
+  match id , base \{
+    dst=id\#.beg+addr
+
+  \}
 
 }
 
@@ -353,21 +368,9 @@ macro vmc.decode.attr ok,A,B,mode {
 
 macro vmc.decode.attr.inner A,mode,id,tag {
 
-  local lis
-  lis equ id
-
-  ; is id a named ptr? (fake regs ;>)
-  local ok
-  tokin ok,id,ice,ctx
-
-  match =1 , ok \{
-    lis equ vmc.REG.#id
-
-  \}
-
 
   ; deref by macro!
-  match btr , lis \{
+  match btr , id \{
 
     match type , btr\#%type \\{
 

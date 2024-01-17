@@ -29,6 +29,16 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.01.3b
+
+- Implemented basic memory allocator through `*::valloc`.
+
+- Memory effectively 'unified' under a parent block (`*::vmc.NON`), of which the first few segments act as system memory, and every segment after that is user memory, which is managed by the allocator.
+
+- Lengthy `*::vmc` rework/breakup. We have now taken to using `*::valloc` to handle the 'user' portion of memory rather than making a new `*::vmem` for each and every buffer.
+
+- Many quality of life features around relative pointers and `*::vmc::decode`. Because of the allocator, we don't have to rely on symbolic constants so much anymore, which means the old methods are redundant.
+
 ### v0.01.2b
 
 - `*::vmem` tweaks for `cat`, `align` and `resize`. Fixed the `bstore` mistake were resizing would crash the subsequent write!

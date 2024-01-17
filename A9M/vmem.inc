@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.6a
+  VERSION   v0.01.7a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -304,7 +304,7 @@ macro vmem.get dst,src,addr,sz=byte {
 ; ---   *   ---   *   ---
 ; dbout
 
-macro vmem.prich src,get_real=0 {
+macro vmem.prich src,get_real=0,header=0 {
 
   match id , src \{
 
@@ -335,7 +335,7 @@ macro vmem.prich src,get_real=0 {
 
 
     ; give buffer
-    vmem.bprich src,get_real
+    vmem.bprich src,get_real,header
 
   \}
 
@@ -344,7 +344,7 @@ macro vmem.prich src,get_real=0 {
 ; ---   *   ---   *   ---
 ; ^just the buffer
 
-macro vmem.bprich src,get_real=0 {
+macro vmem.bprich src,get_real=0,header=0 {
 
   match id , src \{
 
@@ -379,13 +379,17 @@ macro vmem.bprich src,get_real=0 {
 
       if(~(j mod $10))
 
-        out@nl
-        display '$'
-        hexsay  (i/2) shr 4,$10
+        if header = 1
 
-        display ' <:'
+          out@nl
+          display '$'
+          hexsay  (i/2) shr 4,$10
 
-        out@nl  2
+          display ' <:'
+
+          out@nl  2
+
+        end if
 
 
       end if
@@ -419,10 +423,14 @@ macro vmem.bprich src,get_real=0 {
       w0 = 0
       w1 = 0
 
-      display $0A,'+'
+      if header = 1
 
-      hexsay  len,$04
-      out@nl
+        display $0A,'+'
+
+        hexsay  len,$04
+        out@nl
+
+      end if
 
       while len > 0
 
@@ -568,14 +576,7 @@ library ARPATH '/forge/'
 
   use '.inc' A9M::vmem::xop
   use '.inc' A9M::vmem::bin
-
-
-; conditionally load allocator
-if defined A9M.USE_VALLOC
   use '.inc' A9M::valloc
-
-end if
-
 
 library.import
 

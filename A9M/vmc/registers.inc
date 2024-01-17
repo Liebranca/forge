@@ -22,34 +22,20 @@ library.import
 
   TITLE     A9M.vmc.registers
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.2b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
 ; ROM
 
-  ; incomplete list, see below
   define A9M.REGISTERS \
     ar,br,cr,dr,\
     er,fr,gr,hr,\
-    sp,sb
-
-
-  ; the Arcane 9 would set this to
-  ; addrof caller; won't work here!
-  define vmc.REG.xp
-
-  ; ^likewise, addrof callee
-  define vmc.REG.xs
-
-  ; ^addrof active instance
-  define vmc.REG.ice
-
-  ; ^addof input buffer
-  define vmc.REG.ctx
+    xp,xs,sp,sb,\
+    ice,ctx,opt,chan
 
 ; ---   *   ---   *   ---
-; bat-decl for registers
+; ^bat-decl
 
 macro vmc._decl_reg [name] {
   forward szmy qword name
@@ -57,7 +43,7 @@ macro vmc._decl_reg [name] {
 }
 
 ; ---   *   ---   *   ---
-; ^base struc
+; ^make struc
 
 vreg.new ANIMA
 match __list , A9M.REGISTERS {
@@ -66,6 +52,15 @@ match __list , A9M.REGISTERS {
 }
 
 vreg.end
+
+; ---   *   ---   *   ---
+; ^nit yourself!
+
+macro vmc.registers.new {
+  define    vmc.REG
+  ANIMA.new vmc.REG,vmc.CAS at $00
+
+}
 
 ; ---   *   ---   *   ---
 ; ^dbout wraps
@@ -80,11 +75,5 @@ macro ANIMA.bprich {
   ANIMA.bprich vmc.REG
 
 }
-
-; ---   *   ---   *   ---
-; GBL
-
-  define    vmc.REG
-  ANIMA.new vmc.REG
 
 ; ---   *   ---   *   ---
