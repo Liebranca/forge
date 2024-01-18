@@ -23,7 +23,7 @@ library.import
 
   TITLE     A9M.vmem
 
-  VERSION   v0.01.7a
+  VERSION   v0.01.8a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -298,6 +298,45 @@ macro vmem.get dst,src,addr,sz=byte {
     \\}
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; move range of buffer
+; N bytes right or left
+
+macro vmem.shift V,base,step,len {
+
+  local dst
+  local src
+
+  dst = base
+  src = base
+
+  vmem.shift.inner V,base,step,len,\
+    qword,dword,word,byte
+
+}
+
+; ---   *   ---   *   ---
+; ^gutsof
+
+macro vmem.shift.inner V,base,step,len,[key] {
+
+  forward
+
+    repeat len shr sizep2.#key
+
+      base = base-sizeof.#key
+
+      local w0
+
+      vmem.get w0,V,base,key
+      vmem.set V,w0,base+step,key
+
+      len  = len-sizeof.#key
+
+    end repeat
 
 }
 

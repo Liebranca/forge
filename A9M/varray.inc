@@ -14,7 +14,7 @@
 
   TITLE     A9M.varray
 
-  VERSION   v0.00.5b
+  VERSION   v0.00.6b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -174,6 +174,7 @@ macro varray.preread i=-1 {
   $on ar > negate.qword
 
     $mov cr,dword [ice+varray.top]
+    $inc ar
     $neg ar
 
     $mul ar,dr
@@ -208,6 +209,37 @@ macro varray.view dst,i=-1 {
 }
 
 ; ---   *   ---   *   ---
+; move every element by one slot
+
+macro varray.shift.inner dirn {
+
+  ; get relative addr
+  match id , vmc.USRMEM \{
+    $sub ar,id\#.beg
+
+  \}
+
+
+  ; set direction
+  ; * positive is left  <:
+  ; * negative is right >:
+  local step
+
+  $mov  step,dr
+  $mul  step,dirn
+
+  ; get len,end-1
+  local off
+  local len
+
+  $lea  off,[ar+cr]
+  $lea  len,[cr]
+
+  vmem.shift vmc.USRMEM,off,step,len
+
+}
+
+; ---   *   ---   *   ---
 ; write to end
 
 macro varray.push src {
@@ -230,40 +262,22 @@ macro varray.push src {
 
 macro varray.unshift src {
 
-  ; re-push last element
-  ; this grows the array by one slot
-  local head
+  ; will value fit?
+  $mov er,[ice+varray.ezy]
+  varray.resize_chk er
 
-  varray.view head
-  varray.push head
+  ; get current meta
+  ; then grow by one slot
+  varray.preread
+  $add dword [ice+varray.top],dr
 
-
-  ; move every element right one slot
-  local len
-  $mov  len,cr
-  $div  len,dr
-
-  repeat len+1
-
-
-    ; get current
-    local      elem
-    varray.get elem
-
-    ; ^put ahead
-    $add cr,dr
-    varray.set elem
-
-
-    ; go back
-    $lea cr,[cr-dr*2]
-    $sub len,dr
-
-
-  end repeat
+  ; perform move
+  varray.shift.inner 1
 
 
   ; now insert new elem at beg
+  varray.preread
+
   $mov cr,$00
   varray.set src
 
@@ -309,6 +323,10 @@ macro varray.shift dst {
 
   \}
 
+  ; perform move
+  varray.preread
+  varray.shift.inner -1
+
 
   ; shrink one slot
   $sub dword [ice+varray.top],dr
@@ -321,31 +339,6 @@ macro varray.shift dst {
     out@err 'array overshift'
 
   end if
-
-
-  ; move every element left one slot
-  $xor  cr,cr
-  $div len,dr
-
-  repeat len+1
-
-    ; get ahead
-    local elem
-    $add  cr,dr
-
-    varray.get elem
-
-    ; ^put back
-    $sub cr,dr
-    varray.set elem
-
-
-    ; go back
-    $lea cr,[cr+dr*2]
-    $sub len,dr
-
-
-  end repeat
 
 }
 
