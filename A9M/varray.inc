@@ -14,7 +14,7 @@
 
   TITLE     A9M.varray
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -116,7 +116,7 @@ macro varray.resize_chk step {
 ; ---   *   ---   *   ---
 ; write [dr] bytes at [ar+cr]
 
-macro varray.set value {
+macro varray.set src {
 
   local len
   local i
@@ -127,27 +127,104 @@ macro varray.set value {
   $mov len,dr
 
   while len > 0
-    vmem.xmov len,ptr ar+cr,value,i
+    vmem.xmov len,ptr ar+cr,src,i
 
   end while
 
 }
 
 ; ---   *   ---   *   ---
+; read [dr] bytes from [ar+cr]
+
+macro varray.get dst {
+
+  local len
+  local i
+
+  len = 0
+  i   = 0
+
+  $mov len,dr
+
+  while len > 0
+    vmem.xmov len,dst,ptr ar+cr,i
+
+  end while
+
+}
+
+; ---   *   ---   *   ---
+; * load buff into ar
+; * elem size into dr
+; * passed ptr into cr (else top!)
+
+macro varray.preread i=-1 {
+
+  $mov ar,i
+
+  ; backwards indexing ;>
+  $on ar > negate.qword
+
+    $mov cr,dword [ice+varray.top]
+    $inc ar
+    $add cr,ar
+
+  ; ^else get passed as-is
+  else
+    $mov cr,i
+
+  end if
+
+
+  ; no conditions here
+  $mov ar,qword [ice+varray.buff]
+  $mov dr,dword [ice+varray.ezy]
+
+}
+
+; ---   *   ---   *   ---
 ; write to top
 
-macro varray.push value {
+macro varray.push src {
 
+  ; will value fit?
   $mov er,[ice+varray.ezy]
   varray.resize_chk er
 
-  $mov ar,qword [ice+varray.buff]
-  $mov cr,dword [ice+varray.top]
-  $mov dr,dword [ice+varray.ezy]
+  ; perform write
+  varray.preread
+  varray.set src
 
-  varray.set value
-
+  ; step over next slot
   $add dword [ice+varray.top],dr
+
+}
+
+; ---   *   ---   *   ---
+; ^read at idex
+
+macro varray.view dst,i=-1 {
+  varray.preread i
+  varray.get     dst
+
+}
+
+; ---   *   ---   *   ---
+; remove from top-1
+; optional write to dst
+
+macro varray.pop dst= {
+
+  ; go back one slot
+  $sub dword [ice+varray.top],\
+    dword [ice+varray.ezy]
+
+  ; perform write?
+  match any , dst \{
+    varray.preread
+    varray.get dst
+
+  \}
 
 }
 

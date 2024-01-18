@@ -14,7 +14,7 @@
 
   TITLE     peso.seg
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -23,18 +23,22 @@
   define sizeof.byte  $0001
   define sizep2.byte  $0000
   define sizebm.byte  $00FF
+  define negate.byte  $007F
 
   define sizeof.word  $0002
   define sizep2.word  $0001
   define sizebm.word  $FFFF
+  define negate.word  $7FFF
 
   define sizeof.dword $0004
   define sizep2.dword $0002
   define sizebm.dword $FFFFFFFF
+  define negate.dword $7FFFFFFF
 
   define sizeof.qword $0008
   define sizep2.qword $0003
   define sizebm.qword $FFFFFFFFFFFFFFFF
+  define negate.qword $7FFFFFFFFFFFFFFF
 
   define sizeof.unit  $0010
   define sizep2.unit  $0004

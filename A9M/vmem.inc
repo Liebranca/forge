@@ -425,9 +425,10 @@ macro vmem.bprich src,get_real=0,header=0 {
       w0 = 0
       w1 = 0
 
+      out@nl
       if header = 1
 
-        display $0A,'+'
+        display '+'
 
         hexsay  len,$04
         out@nl

@@ -120,7 +120,12 @@ macro vmem._xmov A,B,size,i {
 
   \}
 
-  $mov dst,src
+  match DST , dst \{
+  match SRC , src \\{
+    $mov DST,SRC
+
+  \\}
+  \}
 
 }
 
