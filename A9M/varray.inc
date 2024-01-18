@@ -14,7 +14,7 @@
 
   TITLE     A9M.varray
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -154,36 +154,61 @@ macro varray.get dst {
 }
 
 ; ---   *   ---   *   ---
-; * load buff into ar
+; shorthand. loads:
+;
+; * buff into ar
+;
 ; * elem size into dr
+;
 ; * passed ptr into cr (else top!)
 
 macro varray.preread i=-1 {
 
+  ; get elem size
+  $mov dr,dword [ice+varray.ezy]
+
+  ; get index
   $mov ar,i
 
   ; backwards indexing ;>
   $on ar > negate.qword
 
     $mov cr,dword [ice+varray.top]
-    $inc ar
-    $add cr,ar
+    $neg ar
+
+    $mul ar,dr
+    $sub cr,ar
+
+    ; clamp to zero
+    $on cr > negate.qword
+      $xor cr,cr
+
+    end if
 
   ; ^else get passed as-is
   else
     $mov cr,i
+    $mul cr,dr
 
   end if
 
 
-  ; no conditions here
+  ; get buff addr
   $mov ar,qword [ice+varray.buff]
-  $mov dr,dword [ice+varray.ezy]
 
 }
 
 ; ---   *   ---   *   ---
-; write to top
+; read at idex
+
+macro varray.view dst,i=-1 {
+  varray.preread i
+  varray.get     dst
+
+}
+
+; ---   *   ---   *   ---
+; write to end
 
 macro varray.push src {
 
@@ -195,22 +220,57 @@ macro varray.push src {
   varray.preread
   varray.set src
 
-  ; step over next slot
+  ; step right one slot
   $add dword [ice+varray.top],dr
 
 }
 
 ; ---   *   ---   *   ---
-; ^read at idex
+; write to beg
 
-macro varray.view dst,i=-1 {
-  varray.preread i
-  varray.get     dst
+macro varray.unshift src {
+
+  ; re-push last element
+  ; this grows the array by one slot
+  local head
+
+  varray.view head
+  varray.push head
+
+
+  ; move every element right one slot
+  local len
+  $mov  len,cr
+  $div  len,dr
+
+  repeat len+1
+
+
+    ; get current
+    local      elem
+    varray.get elem
+
+    ; ^put ahead
+    $add cr,dr
+    varray.set elem
+
+
+    ; go back
+    $lea cr,[cr-dr*2]
+    $sub len,dr
+
+
+  end repeat
+
+
+  ; now insert new elem at beg
+  $mov cr,$00
+  varray.set src
 
 }
 
 ; ---   *   ---   *   ---
-; remove from top-1
+; remove from end-1
 ; optional write to dst
 
 macro varray.pop dst= {
@@ -219,12 +279,73 @@ macro varray.pop dst= {
   $sub dword [ice+varray.top],\
     dword [ice+varray.ezy]
 
+  ; ^die on empty
+  $mov ar,dword [ice+varray.top]
+  $on ar > negate.dword
+    out@err 'array overpop'
+
+  end if
+
+
   ; perform write?
   match any , dst \{
     varray.preread
     varray.get dst
 
   \}
+
+}
+
+; ---   *   ---   *   ---
+; remove from beg
+; optional write to dst
+
+macro varray.shift dst {
+
+  ; save first element if
+  ; requested
+  match any , dst \{
+    varray.view dst,0
+
+  \}
+
+
+  ; shrink one slot
+  $sub dword [ice+varray.top],dr
+
+  local len
+  $mov  len,dword [ice+varray.top]
+
+  ; ^die on empty array
+  if len > negate.dword
+    out@err 'array overshift'
+
+  end if
+
+
+  ; move every element left one slot
+  $xor  cr,cr
+  $div len,dr
+
+  repeat len+1
+
+    ; get ahead
+    local elem
+    $add  cr,dr
+
+    varray.get elem
+
+    ; ^put back
+    $sub cr,dr
+    varray.set elem
+
+
+    ; go back
+    $lea cr,[cr+dr*2]
+    $sub len,dr
+
+
+  end repeat
 
 }
 

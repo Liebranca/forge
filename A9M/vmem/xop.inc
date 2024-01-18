@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xop
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -124,6 +124,8 @@ vmem._gen_op b xnor  , dst=not (dst xor src)
 vmem._gen_op b nor   , dst=not (dst or  src)
 vmem._gen_op b nand  , dst=not (dst and src)
 
+vmem._gen_op u neg   , dst=-dst
+
 vmem._gen_op b shr   , dst=dst shr src
 vmem._gen_op b shl   , dst=dst shl src
 
@@ -136,6 +138,7 @@ vmem._gen_op b sub   , dst=dst-src
 vmem._gen_op u dec   , dst=dst-1
 
 vmem._gen_op b mul   , dst=dst * src
+vmem._gen_op b div   , dst=dst / src
 
 
 vmem._gen_op b badd  , vmem._badd dst,src

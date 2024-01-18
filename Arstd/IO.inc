@@ -87,7 +87,7 @@ macro IO.CTAGIT dst,color,value& {
     $1B,$5B,'0m'
 
   IO.CTAGIT SYSTAG,'34;22','AR'
-  IO.CTAGIT ERRTAG,'31;1','AR'
+  IO.CTAGIT ERRTAG,'31;1','FATAL'
   IO.CTAGIT PETAG,'35;1','peso'
 
   define BLANK $20
@@ -153,12 +153,13 @@ macro d'oh! src,[args] {
   common
 
     if src eq ERRTAG
+      out@nl 2
       err
 
     else if src eq BLANK
 
     else
-      display $0A
+      out@nl
 
     end if
 
