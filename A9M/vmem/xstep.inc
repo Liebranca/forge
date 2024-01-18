@@ -14,7 +14,7 @@
 
   TITLE     A9M.vmem.xstep
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -58,6 +58,69 @@ macro vmem.xdd src,len {
     dq src
 
   end if
+
+}
+
+; ---   *   ---   *   ---
+; ONCE AGAIN...
+
+macro vmem.xmov len,A,B,i {
+
+
+  if len = 1
+
+    vmem._xmov A,B,byte,i
+
+    len = 0
+    i   = i+1
+
+  else if len < 4
+
+    vmem._xmov A,B,word,i
+
+    len = len-2
+    i   = i+2
+
+  else if len < 8
+
+    vmem._xmov A,B,dword,i
+
+    len = len-4
+    i   = i+4
+
+  else
+
+    vmem._xmov A,B,qword,i
+
+    len = len-8
+    i   = i+8
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; ^gutsof
+
+macro vmem._xmov A,B,size,i {
+
+  local dst
+  local src
+
+  dst equ A
+  src equ B
+
+  match =ptr name , A \{
+    dst equ size [name+i]
+
+  \}
+
+  match =ptr name , B \{
+    src equ size [name+i]
+
+  \}
+
+  $mov dst,src
 
 }
 
@@ -334,11 +397,21 @@ macro vmem.STA dst,value,i0,i1,step {
 
 }
 
+macro vmem.STAUS dst,value,i0,i1,step {
+  vmem.xstus dst,value,i0,step
+
+}
+
 ; ---   *   ---   *   ---
 ; read value from src
 
 macro vmem.LDA dst,src,i0,i1,step {
   vmem.xld dst,src,i0,step
+
+}
+
+macro vmem.LDAUS dst,src,i0,i1,step {
+  vmem.xldus dst,src,i0,step
 
 }
 

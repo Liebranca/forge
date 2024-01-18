@@ -139,7 +139,7 @@ macro vrealloc addr,sz {
 
   ; save tmp
   local old
-  old = addr
+  $mov old,addr
 
 
   ; release old
@@ -153,16 +153,17 @@ macro vrealloc addr,sz {
 
 
   ; get new
+  local  new
   valloc sz
-  $mov   addr,ar
+  $mov   new,ar
 
   ; ^copy data if addr changed
-  if ~(old = addr)
+  if ~(old = new)
 
     $xor br,br
     repeat len shr $03
 
-      $mov qword [addr+br],\
+      $mov qword [new+br],\
         qword [old+br]
 
       $add br,$08

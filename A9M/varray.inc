@@ -14,7 +14,7 @@
 
   TITLE     A9M.varray
 
-  VERSION   v0.00.1b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -22,12 +22,14 @@
 
 vreg.new varray
 
-  szmy dword cap
   szmy dword grow
+  szmy dword igrow
+
   szmy dword ezy
   szmy dword cnt
+
+  szmy dword cap
   szmy dword top
-  szmy dword pad
 
   szmy qword buff
 
@@ -52,8 +54,9 @@ macro varray.new ezy,cnt {
   ; ^fill struc
   $mov dword [ice+varray.cap],cap
   $mov dword [ice+varray.grow],cap
-  $mov dword [ice+varray.ezy],ezy
   $mov dword [ice+varray.cnt],cnt
+  $mov dword [ice+varray.igrow],cnt
+  $mov dword [ice+varray.ezy],ezy
   $mov dword [ice+varray.top],$00
 
 
@@ -66,18 +69,87 @@ macro varray.new ezy,cnt {
 
 }
 
-;; ---   *   ---   *   ---
-;; write to top
-;
-;macro varray.push value {
-;
-;  match ice , vmc.REG.ice \{
-;
-;
-;
-;  \}
-;
-;}
+; ---   *   ---   *   ---
+; grow array on cap hit
+
+macro varray.resize_chk step {
+
+  local top
+  local have
+  local need
+  local grow
+
+  top  = 0
+  have = 0
+  need = 0
+
+  ; get top,capacity
+  $mov top,dword [ice+varray.top]
+  $add top,step
+
+  $mov have,dword [ice+varray.cap]
+
+  ; ^over the limit?
+  while have < top
+
+    $add have,dword [ice+varray.grow]
+    $add dword [ice+varray.cnt],\
+      dword [ice+varray.igrow]
+
+    need = 1
+
+  end while
+
+  ; ^perform realloc?
+  if need = 1
+
+    $mov     er,qword [ice+varray.buff]
+    vrealloc er,have
+
+    $mov     qword [ice+varray.buff],ar
+    $mov     dword [ice+varray.cap],have
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; write [dr] bytes at [ar+cr]
+
+macro varray.set value {
+
+  local len
+  local i
+
+  len = 0
+  i   = 0
+
+  $mov len,dr
+
+  while len > 0
+    vmem.xmov len,ptr ar+cr,value,i
+
+  end while
+
+}
+
+; ---   *   ---   *   ---
+; write to top
+
+macro varray.push value {
+
+  $mov er,[ice+varray.ezy]
+  varray.resize_chk er
+
+  $mov ar,qword [ice+varray.buff]
+  $mov cr,dword [ice+varray.top]
+  $mov dr,dword [ice+varray.ezy]
+
+  varray.set value
+
+  $add dword [ice+varray.top],dr
+
+}
 
 ; ---   *   ---   *   ---
 ; dbout

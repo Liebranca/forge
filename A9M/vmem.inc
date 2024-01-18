@@ -379,17 +379,19 @@ macro vmem.bprich src,get_real=0,header=0 {
 
       if(~(j mod $10))
 
+        out@nl
+
         if header = 1
 
-          out@nl
           display '$'
           hexsay  (i/2) shr 4,$10
 
           display ' <:'
-
-          out@nl  2
+          out@nl
 
         end if
+
+        out@nl
 
 
       end if
