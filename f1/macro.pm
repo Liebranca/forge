@@ -31,11 +31,11 @@ package f1::macro;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
-# declares macro
+# cstruc
 
 sub new($class,$name,%O) {
 
@@ -67,6 +67,76 @@ sub head($self) {
     "macro $self->{name} "
   . (join ',',@{$self->{args}})
   . $pad
+
+  . $self->scapop('{')
+  ;
+
+};
+
+# ---   *   ---   *   ---
+# ^close
+
+sub foot($self) {
+  return $self->scapop('}');
+
+};
+
+# ---   *   ---   *   ---
+# wraps for match
+
+package f1::match;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use lib $ENV{ARPATH}.'/forge/A9M/';
+  use parent 'f1::blk';
+
+# ---   *   ---   *   ---
+# open
+
+sub head($self) {
+
+  return
+
+    "match $self->{name} , "
+  . (join ' ',@{$self->{args}})
+
+  . $self->scapop('{')
+  ;
+
+};
+
+# ---   *   ---   *   ---
+# ^close
+
+sub foot($self) {
+  return $self->scapop('}');
+
+};
+
+# ---   *   ---   *   ---
+# wraps for rept
+
+package f1::rept;
+
+  use v5.36.0;
+  use strict;
+  use warnings;
+
+  use lib $ENV{ARPATH}.'/forge/A9M/';
+  use parent 'f1::blk';
+
+# ---   *   ---   *   ---
+# open
+
+sub head($self) {
+
+  return
+
+    "rept $self->{name} "
+  . (join ':',@{$self->{args}})
 
   . $self->scapop('{')
   ;

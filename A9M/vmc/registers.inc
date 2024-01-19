@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vmc.registers
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -57,8 +57,12 @@ vreg.end
 ; ^nit yourself!
 
 macro vmc.registers.new {
+
   define    vmc.REG
   ANIMA.new vmc.REG,vmc.CAS at $00
+
+  define        ANIMA.base
+  vreg.get_base ANIMA.base,vmc.REG
 
 }
 

@@ -387,6 +387,21 @@ macro vreg.get_ptr dst,src {
 }
 
 ; ---   *   ---   *   ---
+; ^gets "base" symbol
+
+macro vreg.get_base dst,src {
+
+  match id , src \{
+    match oid , id\#%origin \\{
+      dst equ oid\\#.base
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; not to be confused with
 ; realloc ;>
 ;

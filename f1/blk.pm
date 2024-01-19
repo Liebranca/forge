@@ -31,8 +31,27 @@ package f1::blk;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
+
+
+# ---   *   ---   *   ---
+# GBL
+
+  my $Cache={};
+
+# ---   *   ---   *   ---
+# getset cached value
+
+sub ldcache($class,$key) {
+  $Cache->{$key}
+
+};
+
+sub stcache($class,$key,$value) {
+  $Cache->{$key}=$value
+
+};
 
 # ---   *   ---   *   ---
 # cstruc
@@ -67,6 +86,8 @@ sub new($class,$name,%O) {
     loc  => $O{loc},
     lvl  => $O{lvl},
 
+    mlvl => 0,
+
   },$class;
 
 
@@ -83,17 +104,22 @@ sub new($class,$name,%O) {
 
 sub ances($self) {
 
-  my $lvl=0;
-  my $par=$self->{par};
+  my $lvl  = 0;
+  my $mlvl = 0;
+  my $par  = $self->{par};
 
   while(defined $self->{par}) {
-    $lvl+=1;
-    $self=$self->{par};
+
+    my $class=ref $self->{par};
+
+    $mlvl += int $class->isa('f1::macro');
+    $lvl  += 1;
+
+    $self  = $self->{par};
 
   };
 
-  $lvl+=$par->{lvl} if defined $par;
-  return $lvl;
+  return ($lvl,$mlvl);
 
 };
 
@@ -138,7 +164,10 @@ sub idented_full($self) {
   my $buf  = $self->idented($have);
   my $pad  = $self->ident(0);
 
-  return ("$pad$head",$buf,"$pad$foot");
+  return ($have)
+    ? ("$pad$head",$buf,"$pad$foot")
+    : ($NULLSTR,$buf,$NULLSTR)
+    ;
 
 };
 
@@ -153,7 +182,7 @@ sub foot($self) {$NULLSTR};
 # block level
 
 sub scapop($self,$op) {
-  return ("\\" x $self->{lvl}) . $op;
+  return ("\\" x $self->{mlvl}) . $op;
 
 };
 
@@ -199,18 +228,23 @@ sub get_chd_loc($self) {
 sub recalc_lvl($self) {
 
   # setup
-  $self->{lvl} = (defined $self->{par})
+  my @lvl =(defined $self->{par})
     ? $self->ances()
-    : 0
+    : (0,0)
     ;
 
-  my @pending  = @{$self->{chd}};
+  ($self->{lvl},$self->{mlvl})=@lvl;
+
 
   # recursive walk
+  my @pending = @{$self->{chd}};
+
   while(@pending) {
 
     my $ice=shift @pending;
-    $ice->{lvl}=$ice->ances();
+    @lvl=$ice->ances();
+
+    ($ice->{lvl},$ice->{mlvl})=@lvl;
 
     unshift @pending,@{$ice->{chd}};
 
@@ -233,8 +267,14 @@ sub collapse($self) {
 
     # cat footer at end of sub-hierarchy
     if($pending[0] eq 0) {
+
       shift @pending;
-      $out .= (shift @foot) . "\n";
+
+      my $body=shift @foot;
+      $out .= (length $body)
+        ? "$body\n"
+        : $NULLSTR
+        ;
 
       next;
 
@@ -248,7 +288,8 @@ sub collapse($self) {
       $ice->idented_full();
 
     # ^cat header, postpone footer
-    $out .= "$head\n$buf\n";
+    $out .= joinfilt("\n",$head,$buf)."\n";
+
     push @foot,$foot;
 
     # ^go next
@@ -261,12 +302,7 @@ sub collapse($self) {
   my ($head,$buf,$foot)=
     $self->idented_full();
 
-  $out=
-    "$head\n"
-  . "$self->{buf}\n"
-  . "$out\n"
-  . "$foot\n"
-  ;
+  $out=joinfilt("\n",$head,$buf,$out,$foot)."\n";
 
   # ^give collapsed buf
   return $out;
@@ -282,7 +318,7 @@ sub cat($class,$name,%O) {
   my @ar=sort {
     $a->{loc} > $b->{loc}
 
-  } %O{elems};
+  } @{$O{elems}};
 
   # ^paste in order
   my $buf=$NULLSTR;
@@ -299,6 +335,103 @@ sub cat($class,$name,%O) {
 
   # give top
   return $top;
+
+};
+
+# ---   *   ---   *   ---
+# add lines to buffer
+
+sub lines($self,$s) {
+
+  my @lines=
+
+    grep  {length $ARG}
+    map   {strip(\$ARG);$ARG}
+
+    split $SEMI_RE,$s
+
+  ;
+
+
+  my $pad=$self->ident();
+
+  $self->{buf}.=join "\n",map {"$pad$ARG"} @lines;
+  $self->{buf}.="\n";
+
+};
+
+# ---   *   ---   *   ---
+# makes enum from name list
+
+sub enum($self,$base,@names) {
+
+  $Cache->{$base} //= -1;
+  $Cache->{align} //= 0;
+
+  $self->lines(join ';',map {
+
+    sprintf "${base}.%-$Cache->{align}s = \$%04X",
+      $ARG,++$Cache->{$base}
+
+  } @names);
+
+};
+
+# ---   *   ---   *   ---
+# makes switch
+
+sub switch($self,@expr) {
+
+  # setup
+  my $idex  = 0;
+  my @lines = array_values(\@expr);
+
+
+  # make branches
+  map {
+
+    # get position
+    my $bme=0;
+
+    $bme=($idex eq 0      ) ? 'BEG' : $bme;
+    $bme=($idex eq $#lines) ? 'END' : $bme;
+
+
+    # get sub-block body and go next
+    my $buf=$lines[$idex++];
+
+    # ^make sub-block
+    f1::logic->new(
+
+      ".L$idex",
+
+      type   => 'if',
+
+      expr   => $ARG,
+      switch => $bme,
+      buf    => $buf,
+
+      par    => $self,
+
+    );
+
+  } array_keys(\@expr);
+
+  return;
+
+};
+
+# ---   *   ---   *   ---
+# declares var
+
+sub local($self,$name,$value=undef) {
+
+  $self->lines(
+
+    "local $name;"
+  . ("$name $value;" x defined $value)
+
+  );
 
 };
 
