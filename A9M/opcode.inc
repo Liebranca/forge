@@ -236,22 +236,6 @@ macro $ipret X {
 
 }
 
-;; ---   *   ---   *   ---
-;
-;000 => r,r
-;010 => r,m
-;001 => m,r
-;
-;100 => r,i
-;101 => m,i
-;
-;110 => r,lea
-;011 => lea,r
-;111 => lea,i
-
-mov qword [heap:$40],r
-mov qword [stack:sb-8]
-
 ; ---   *   ---   *   ---
 ; read register operand
 ;
@@ -279,8 +263,8 @@ mov qword [stack:sb-8]
 ; as a straight and+mul ;>
 
 macro @ipret$read_reg dst,src {
-  dst = (src and 7) * 8
-  src = src shr 3
+  dst = (src and $F) shl 3
+  src = src shr 4
 
 }
 
@@ -292,6 +276,9 @@ macro @ipret$read_reg dst,src {
 ; bits to read, capping
 ; at 32
 
+@ipret.opsz.mask=$FF
+@ipret.opsz.bits=$08
+
 macro @ipret$read_imm dst,src {
 
   ; halves read size when
@@ -300,7 +287,7 @@ macro @ipret$read_imm dst,src {
   cap = @ipret.opsz shr 6
 
   ; read and shift out
-  dst = src & (@ipret.opsz.mask shr cap)
+  dst = src and (@ipret.opsz.mask shr cap)
   src = src shr (@ipret.opsz.bits shr cap)
 
 }
@@ -314,8 +301,8 @@ virtual at $00
   ; sb register
   dq $00
 
-  ; beg of heap
-  dq sizeof.vmc+$38
+  ; absolute!
+  dq $00
 
   ; ice register
   dq $00
@@ -345,7 +332,7 @@ end virtual
 ; * 00 => stack-rel :$08
 ; * 10 => ice-rel   :$08
 ;
-; * 01 => heap-rel  :$10
+; * 01 => lea       :$10
 ; * 11 => heap-rel  :$20
 ;
 ;
@@ -372,7 +359,6 @@ macro @ipret$read_mem dst,src {
   ; if *both* bits are set
   dst = dst shl ((mflag * $AB) shr 9)
 
-
   ; dst is now number of bits to read
   ; make a copy of that
   local bits
@@ -383,7 +369,15 @@ macro @ipret$read_mem dst,src {
 
   ; read base addr from table
   load @ipret.read_mem.tab.base qword \
-  from @ipret.read_mem.tab:mflag*8
+  from @ipret.read_mem.tab:mflag shl 3
+
+
+  ; the worst case: 16-bit relative
+  ; can't do it without a switch :c
+  if mflag = 01b
+    @ipret$read_mem$rel16 dst
+
+  end if
 
 
   ; [negate offset if stack relative]
@@ -397,7 +391,7 @@ macro @ipret$read_mem dst,src {
   ; ie this means mul by -1 if both
   ; bits are turned off
   mflag = not mflag and 3
-  dst   = dst * (1 - (2 * (mflag * $AB) shr 9))
+  dst   = dst * (1 - (((mflag * $AB) shr 9) shl 1))
 
 
   ; add base and offset to get absolute
@@ -424,6 +418,10 @@ macro @ipret$read_mem$reload {
   load @ipret.read_mem.tab.ice qword \
   from ANIMA.base:$60
 
+  @ipret.read_mem.tab.sb = \
+    @ipret.read_mem.tab.sb + sizeof.ANIMA
+
+
   store qword @ipret.read_mem.tab.sb \
   at @ipret.read_mem.tab:$00
 
@@ -432,108 +430,355 @@ macro @ipret$read_mem$reload {
 
 }
 
-;; ---   *   ---   *   ---
-;; makes binary opcode
+; ---   *   ---   *   ---
+; 16-bit relative offset
 ;
-;macro $encode NE {
+; * first 3-bit field is
+;   null or register 0-7
 ;
-;X tokin ok,val,vmc.REGISTERS
+; * ^idem for second 3-bit
+;   field
 ;
-;size =ptr reg/imm
-;size =[ subexpr =]
+; * 8-bit offset
 ;
-;
-;
-;reg/imm+reg/imm+reg/imm*[0,2,4,8]
-;
-;$encode mov ar,qword [blala]
-;
-;  local _name
-;  local _expr
-;
-;  _name equ NE
-;  _expr equ
-;
-;
-;  ; got expression?
-;  match N E , NE \{
-;    _name equ N
-;    _expr equ E
-;
-;  \}
-;
-;  ; ^yes
-;  match name expr , _name _expr \{
-;    
-;
-;  \}
-;
-;}
-;
-;; ---   *   ---   *   ---
-;; rd subexpr
-;
-;macro $encode.subexpr expr {
-;
-;
-;  local ok
-;  ok equ 0
-;
-;+ - * / -> 8
-;A B C D -> 32
-;
-;  ; four values, three operations
-;  match A opa B opb C opc D , expr \{
-;
-;    ok equ 1
-;
-;  \}
-;
-;  ; three values, two operations
-;  match =0 A opa B opb C , ok expr \{
-;
-;    ok equ 1
-;
-;  \}
-;
-;  ; two values, one operation
-;  match =0 A opa B , ok expr \{
-;
-;    ok equ 1
-;
-;  \}
-;
-;  ; single value
-;  match =0 A , ok expr \{
-;
-;    ok equ 1
-;
-;  \}
-;
-;}
-;
-;; ---   *   ---   *   ---
-;
-;macro $encode.subexpr.read_op bits,value,op {
-;
-;  match =* , op \{
-;    bits = bits shl 2
-;    bits = bits or ((bsf value) and $03)
-;
-;  \}
-;
-;  match =- , op \{
-;    bits = bits shl 1
-;    bits = bits or 1
-;
-;  \}
-;
-;  match =+ , op \{
-;    bits = bits shl 1
-;
-;  \}
-;
-;}
+; * 2-bit scale, used as shift
+
+macro @ipret$read_mem$rel16 dst {
+
+  local rX
+  local rY
+  local off
+  local scale
+
+  ; decode register part
+  @ipret$read_mem$rel_reg rX,dst
+  @ipret$read_mem$rel_reg rY,dst
+
+  ; get scale and offset
+  off   = dst and $FF
+  dst   = dst shr $08
+  scale = dst and $03
+  dst   = dst shr $02
+
+
+  ; apply scale to offset if non-zero
+  if off > 0
+    off = off shl scale
+
+  ; ^else apply it to second register
+  ; if it's non-zero
+  else if rY > 0
+    rY = rY shl scale
+
+  ; ^else apply it to first register
+  else
+    rX = rX shl scale
+
+  end if
+
+  dst = rX+rY+off
+
+}
+
+; ---   *   ---   *   ---
+; conditionally get register
+
+macro @ipret$read_mem$rel_reg dst,src {
+
+  dst = src and 7
+  src = src shr 3
+
+  if dst > 0
+    dst = (dst-1) shl 3
+    load dst qword from ANIMA.base:dst
+
+  end if
+
+}
+
+; ---   *   ---   *   ---
+; makes binary opcode
+
+macro $encode NE& {
+
+  local ok
+  local _name
+  local _expr
+
+  ok    equ 0
+  _name equ NE
+  _expr equ
+
+
+  ; got expression?
+  match N E , NE \{
+    _name equ N
+    _expr equ E
+
+  \}
+
+  ; ^yes
+  match name expr , _name _expr \{
+
+    ; two operands
+    match A =, B , expr \\{
+
+      local rX
+      local rY
+      local out
+
+      local rflag_a
+      local rflag_b
+      local bitsz
+
+      bitsz = 0
+
+      $encode.rat rX,rflag_a,bitsz,A
+      out   = bitsz
+      bitsz = 0
+
+      $encode.rat rY,rflag_b,bitsz,B
+
+      out = \
+         (rflag_a shl 0) \
+      or (rflag_b shl 1) \
+      or (rX      shl 3) \
+      or (rY      shl (out+3))
+
+      $mov ar,out
+
+      ok equ 1
+
+    \\}
+
+    ; ^single
+    match =0 A , ok expr \\{\\}
+
+    ok equ 1
+
+  \}
+
+  ; ^no
+  match =0 name , ok _name \{\}
+
+}
+
+; ---   *   ---   *   ---
+; identifies operand type,
+; gives encoded value and
+; writes type to rflag
+
+macro $encode.rat dst,rflag,bitsz,expr {
+
+  local ok
+  ok equ 0
+
+  $encode.reg ok,dst,rflag,bitsz,expr
+  $encode.mem ok,dst,rflag,bitsz,expr
+  $encode.imm ok,dst,rflag,bitsz,expr
+
+}
+
+; ---   *   ---   *   ---
+; value is register?
+
+macro $encode.reg ok,dst,rflag,bitsz,expr {
+
+  match =0 list , ok A9M.REGISTERS \{
+
+    ok equ 'I'
+    tokin ok,expr,list
+
+    ; yes
+    match idex , ok \\{
+      dst   = idex
+      bitsz = 4
+      rflag = 00b
+
+      ok equ 1
+
+    \\}
+
+    ; no
+    match , ok \\{
+      ok equ 0
+
+    \\}
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; value is memory?
+
+macro $encode.mem ok,dst,rflag,bitsz,expr {
+
+  match size =[ subexpr =] , expr \{
+    rflag = 01b
+    $encode.rel16 ok,dst,rflag,bitsz,subexpr
+
+    ok equ 1
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; value is immediate?
+
+macro $encode.imm ok,dst,rflag,bitsz,expr {
+
+  match =0 , ok \{
+    bitsz = 8
+    dst   = expr
+    rflag = 10b
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
+; is value a 16-bit relative?
+
+macro $encode.rel16 ok,dst,rflag,bitsz,expr {
+
+  local dummy
+
+  local rX
+  local rY
+  local off
+  local scale
+
+  rX    = 0
+  rY    = 0
+  off   = 0
+  scale = 0
+
+
+  ; [rX + rY + (off << scale)]
+  match A =+ B =+ C =* D , expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+    rX = (rX+1) and 7
+
+    ok equ 0
+    $encode.reg ok,rY,dummy,dummy,B
+    rY = (rY+1) and 7
+
+    ok equ 0
+    $encode.imm ok,off,dummy,dummy,C
+
+    scale = (bsf D) and 3
+
+    ok equ 1
+
+  \}
+
+  ; [rX + ((rY|off) << scale)]
+  match =0 A =+ B =* C , ok expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+    rX = (rX+1) and 7
+
+    ok equ 0
+    $encode.reg ok,rY,dummy,dummy,B
+
+    if ok
+      rY  = (rY+1) and 7
+
+    end if
+
+    $encode.imm ok,off,dummy,dummy,B
+
+    scale = (bsf C) and 3
+
+    ok equ 1
+
+  \}
+
+  ; [rX + rY + off]
+  match =0 A =+ B =+ C , ok expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+    rX = (rX+1) and 7
+
+    ok equ 0
+    $encode.reg ok,rY,dummy,dummy,B
+    rY = (rY+1) and 7
+
+    ok equ 0
+    $encode.imm ok,off,dummy,dummy,C
+
+    ok equ 1
+
+  \}
+
+  ; [rX << scale]
+  match =0 A =* B , ok expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+
+    rX    = (rX+1) and 7
+    scale = (bsf B) and 3
+
+    ok equ 1
+
+  \}
+
+  ; [rX + (rY|off)]
+  match =0 A =+ B , ok expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+    rX=(rX+1) and 7
+
+    ok equ 0
+    $encode.reg ok,rY,dummy,dummy,B
+
+    if ok
+      rY  = (rY+1) and 7
+
+    end if
+
+    $encode.imm ok,off,dummy,dummy,B
+
+    ok equ 1
+
+  \}
+
+  ; [rX|off]
+  match =0 A , ok expr \{
+
+    $encode.reg ok,rX,dummy,dummy,A
+
+    if ok
+      rX=(rX+1) and 7
+
+    end if
+
+    $encode.imm ok,off,dummy,dummy,A
+
+    ok equ 1
+
+  \}
+
+
+  ; pack result
+  match =1 , ok \{
+
+    off = off and $FF
+    dst = \
+       (rX    shl 0) \
+    or (rY    shl 3) \
+    or (off   shl 6) \
+    or (scale shl 14)
+
+    dst   = 01b or (dst shl 2)
+    bitsz = 18
+
+  \}
+
+}
 
 ; ---   *   ---   *   ---
 ; Arcane 9 mov $24 to sb-1
