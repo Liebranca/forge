@@ -31,6 +31,7 @@ package f1::ismaker;
   use Arstd::Array;
   use Arstd::String;
   use Arstd::Bytes;
+  use Arstd::IO;
 
 
   use lib $ENV{ARPATH}.'/forge/';
@@ -42,7 +43,7 @@ package f1::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -53,41 +54,160 @@ package f1::ismaker;
 # ---   *   ---   *   ---
 # GBL
 
-  our $Opcode_ID = 0;
-  our $Table     = 0;
+  our $Opcode_ROM = 0;
+  our $Opcode_EXE = 0;
+
+  our $ROM_Table  = [];
+  our $EXE_Table  = {};
+
+  our $EXE_Crux   = {};
+
+# ---   *   ---   *   ---
+# makes encoding
+
+sub bitformat_new(@order) {
+
+  # out attrs
+  my $size = {};
+  my $mask = {};
+  my $pos  = {'$:top;>'=>0};
+
+
+  # array as hash
+  my $idex   = 0;
+  my @keys   = array_keys(\@order);
+  my @values = array_values(\@order);
+
+  # ^walk
+  map {
+
+    my $bits = $values[$idex++];
+
+    $size->{$ARG}      = $bits;
+
+    $pos->{$ARG}       = $pos->{'$:top;>'};
+    $mask->{$ARG}      = (1 << $bits)-1;
+
+    $pos->{'$:top;>'} += $bits;
+
+  } @keys;
+
+
+  return {size=>$size,mask=>$mask,pos=>$pos};
+
+};
+
+# ---   *   ---   *   ---
+# ^ors values accto their
+# position in format
+
+sub bitformat($fmat,%data) {
+
+  my $out=0x00;
+
+  map {$out |=(
+
+    $data{$ARG}
+  & $fmat->{mask}->{$ARG}
+
+  ) << $fmat->{pos}->{$ARG}
+
+  } keys %data;
+
+  return $out;
+
+};
+
+# ---   *   ---   *   ---
+# shorthand for generating
+# fasm code that reads such
+# a bitformat
+
+sub bitformat_f1_csume($fmat,$src,@keys) {
+
+  return (join ';',map {
+    "$ARG="
+  . "($src shr $fmat->{pos}->{$ARG})"
+  . "and $fmat->{mask}->{$ARG}"
+
+  } @keys) . ';';
+
+};
+
+# ---   *   ---   *   ---
+# fmat for opcode data
+
+my $OPCODE_ROM=bitformat_new(
+
+  load_src  => 1,
+  load_dst  => 1,
+  overwrite => 1,
+
+  argcnt    => 2,
+  argflag   => 3,
+
+  opsize    => 1,
+  idx       => 16,
+
+);
 
 # ---   *   ---   *   ---
 # crux
 
 sub import($class,@args) {
 
+  # defaults
+  my ($name,$dst)=@args;
+
+  $name //= 'isbasic';
+  $dst  //= "$ENV{ARPATH}/forge/A9M/ROM";
+
+
+  # make include
   my $ROM=$class->build_ROM();
   my $EXE=$class->build_EXE();
 
-  my $INC=f1::blk->cat('pinc',$ROM,$EXE);
+  my $INC=join "\n",$ROM->collapse(),$EXE->{buf};
 
-  say $INC->{buf};
+
+  # write to file
+  owc("$dst/$name.pinc",$INC);
 
 };
 
 # ---   *   ---   *   ---
-# makes "procs" to fetch
+# makes procs used during
+# decode and execution
+
+sub build_EXE($class) {
+
+  return f1::blk->cat(
+
+    'EXE',
+
+    $class->build_EXE_decoder(),
+    $class->build_EXE_logic(),
+
+  );
+
+};
+
+# ---   *   ---   *   ---
+# makes a proc to fetch
 # instruction data
 #
 # done to simplify decode ;>
 
-sub build_EXE($class) {
+sub build_EXE_decoder($class) {
 
-
-  # decode helper
-  my $EXE=f1::macro->new(
+  my $read=f1::macro->new(
 
     'A9M.OPCODE.read',
 
     loc  => 1,
     args => [qw(
 
-      src
+      idx src
 
       load_src load_dst overwrite
       argcnt argflag
@@ -98,33 +218,139 @@ sub build_EXE($class) {
   );
 
   # ^paste the proc
-  $EXE->lines(q[
+  $read->lines(q[
 
 
-    opid      = src and OPCODE_ID_MASK;
+    local idex;
+
+    idex      = src and OPCODE_ID_MASK;
     src       = src shr OPCODE_ID_BITS;
 
 
     local flags;
-    load  flags word from A9M.OPCODE:opid shl 1;
+    load  flags word from A9M.OPCODE:idex shl 1;
+
+  ] . bitformat_f1_csume(
+
+    $OPCODE_ROM,'flags',qw(
+
+      load_src load_dst overwrite
+      argcnt argflag
+      opsize
+
+    )) . q[
 
 
-    load_src  = (flags shr 0) and 1;
-    load_dst  = (flags shr 1) and 1;
-    overwrite = (flags shr 2) and 1;
-
-    argcnt    = (flags shr 3) and 3;
-    argflag   = (flags shr 5) and 7;
+    opsize    = 1 shl opsize;
+    opsize_bs = opsize shl 3;
+    opsize_bm = 1 shl opsize;
 
 
-    opsize    = 1 shl ((flags shr 8) and 1);
-    opsize_bs = opsize shl 3
-    opsize_bm = 1 shl opsize
+    idx=
+
+  ] . "(flags shr $OPCODE_ROM->{pos}->{idx})"
+    . "and OPCODE_IDX_MASK;"
 
 
-  ]);
+  );
 
-  return $EXE;
+
+  return $read
+
+};
+
+# ---   *   ---   *   ---
+# fetches instruction
+# definitions and makes a
+# conditional table for
+# executing them
+
+  Readonly my $ARGNAMES=>[
+    [],['dst'],['dst','src'],
+
+  ];
+
+sub build_EXE_logic($class) {
+
+  # gen individual instructions
+  my $idex = 0;
+
+  return map {
+
+    my $cnt      = $ARG;
+    my @branches = ();
+
+    my @defs     = map {
+
+      my ($def,$branch)=inscode($ARG,\$idex);
+
+      push @branches,@$branch;
+      $def;
+
+    } grep {
+      $EXE_Table->{$ARG}->{argcnt} eq $cnt
+
+    } keys %$EXE_Table;
+
+
+    # make conditionals?
+    if(@defs) {
+
+      my $tab=f1::macro->new(
+
+        "A9M.OPCODE.switch_args$cnt",
+
+        loc  => $idex++,
+        args => ['opid',@{$ARGNAMES->[$cnt]}],
+
+      );
+
+      $tab->switch(@branches);
+      push @defs,$tab;
+
+    };
+
+    @defs;
+
+
+  } 0,1,2;
+
+};
+
+# ---   *   ---   *   ---
+# makes wraps around an
+# instruction definition
+
+sub inscode($body,$iref) {
+
+  my $attr=$EXE_Table->{$body};
+  my $args=$ARGNAMES->[$attr->{argcnt}];
+
+  my $ins=f1::macro->new(
+
+    "A9M.OPCODE._exe_$attr->{name}",
+
+    loc  => $$iref+2,
+    args => $args,
+
+  );
+
+  my $branch=[
+     "opid = $attr->{idx}"
+  => "A9M.OPCODE._exe_$attr->{name} "
+
+  .  (join ',' , @$args)
+
+  ];
+
+
+  # paste
+  $ins->lines($body);
+
+
+  # go next and give
+  $$iref++;
+  return $ins,$branch;
 
 };
 
@@ -137,8 +363,8 @@ sub build_ROM($class) {
   # access array like a hash
   my $idex   = 0;
 
-  my @keys   = array_keys($Table);
-  my @values = array_values($Table);
+  my @keys   = array_keys($ROM_Table);
+  my @values = array_values($ROM_Table);
 
   # meaningless; pads the equal signs
   my $pad = max(map {length $ARG} @keys);
@@ -170,16 +396,24 @@ sub build_ROM($class) {
 
 
   # get bitsize of opcodes
-  my $opbits = bitsize($Opcode_ID-1);
-  my $opmask = (1 << $opbits)-1;
+  my $opbits  = bitsize($Opcode_ROM-1);
+  my $opmask  = (1 << $opbits)-1;
+
+  my $exebits = bitsize($Opcode_EXE-1);
+  my $exemask = (1 << $exebits)-1;
 
 
   # ^write as constants
   $ROM->lines(sprintf
-    "OPCODE_ID_MASK = %04X;"
-  . "OPCODE_ID_BITS = %04X;",
 
-    $opmask,$opbits
+    "OPCODE_ID_MASK  = %04X;"
+  . "OPCODE_ID_BITS  = %04X;"
+
+  . "OPCODE_IDX_MASK = %04X;"
+  . "OPCODE_IDX_BITS = %04X;",
+
+    $opmask,$opbits,
+    $exemask,$exebits
 
   );
 
@@ -192,12 +426,34 @@ sub build_ROM($class) {
 };
 
 # ---   *   ---   *   ---
+# avoids repeated logic guts
+
+sub fetch_logic($name,%O) {
+
+  if(! exists $EXE_Table->{$O{body}}) {
+
+    $EXE_Table->{$O{body}}={
+
+      %O,
+
+      name => $name,
+      idx  => $Opcode_EXE++,
+
+    };
+
+  };
+
+  return $EXE_Table->{$O{body}}->{idx};
+
+};
+
+# ---   *   ---   *   ---
 # cstruc instruction(s)
 
 sub opcode($name,$ct,%O) {
 
   # defaults
-  $O{args}      //= 2;
+  $O{argcnt}    //= 2;
   $O{nosize}    //= 0;
 
   $O{load_src}  //= 1;
@@ -208,12 +464,21 @@ sub opcode($name,$ct,%O) {
   $O{src}       //= 'ri';
 
   # ^binpacked
-  my $ROM =
-    ($O{load_src}  << 0)
-  | ($O{load_dst}  << 1)
-  | ($O{overwrite} << 2)
-  | ($O{args}      << 3)
-  ;
+  my $ROM=bitformat(
+
+    $OPCODE_ROM,
+
+    load_src  => $O{load_src},
+    load_dst  => $O{load_dst},
+    overwrite => $O{overwrite},
+
+    argcnt    => $O{argcnt},
+
+  );
+
+
+  # queue logic generation
+  my $idx=fetch_logic($name,%O,body=>$ct);
 
 
   # get possible operand sizes
@@ -232,7 +497,7 @@ sub opcode($name,$ct,%O) {
   my @combo=();
 
   # ^for two-operand instruction
-  if($O{args} eq 2) {
+  if($O{argcnt} eq 2) {
 
     @combo=grep {length $ARG} map {
 
@@ -257,7 +522,7 @@ sub opcode($name,$ct,%O) {
 
 
   # make descriptors
-  my $rflag_tab={
+  my $argflag_tab={
 
     $NULLSTR => 0b000,
 
@@ -275,9 +540,9 @@ sub opcode($name,$ct,%O) {
     my $dst  = substr $ARG,0,1;
     my $src  = substr $ARG,1,1;
 
-    my $args =
-      ($rflag_tab->{"d$dst"})
-    | ($rflag_tab->{"s$src"})
+    my $argflag =
+      ($argflag_tab->{"d$dst"})
+    | ($argflag_tab->{"s$src"})
 
     ;
 
@@ -289,18 +554,19 @@ sub opcode($name,$ct,%O) {
 
       map {
 
-        my $data=
+        my $data=$ROM | bitformat(
 
-          $ROM
+          $OPCODE_ROM,
 
-        | ($args << 5)
-        | ($sizetab->{$ARG} << 8)
+          argflag => $argflag,
+          opsize  => $sizetab->{$ARG},
+          idx     => $idx,
 
-        ;
+        );
 
 
         "${ins}_${ARG}" => {
-          id  => $Opcode_ID++,
+          id  => $Opcode_ROM++,
           ROM => $data,
 
         };
@@ -310,10 +576,19 @@ sub opcode($name,$ct,%O) {
     # ^combo is rr
     } else {
 
-      my $data=$ROM | ($args << 5) | (1 << 8);
+      my $data=$ROM | bitformat(
+
+        $OPCODE_ROM,
+
+        argflag => $argflag,
+        opsize  => 1,
+
+        idx     => $idx,
+
+      );
 
       "${name}_${ARG}" => {
-        id  => $Opcode_ID++,
+        id  => $Opcode_ROM++,
         ROM => $data,
 
       };
@@ -327,7 +602,7 @@ sub opcode($name,$ct,%O) {
 # ---   *   ---   *   ---
 # ^definitions
 
-$Table=[
+$ROM_Table=[
 
 # ---   *   ---   *   ---
 # most used ones

@@ -340,14 +340,15 @@ sub cat($class,$name,@ar) {
 
 sub lines($self,$s) {
 
-  my @lines=
+  my $scapnl = "\\\n";
+  my @lines  = grep  {length $ARG} map {
 
-    grep  {length $ARG}
-    map   {strip(\$ARG);$ARG}
+    strip(\$ARG);
 
-    split $SEMI_RE,$s
+    $ARG=~ s[$NEWLINE_RE+][$scapnl]sxmg;
+    $ARG;
 
-  ;
+  } split $SEMI_RE,$s;
 
 
   my $pad=$self->ident();
@@ -390,8 +391,14 @@ sub switch($self,@expr) {
     # get position
     my $bme=0;
 
-    $bme=($idex eq 0      ) ? 'BEG' : $bme;
-    $bme=($idex eq $#lines) ? 'END' : $bme;
+    if($#lines eq 0) {
+      $bme='BEG+END';
+
+    } else {
+      $bme=($idex eq 0      ) ? 'BEG' : $bme;
+      $bme=($idex eq $#lines) ? 'END' : $bme;
+
+    };
 
 
     # get sub-block body and go next

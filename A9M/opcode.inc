@@ -14,11 +14,13 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
+; ---   *   ---   *   ---
+; load tables
 
-  include   '%ARPATH%/forge/A9M/ROM/opcode.is'
+  include   '%ARPATH%/forge/A9M/ROM/isbasic.pinc'
 
 ; ---   *   ---   *   ---
 ; read opcode
@@ -44,7 +46,7 @@ macro $bipret X {
   local opsize_bs
 
   ; ^fetch em from ROM ;>
-  A9M.OPCODE.read opcode,\
+  A9M.OPCODE.read opid,opcode,\
     load_src,load_dst,overwrite,\
     argcnt,argflag,\
     opsize,opsize_bm,opsize_bs
@@ -110,20 +112,21 @@ macro $bipret X {
 
       match id , vmc.CAS \{
 
-        if load_dst
-          load vX word at id\#.base:pX
+        if load_dst & argflag and 001b
+          load vX word from id\#.base:pX
 
         end if
 
         if load_src & argflag and 010b
-          load vY word at id\#.base:pY
+          load vY word from id\#.base:pY
 
         end if
 
       \}
 
-      ; [logic goes here]
-      vX=vY
+
+      ; instruction jump table
+      A9M.OPCODE.switch_args2 opid,vX,vY
 
       ; store result to dst?
       if overwrite
@@ -172,7 +175,7 @@ macro $bipret X {
 ; as a straight and+mul ;>
 
 macro $bipret.regarg dst,src {
-  dst = (src and $F) shl 3
+  dst = (src and $F) shl 1
   src = src shr 4
 
 }
@@ -202,8 +205,7 @@ bipret.memarg.tab::
   ; ice register
   dq $00
 
-  ; also beg of heap
-  ; repeated to avoid an if
+  ; beg of heap
   dq sizeof.vmc+$38
 
 
@@ -308,10 +310,10 @@ macro $bipret.memarg dst,src {
 macro $bipret.memarg.reload {
 
   load bipret.memarg.tab.sb qword \
-  from ANIMA.base:$58
+  from ANIMA.base:$16
 
   load bipret.memarg.tab.ice qword \
-  from ANIMA.base:$60
+  from ANIMA.base:$20
 
   bipret.memarg.tab.sb = \
     bipret.memarg.tab.sb + sizeof.ANIMA
@@ -418,14 +420,14 @@ macro $bencode dst,NE& {
 
     ; ^got size?
     match =byte _E , _expr \\{
-      _size equ _byte
+      _size equ byte
       _expr equ _E
-      ok2 equ 1
+      ok2   equ 1
 
     \\}
 
     match =0 =word _E , ok _expr \\{
-      _size equ _word
+      _size equ word
       _expr equ _E
 
     \\}
@@ -443,51 +445,28 @@ macro $bencode dst,NE& {
       local rY
       local out
 
-      local rflag_a
-      local rflag_b
+      local argflag_a
+      local argflag_b
       local bitsz
 
       bitsz = 0
 
-      $bencode.arg rX,rflag_a,bitsz,A
+
+      ; encode both arguments
+      $bencode.arg rX,argflag_a,bitsz,A
       out   = bitsz
       bitsz = 0
 
-      $bencode.arg rY,rflag_b,bitsz,B
+      $bencode.arg rY,argflag_b,bitsz,B
 
-
-      local id
       local opcode
 
-      local sizen
-      sizen equ size
-      match =r =i , rflag_a rflag_b \\\{
-        sizen equ
 
-      \\\}
+      ; lookup opcode in table
+      $bencode.get_opcode opcode,name,size,\
+        argflag_a,argflag_b
 
-      match =r =r , rflag_a rflag_b \\\{
-        sizen equ
-
-      \\\}
-
-
-      match AF BF SF , rflag_a rflag_b sizen \\\{
-        id equ name\#_\\\#AF\\\#BF\\\#SF
-        ok equ 1
-
-      \\\}
-
-      match =0 AF BF , ok rflag_a rflag_b sizen \\\{
-        id equ name\#_\\\#AF\\\#BF
-
-      \\\}
-
-      match any , id \\\{
-        opcode equ A9M.OPCODE.\\\#any
-
-      \\\}
-
+      ; ^cat to encoded args
       dst = opcode \
         or (rX shl OPCODE_ID_BITS) \
         or (rY shl (OPCODE_ID_BITS+out))
@@ -509,25 +488,78 @@ macro $bencode dst,NE& {
 }
 
 ; ---   *   ---   *   ---
+; messy: gets name of a
+; constant holding the
+; opcode, based on the
+; instruction passed
+
+macro $bencode.get_opcode dst,name,size,\
+  argflag_a,argflag_b {
+
+  ; tmp
+  local id
+  local ok
+  ok equ 0
+
+  ; copy input
+  local sizen
+  sizen equ size
+
+
+  ; skip size on reg to reg or imm to reg
+  match =r =i , argflag_a argflag_b \{
+    sizen equ
+
+  \}
+
+  match =r =r , argflag_a argflag_b \{
+    sizen equ
+
+  \}
+
+
+  ; ^else cat size to id
+  match AF BF SF , argflag_a argflag_b sizen \{
+    id equ name#_\#AF\#BF\#_\#SF
+    ok equ 1
+
+  \}
+
+  ; ^size skipped
+  match =0 AF BF , ok argflag_a argflag_b \{
+    id equ name#_\#AF\#BF
+
+  \}
+
+
+  ; give back opcode from id
+  match any , id \{
+    dst equ A9M.OPCODE.\#any
+
+  \}
+
+}
+
+; ---   *   ---   *   ---
 ; identifies operand type,
 ; gives encoded value and
-; writes type to rflag
+; writes type to argflag
 
-macro $bencode.arg dst,rflag,bitsz,expr {
+macro $bencode.arg dst,argflag,bitsz,expr {
 
   local ok
   ok equ 0
 
-  $bencode.reg ok,dst,rflag,bitsz,expr
-  $bencode.mem ok,dst,rflag,bitsz,expr
-  $bencode.imm ok,dst,rflag,bitsz,expr
+  $bencode.reg ok,dst,argflag,bitsz,expr
+  $bencode.mem ok,dst,argflag,bitsz,expr
+  $bencode.imm ok,dst,argflag,bitsz,expr
 
 }
 
 ; ---   *   ---   *   ---
 ; value is register?
 
-macro $bencode.reg ok,dst,rflag,bitsz,expr {
+macro $bencode.reg ok,dst,argflag,bitsz,expr {
 
   match =0 list , ok A9M.REGISTERS \{
 
@@ -536,9 +568,11 @@ macro $bencode.reg ok,dst,rflag,bitsz,expr {
 
     ; yes
     match idex , ok \\{
+
       dst   = idex
       bitsz = 4
-      rflag equ \r
+
+      argflag equ \r
 
       ok equ 1
 
@@ -557,13 +591,13 @@ macro $bencode.reg ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; value is memory?
 
-macro $bencode.mem ok,dst,rflag,bitsz,expr {
+macro $bencode.mem ok,dst,argflag,bitsz,expr {
 
   match =[ subexpr =] , expr \{
 
-    rflag equ \m
+    argflag equ \m
 
-    $bencode.rel16 ok,dst,rflag,bitsz,subexpr
+    $bencode.rel16 ok,dst,argflag,bitsz,subexpr
 
     ok equ 1
 
@@ -574,12 +608,12 @@ macro $bencode.mem ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; value is immediate?
 
-macro $bencode.imm ok,dst,rflag,bitsz,expr {
+macro $bencode.imm ok,dst,argflag,bitsz,expr {
 
   match =0 , ok \{
     bitsz = $10
     dst   = expr
-    rflag equ \i
+    argflag equ \i
 
   \}
 
@@ -588,7 +622,7 @@ macro $bencode.imm ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; is value a 16-bit relative?
 
-macro $bencode.rel16 ok,dst,rflag,bitsz,expr {
+macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
 
   local dummy
 
