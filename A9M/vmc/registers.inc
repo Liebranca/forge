@@ -28,17 +28,45 @@ library.import
 ; ---   *   ---   *   ---
 ; ROM
 
+if ~ defined A9M.REGISTER_SZ_K
+  define A9M.REGISTER_SZ_K word
+
+end if
+
+match __key , A9M.REGISTER_SZ_K {
+  A9M.REGISTER_SZ   = sizeof.#__key
+  A9M.REGISTER_SZP2 = sizep2.#__key
+
+}
+
+; ---   *   ---   *   ---
+; ^names of
+
+if ~ defined A9M.REGISTERS
+
   define A9M.REGISTERS \
     ar,br,cr,dr,\
     er,fr,gr,hr,\
     xp,xs,sp,sb,\
     ice,ctx,opt,chan
 
+end if
+
+; ---   *   ---   *   ---
+; consts for encoding
+
+  A9M.REGISTER_CNT    = $00
+  A9M.REGISTER_CNT_BM = $00
+  A9M.REGISTER_CNT_BS = $00
+
 ; ---   *   ---   *   ---
 ; ^bat-decl
 
 macro vmc._decl_reg [name] {
-  forward szmy word name
+
+  forward
+    szmy A9M.REGISTER_SZ_K name
+    A9M.REGISTER_CNT = A9M.REGISTER_CNT+1
 
 }
 
@@ -52,6 +80,15 @@ match __list , A9M.REGISTERS {
 }
 
 vreg.end
+
+; ---   *   ---   *   ---
+; ^set encoding consts
+
+A9M.REGISTER_CNT_BS = \
+  $40-bsr A9M.REGISTER_CNT
+
+A9M.REGISTER_CNT_BM = \
+  (1 shl A9M.REGISTER_CNT_BS)-1
 
 ; ---   *   ---   *   ---
 ; ^nit yourself!

@@ -31,11 +31,13 @@ package f1::ismaker;
   use Arstd::Array;
   use Arstd::String;
   use Arstd::Bytes;
+  use Arstd::Bitformat;
   use Arstd::IO;
 
 
   use lib $ENV{ARPATH}.'/forge/';
 
+  use f1::bits;
   use f1::macro;
   use f1::logic;
   use f1::ROM;
@@ -43,7 +45,7 @@ package f1::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#b
+  our $VERSION = v0.00.4;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -63,81 +65,9 @@ package f1::ismaker;
   our $EXE_Crux   = {};
 
 # ---   *   ---   *   ---
-# makes encoding
-
-sub bitformat_new(@order) {
-
-  # out attrs
-  my $size = {};
-  my $mask = {};
-  my $pos  = {'$:top;>'=>0};
-
-
-  # array as hash
-  my $idex   = 0;
-  my @keys   = array_keys(\@order);
-  my @values = array_values(\@order);
-
-  # ^walk
-  map {
-
-    my $bits = $values[$idex++];
-
-    $size->{$ARG}      = $bits;
-
-    $pos->{$ARG}       = $pos->{'$:top;>'};
-    $mask->{$ARG}      = (1 << $bits)-1;
-
-    $pos->{'$:top;>'} += $bits;
-
-  } @keys;
-
-
-  return {size=>$size,mask=>$mask,pos=>$pos};
-
-};
-
-# ---   *   ---   *   ---
-# ^ors values accto their
-# position in format
-
-sub bitformat($fmat,%data) {
-
-  my $out=0x00;
-
-  map {$out |=(
-
-    $data{$ARG}
-  & $fmat->{mask}->{$ARG}
-
-  ) << $fmat->{pos}->{$ARG}
-
-  } keys %data;
-
-  return $out;
-
-};
-
-# ---   *   ---   *   ---
-# shorthand for generating
-# fasm code that reads such
-# a bitformat
-
-sub bitformat_f1_csume($fmat,$src,@keys) {
-
-  return (join ';',map {
-    "$ARG="
-  . "($src shr $fmat->{pos}->{$ARG})"
-  . "and $fmat->{mask}->{$ARG}"
-
-  } @keys) . ';';
-
-};
-
-# ---   *   ---   *   ---
 # fmat for opcode data
 
-my $OPCODE_ROM=bitformat_new(
+my $OPCODE_ROM=Arstd::Bitformat->new(
 
   load_src  => 1,
   load_dst  => 1,
@@ -148,6 +78,19 @@ my $OPCODE_ROM=bitformat_new(
 
   opsize    => 1,
   idx       => 16,
+
+);
+
+# ---   *   ---   *   ---
+# fmat for relative memargs
+
+my $MEMARG_REL=Arstd::Bitformat->new(
+
+  rX    => 4,
+  rY    => 4,
+
+  off   => 8,
+  scale => 2,
 
 );
 
@@ -230,7 +173,7 @@ sub build_EXE_decoder($class) {
     local flags;
     load  flags word from A9M.OPCODE:idex shl 1;
 
-  ] . bitformat_f1_csume(
+  ] . f1::bits::csume(
 
     $OPCODE_ROM,'flags',qw(
 
@@ -243,7 +186,7 @@ sub build_EXE_decoder($class) {
 
     opsize    = 1 shl opsize;
     opsize_bs = opsize shl 3;
-    opsize_bm = 1 shl opsize;
+    opsize_bm = (1 shl opsize_bs)-1;
 
 
     idx=
@@ -403,17 +346,43 @@ sub build_ROM($class) {
   my $exemask = (1 << $exebits)-1;
 
 
-  # ^write as constants
-  $ROM->lines(sprintf
+  # ^write constants
+  $ROM->lines(
 
-    "OPCODE_ID_MASK  = %04X;"
-  . "OPCODE_ID_BITS  = %04X;"
 
-  . "OPCODE_IDX_MASK = %04X;"
-  . "OPCODE_IDX_BITS = %04X;",
+      "A9M.OPCODE.MEMDST    = 001b;"
+    . "A9M.OPCODE.MEMSRC    = 010b;"
+    . "A9M.OPCODE.IMMSRC    = 100b;"
 
-    $opmask,$opbits,
-    $exemask,$exebits
+    # TODO: stop hardcoding imm size;>
+    . "A9M.OPCODE.IMM_BS    = \$10;"
+    . "A9M.OPCODE.IMM_BM    = \$FFFF;"
+
+    . "A9M.OPCODE.MFLAG_BS  = 2;"
+    . "A9M.OPCODE.MFLAG_BM  = 3;"
+
+    . "A9M.OPCODE.MFLAG_REL = 01b;"
+
+
+  . f1::bits::as_const(
+      $MEMARG_REL,'bipret.memarg.rel',
+      qw(rX rY off scale),
+
+    )
+
+
+  . (sprintf
+
+      "OPCODE_ID_MASK  = %04X;"
+    . "OPCODE_ID_BITS  = %04X;"
+
+    . "OPCODE_IDX_MASK = %04X;"
+    . "OPCODE_IDX_BITS = %04X;",
+
+      $opmask,$opbits,
+      $exemask,$exebits
+
+    ),
 
   );
 
@@ -464,9 +433,7 @@ sub opcode($name,$ct,%O) {
   $O{src}       //= 'ri';
 
   # ^binpacked
-  my $ROM=bitformat(
-
-    $OPCODE_ROM,
+  my $ROM=$OPCODE_ROM->bor(
 
     load_src  => $O{load_src},
     load_dst  => $O{load_dst},
@@ -554,9 +521,7 @@ sub opcode($name,$ct,%O) {
 
       map {
 
-        my $data=$ROM | bitformat(
-
-          $OPCODE_ROM,
+        my $data=$ROM | $OPCODE_ROM->bor(
 
           argflag => $argflag,
           opsize  => $sizetab->{$ARG},
@@ -576,9 +541,7 @@ sub opcode($name,$ct,%O) {
     # ^combo is rr
     } else {
 
-      my $data=$ROM | bitformat(
-
-        $OPCODE_ROM,
+      my $data=$ROM | $OPCODE_ROM->bor(
 
         argflag => $argflag,
         opsize  => 1,

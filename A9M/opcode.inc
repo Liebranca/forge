@@ -14,7 +14,7 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.4b
+  VERSION   v0.00.5b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -64,7 +64,7 @@ macro $bipret X {
     ; get destination: memory
     local vX
 
-    if argflag and 001b
+    if argflag and A9M.OPCODE.MEMDST
       $bipret.memarg vX,opcode
 
     ; ^register
@@ -80,12 +80,13 @@ macro $bipret X {
       local vY
 
       ; get source: memory
-      if argflag and 010b
+      if argflag and A9M.OPCODE.MEMSRC
         $bipret.memarg vY,opcode
 
       ; ^immediate
-      else if argflag and 100b
-        $bipret.immarg vY,opcode
+      else if argflag and A9M.OPCODE.IMMSRC
+        $bipret.immarg vY,opcode,\
+          opsize_bm,opsize_bs
 
       ; ^register
       else
@@ -175,8 +176,11 @@ macro $bipret X {
 ; as a straight and+mul ;>
 
 macro $bipret.regarg dst,src {
-  dst = (src and $F) shl 1
-  src = src shr 4
+
+  dst = (src and A9M.REGISTER_CNT_BM) \
+    shl A9M.REGISTER_SZP2
+
+  src = src shr A9M.REGISTER_CNT_BS
 
 }
 
@@ -184,9 +188,9 @@ macro $bipret.regarg dst,src {
 ; read immediate operand
 ; always 16-bit for now
 
-macro $bipret.immarg dst,src {
-  dst = src and $FFFF
-  src = src shr $10
+macro $bipret.immarg dst,src,bm,bs {
+  dst = src and bm
+  src = src shr bs
 
 }
 
@@ -199,13 +203,13 @@ bipret.memarg.tab::
   ; sb register
   dq $00
 
+  ; lea
+  dq $00
+
   ; segment relative :o
   dq $00
 
-  ; ice register
-  dq $00
-
-  ; beg of heap
+  ; something something heap fetches
   dq sizeof.vmc+$38
 
 
@@ -220,16 +224,16 @@ bipret.memarg.tab::
 end virtual
 
 ; ---   *   ---   *   ---
-; read common memory operand
+; read memory operand
 ;
 ;
 ; here we map the flag to
 ; read size like so:
 ;
 ; * 00 => stack-rel :$08
-; * 10 => ice-rel   :$08
+; * 10 => seg-rel   :$08
 ;
-; * 01 => lea       :$10
+; * 01 => long-rel  :$10
 ; * 11 => heap-rel  :$20
 ;
 ;
@@ -240,14 +244,14 @@ macro $bipret.memarg dst,src {
 
   ; copy the segment flags
   local mflag
-  mflag = src and 3
+  mflag = src and A9M.OPCODE.MFLAG_BM
 
   ; then shift them out
-  src = src shr 2
+  src = src shr A9M.OPCODE.MFLAG_BS
 
 
-  ; double size if first bit set
-  dst = 8 shl (mflag and 1)
+  ; double size if long-form relative
+  dst = 8 shl (mflag and A9M.OPCODE.MFLAG_REL)
 
   ; (byte) dst shl (src/3)
   ; thanks gcc ;>
@@ -266,13 +270,13 @@ macro $bipret.memarg dst,src {
 
   ; read base addr from table
   load bipret.memarg.tab.base qword \
-  from bipret.memarg.tab:mflag shl 3
+  from bipret.memarg.tab:mflag shl sizep2.qword
 
 
   ; the worst case: 16-bit relative
   ; can't do it without a switch :c
-  if mflag = 01b
-    $bipret.memarg.rel16 dst
+  if mflag = A9M.OPCODE.MFLAG_REL
+    $bipret.memarg.rel dst
 
   end if
 
@@ -287,7 +291,7 @@ macro $bipret.memarg dst,src {
   ;
   ; ie this means mul by -1 if both
   ; bits are turned off
-  mflag = not mflag and 3
+  mflag = not mflag and A9M.OPCODE.MFLAG_BM
   dst   = dst * (1 - (((mflag * $AB) shr 9) shl 1))
 
 
@@ -309,16 +313,21 @@ macro $bipret.memarg dst,src {
 
 macro $bipret.memarg.reload {
 
+  ; get sb register
   load bipret.memarg.tab.sb qword \
-  from ANIMA.base:$16
+  from ANIMA.base:$0B shl A9M.REGISTER_SZP2
 
+  ; ^get ice register
   load bipret.memarg.tab.ice qword \
-  from ANIMA.base:$20
+  from ANIMA.base:$0C shl A9M.REGISTER_SZP2
 
+
+  ; make sb absolute
   bipret.memarg.tab.sb = \
     bipret.memarg.tab.sb + sizeof.ANIMA
 
 
+  ; store addrs in table
   store qword bipret.memarg.tab.sb \
   at bipret.memarg.tab:$00
 
@@ -328,34 +337,40 @@ macro $bipret.memarg.reload {
 }
 
 ; ---   *   ---   *   ---
-; 16-bit relative offset
+; relative offset, calc'd
+; by adding/shifting registers
 ;
-; * first 3-bit field is
-;   null or register 0-7
+; * first field is null or [0-register_sz)
 ;
-; * ^idem for second 3-bit
-;   field
+; * ^idem for second field
 ;
-; * 8-bit offset
+; * third is imm offset
 ;
-; * 2-bit scale, used as shift
+; * scale, used as shift
 
-macro $bipret.memarg.rel16 dst {
+macro $bipret.memarg.rel dst {
 
   local rX
   local rY
   local off
   local scale
 
+
   ; decode register part
-  $bipret.memarg.rel16reg rX,dst
-  $bipret.memarg.rel16reg rY,dst
+  $bipret.memarg.relreg rX,dst,\
+    bipret.memarg.rel.rX_bm,\
+    bipret.memarg.rel.rX_bs
+
+  $bipret.memarg.relreg rY,dst,\
+    bipret.memarg.rel.rY_bm,\
+    bipret.memarg.rel.rY_bs
+
 
   ; get scale and offset
-  off   = dst and $FF
-  dst   = dst shr $08
-  scale = dst and $03
-  dst   = dst shr $02
+  off   = dst and bipret.memarg.rel.off_bm
+  dst   = dst shr bipret.memarg.rel.off_bs
+  scale = dst and bipret.memarg.rel.scale_bm
+  dst   = dst shr bipret.memarg.rel.scale_bs
 
 
   ; apply scale to offset if non-zero
@@ -378,15 +393,16 @@ macro $bipret.memarg.rel16 dst {
 }
 
 ; ---   *   ---   *   ---
-; conditionally get register
+; conditionally get value
+; in register
 
-macro $bipret.memarg.rel16reg dst,src {
+macro $bipret.memarg.relreg dst,src,bm,bs {
 
-  dst = src and 7
-  src = src shr 3
+  dst = src and bm
+  src = src shr bs
 
   if dst > 0
-    dst = (dst-1) shl 1
+    dst = (dst-1) shl A9M.REGISTER_SZP2
     load dst word from ANIMA.base:dst
 
   end if
@@ -453,11 +469,14 @@ macro $bencode dst,NE& {
 
 
       ; encode both arguments
-      $bencode.arg rX,argflag_a,bitsz,A
+      $bencode.arg rX,argflag_a,bitsz,A,\
+        A9M.OPCODE.IMM_BS
+
       out   = bitsz
       bitsz = 0
 
-      $bencode.arg rY,argflag_b,bitsz,B
+      $bencode.arg rY,argflag_b,bitsz,B,\
+        A9M.OPCODE.IMM_BS
 
       local opcode
 
@@ -545,14 +564,15 @@ macro $bencode.get_opcode dst,name,size,\
 ; gives encoded value and
 ; writes type to argflag
 
-macro $bencode.arg dst,argflag,bitsz,expr {
+macro $bencode.arg dst,\
+  argflag,bitsz,expr,immbs {
 
   local ok
   ok equ 0
 
   $bencode.reg ok,dst,argflag,bitsz,expr
   $bencode.mem ok,dst,argflag,bitsz,expr
-  $bencode.imm ok,dst,argflag,bitsz,expr
+  $bencode.imm ok,dst,argflag,bitsz,expr,immbs
 
 }
 
@@ -570,7 +590,7 @@ macro $bencode.reg ok,dst,argflag,bitsz,expr {
     match idex , ok \\{
 
       dst   = idex
-      bitsz = 4
+      bitsz = A9M.REGISTER_CNT_BS
 
       argflag equ \r
 
@@ -597,7 +617,7 @@ macro $bencode.mem ok,dst,argflag,bitsz,expr {
 
     argflag equ \m
 
-    $bencode.rel16 ok,dst,argflag,bitsz,subexpr
+    $bencode.rel ok,dst,argflag,bitsz,subexpr
 
     ok equ 1
 
@@ -608,10 +628,11 @@ macro $bencode.mem ok,dst,argflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; value is immediate?
 
-macro $bencode.imm ok,dst,argflag,bitsz,expr {
+macro $bencode.imm ok,dst,\
+  argflag,bitsz,expr,bs {
 
   match =0 , ok \{
-    bitsz = $10
+    bitsz = bs
     dst   = expr
     argflag equ \i
 
@@ -620,9 +641,9 @@ macro $bencode.imm ok,dst,argflag,bitsz,expr {
 }
 
 ; ---   *   ---   *   ---
-; is value a 16-bit relative?
+; is value a relative ptr?
 
-macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
+macro $bencode.rel ok,dst,argflag,bitsz,expr {
 
   local dummy
 
@@ -641,16 +662,18 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
   match A =+ B =+ C =* D , expr \{
 
     $bencode.reg ok,rX,dummy,dummy,A
-    rX = (rX+1) and 7
+    rX = (rX+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
     $bencode.reg ok,rY,dummy,dummy,B
-    rY = (rY+1) and 7
+    rY = (rY+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
-    $bencode.imm ok,off,dummy,dummy,C
+    $bencode.imm ok,off,dummy,dummy,C,\
+      bipret.memarg.rel.off_bs
 
-    scale = (bsf D) and 3
+    scale = (bsf D) \
+      and bipret.memarg.rel.scale_bm
 
     ok equ 1
 
@@ -660,19 +683,21 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
   match =0 A =+ B =* C , ok expr \{
 
     $bencode.reg ok,rX,dummy,dummy,A
-    rX = (rX+1) and 7
+    rX = (rX+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
     $bencode.reg ok,rY,dummy,dummy,B
 
     if ok
-      rY  = (rY+1) and 7
+      rY  = (rY+1) and A9M.REGISTER_CNT_BM
 
     end if
 
-    $bencode.imm ok,off,dummy,dummy,B
+    $bencode.imm ok,off,dummy,dummy,B,\
+      bipret.memarg.rel.off_bs
 
-    scale = (bsf C) and 3
+    scale = (bsf C) \
+      and bipret.memarg.rel.scale_bm
 
     ok equ 1
 
@@ -682,14 +707,15 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
   match =0 A =+ B =+ C , ok expr \{
 
     $bencode.reg ok,rX,dummy,dummy,A
-    rX = (rX+1) and 7
+    rX = (rX+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
     $bencode.reg ok,rY,dummy,dummy,B
-    rY = (rY+1) and 7
+    rY = (rY+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
-    $bencode.imm ok,off,dummy,dummy,C
+    $bencode.imm ok,off,dummy,dummy,C,\
+      bipret.memarg.rel.off_bs
 
     ok equ 1
 
@@ -700,8 +726,9 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
 
     $bencode.reg ok,rX,dummy,dummy,A
 
-    rX    = (rX+1) and 7
-    scale = (bsf B) and 3
+    rX    = (rX+1) and A9M.REGISTER_CNT_BM
+    scale = (bsf B) and \
+      and bipret.memarg.rel.scale_bm
 
     ok equ 1
 
@@ -711,17 +738,18 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
   match =0 A =+ B , ok expr \{
 
     $bencode.reg ok,rX,dummy,dummy,A
-    rX=(rX+1) and 7
+    rX=(rX+1) and A9M.REGISTER_CNT_BM
 
     ok equ 0
     $bencode.reg ok,rY,dummy,dummy,B
 
     if ok
-      rY  = (rY+1) and 7
+      rY  = (rY+1) and A9M.REGISTER_CNT_BM
 
     end if
 
-    $bencode.imm ok,off,dummy,dummy,B
+    $bencode.imm ok,off,dummy,dummy,B,\
+      bipret.memarg.rel.off_bs
 
     ok equ 1
 
@@ -733,11 +761,12 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
     $bencode.reg ok,rX,dummy,dummy,A
 
     if ok
-      rX=(rX+1) and 7
+      rX=(rX+1) and A9M.REGISTER_CNT_BM
 
     end if
 
-    $bencode.imm ok,off,dummy,dummy,A
+    $bencode.imm ok,off,dummy,dummy,A,\
+      bipret.memarg.rel.off_bs
 
     ok equ 1
 
@@ -747,15 +776,18 @@ macro $bencode.rel16 ok,dst,argflag,bitsz,expr {
   ; pack result
   match =1 , ok \{
 
-    off = off and $FF
-    dst = \
-       (rX    shl 0) \
-    or (rY    shl 3) \
-    or (off   shl 6) \
-    or (scale shl 14)
+    off = off and bipret.memarg.rel.off_bm
 
-    dst   = 01b or (dst shl 2)
-    bitsz = 18
+    dst = \
+       (rX    shl bipret.memarg.rel.rX_pos) \
+    or (rY    shl bipret.memarg.rel.rY_pos) \
+    or (off   shl bipret.memarg.rel.off_pos) \
+    or (scale shl bipret.memarg.rel.scale_pos)
+
+    dst = A9M.OPCODE.MFLAG_REL \
+    or (dst shl A9M.OPCODE.MFLAG_BS)
+
+    bitsz = bipret.memarg.rel._fmat_bs
 
   \}
 
