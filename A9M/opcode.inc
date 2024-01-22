@@ -14,225 +14,134 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.2b
+  VERSION   v0.00.3b
   AUTHOR    'IBN-3DILA'
 
-; ---   *   ---   *   ---
-; mask generator
 
-macro MASKOF name,bits {
-
-  SIZE.#name = bits
-  MASK.#name = (1 shl bits) - 1
-
-}
-
-; ---   *   ---   *   ---
-; ROM
-
-  ; opcode chunk bit-sizes
-  MASKOF OPSZ , $02
-  MASKOF RATX , $01
-  MASKOF SEG  , $02
-
-  ; segment types
-  SEG.ANIMA  = $00
-  SEG.STACK  = $01
-  SEG.ICEREL = $02
-  SEG.NONREL = $03
-
-; ---   *   ---   *   ---
-; GBL
-
-@ipret:
-
-  .opcd       = $00
-  .opid       = $00
-  .opsz       = $00
-  .opsz.mask  = $00
-  .opsz.bits  = $00
-
-  .ratcnt     = $00
-  .ratmask    = $00
-
-  .vX         = $00
-  .vY         = $00
-
-  .seg        = $00
-  .seg.scale  = $00
-  .seg.bitsz  = $00
-
-  .mm         = $00
-  .mX         = $00
-  .mY         = $00
-
-; ---   *   ---   *   ---
-; reads segment address
-
-macro @ipret$getseg dst,name {
-
-  match id , name \{
-    dst = id\#.beg
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; reads operand
-
-macro @ipret$getrat dst,mode,cnt {
-
-  ; memory location
-  if mode = 0
-
-    ; fetch modifiers
-    @ipret.seg.bitsz = 0
-    @ipret.seg.scale = 1
-
-    ; consume segment bits
-    $mash @ipret.seg,@ipret.opcd,SEG
-
-
-    ; ^reading register
-    if @ipret.seg = SEG.ANIMA
-
-      @ipret.seg.bitsz = $04
-      @ipret.seg.scale = $08
-
-      @ipret$getseg @ipret.seg,vmc.ANIMA
-
-
-    ; ^reading stack or instance
-    else if (@ipret.seg = SEG.STACK) \
-    | (@ipret.seg = SEG.ICEREL)
-
-      @ipret.seg.bitsz = $08
-
-      ; get begof stack
-      if @ipret.seg = SEG.STACK
-        @ipret$getseg @ipret.seg,vmc.STACK
-
-        @ipret.seg = @ipret.seg + A9M.STACK_SZ
-        @ipret.seg.scale = -1
-
-
-      ; ^get addrof ice
-      else
-
-        vmem.xldus @ipret.seg,
-          \vmc.ANIMA,$0C,2
-
-      end if
-
-
-    ; ^reading from parent block
-    else if @ipret.seg = SEG.NONREL
-      @ipret.seg.bitsz = $10
-
-    end if
-
-
-    ; get encoded value
-    dst = @ipret.opcd \
-    and ((1 shl @ipret.seg.bitsz)-1)
-
-    @ipret.opcd = @ipret.opcd \
-    shr @ipret.seg.bitsz
-
-    dst = @ipret.seg \
-    + (dst * @ipret.seg.scale)
-
-
-    ; fetch src
-    if cnt = 1
-
-      vmem.xldus dst,\
-        vmc.NON,dst,@ipret.opsz
-
-    end if
-
-
-  ; ^immediate
-  else
-    dst = @ipret.opcd and ((1 shl $20)-1)
-    @ipret.opcd = @ipret.opcd shr $20
-
-  end if
-
-}
-
-; ---   *   ---   *   ---
-; mask and shift!
-
-macro $mash dst,src,name {
-  dst = src and MASK.#name
-  src = src shr SIZE.#name
-
-}
-
-; ---   *   ---   *   ---
-; N-bits all set to one
-
-macro $bones dst,src {
-  dst = 1 shl (src and $3F)
-  dst = dst or (sizebm.qword * (src shr 6))
-
-}
+  include   '%ARPATH%/forge/A9M/ROM/opcode.is'
 
 ; ---   *   ---   *   ---
 ; read opcode
 
-macro $ipret X {
+macro $bipret X {
 
   ; copy input
-  @ipret.opcd = X
+  local opcode
+  opcode = X
 
-  ; consume opid bits
-  $mash @ipret.opid,@ipret.opcd,OPID
+  ; ^vars to unpack
+  local opid
 
-  ; read op size needed from ROM
-  @ipret$get_opsz
+  local load_src
+  local load_dst
+  local overwrite
 
-  if @ipret.opsz = 1
+  local argcnt
+  local argflag
 
-    $mash  @ipret.opsz,@ipret.opcd,OPSZ
+  local opsize
+  local opsize_bm
+  local opsize_bs
 
-    @ipret.opsz = 1 shl @ipret.opsz
-    @ipret.opsz.bits = 1 shl 3
+  ; ^fetch em from ROM ;>
+  A9M.OPCODE.read opcode,\
+    load_src,load_dst,overwrite,\
+    argcnt,argflag,\
+    opsize,opsize_bm,opsize_bs
 
-    $bones @ipret.opsz.mask,@ipret.opsz
-
-  end if
-
-
-  ; read operands needed from ROM
-  @ipret$get_ratcnt
 
   ; ^consume operand bits if any
-  if @ipret.ratcnt > 0
+  if argcnt > 0
 
-    ; read operand mode bits
-    @ipret.mm   = @ipret.opcd and @ipret.ratmask
-    @ipret.opcd = @ipret.opcd shl @ipret.ratcnt
 
-    ; get mode/value of first operand
-    $mash @ipret.mX,@ipret.mm,RATX
-    @ipret$getrat @ipret.rX,@ipret.mX,0
+    ; reload offsets table for
+    ; memory operands
+    $bipret.memarg.reload
 
-    ; ^second
-    if @ipret.ratcnt > 1
-      $mash @ipret.mY,@ipret.mm,RATX
-      @ipret$getrat @ipret.rY,@ipret.mY,1
+
+    ; get destination: memory
+    local vX
+
+    if argflag and 001b
+      $bipret.memarg vX,opcode
+
+    ; ^register
+    else
+      $bipret.regarg vX,opcode
 
     end if
 
+
+    ; have source operand?
+    if argcnt > 1
+
+      local vY
+
+      ; get source: memory
+      if argflag and 010b
+        $bipret.memarg vY,opcode
+
+      ; ^immediate
+      else if argflag and 100b
+        $bipret.immarg vY,opcode
+
+      ; ^register
+      else
+        $bipret.regarg vY,opcode
+
+      end if
+
+
+      display 'ARG0   '
+      hexsay  vX,$10
+      out@nl
+
+      display 'ARG1   '
+      hexsay  vY,$10
+      out@nl
+
+
+      ; handle deref
+      local pX
+      local pY
+
+      pX=vX
+      pY=vY
+
+      match id , vmc.CAS \{
+
+        if load_dst
+          load vX word at id\#.base:pX
+
+        end if
+
+        if load_src & argflag and 010b
+          load vY word at id\#.base:pY
+
+        end if
+
+      \}
+
+      ; [logic goes here]
+      vX=vY
+
+      ; store result to dst?
+      if overwrite
+        store word vX at ANIMA.base:pX
+
+      end if
+
+
+    ; nope, single operand
+    else
+
+    end if
+
+
+  ; no operands
+  else
+
   end if
-
-
-  ; perform write
-  vmem.xstus vmc.NON,\
-    @ipret.rY,@ipret.rX,@ipret.opsz
 
 }
 
@@ -262,7 +171,7 @@ macro $ipret X {
 ; so for now we'll leave this
 ; as a straight and+mul ;>
 
-macro @ipret$read_reg dst,src {
+macro $bipret.regarg dst,src {
   dst = (src and $F) shl 3
   src = src shr 4
 
@@ -270,25 +179,11 @@ macro @ipret$read_reg dst,src {
 
 ; ---   *   ---   *   ---
 ; read immediate operand
-;
-; simply refers to opsz
-; to determine how many
-; bits to read, capping
-; at 32
+; always 16-bit for now
 
-@ipret.opsz.mask=$FF
-@ipret.opsz.bits=$08
-
-macro @ipret$read_imm dst,src {
-
-  ; halves read size when
-  ; opsz is 64
-  local cap
-  cap = @ipret.opsz shr 6
-
-  ; read and shift out
-  dst = src and (@ipret.opsz.mask shr cap)
-  src = src shr (@ipret.opsz.bits shr cap)
+macro $bipret.immarg dst,src {
+  dst = src and $FFFF
+  src = src shr $10
 
 }
 
@@ -296,12 +191,12 @@ macro @ipret$read_imm dst,src {
 ; mflag:GBL
 
 virtual at $00
-@ipret.read_mem.tab::
+bipret.memarg.tab::
 
   ; sb register
   dq $00
 
-  ; absolute!
+  ; segment relative :o
   dq $00
 
   ; ice register
@@ -339,7 +234,7 @@ end virtual
 ; the addr is then read
 ; and casted to absolute
 
-macro @ipret$read_mem dst,src {
+macro $bipret.memarg dst,src {
 
   ; copy the segment flags
   local mflag
@@ -368,14 +263,14 @@ macro @ipret$read_mem dst,src {
   dst = src and ((1 shl bits)-1)
 
   ; read base addr from table
-  load @ipret.read_mem.tab.base qword \
-  from @ipret.read_mem.tab:mflag shl 3
+  load bipret.memarg.tab.base qword \
+  from bipret.memarg.tab:mflag shl 3
 
 
   ; the worst case: 16-bit relative
   ; can't do it without a switch :c
   if mflag = 01b
-    @ipret$read_mem$rel16 dst
+    $bipret.memarg.rel16 dst
 
   end if
 
@@ -395,7 +290,7 @@ macro @ipret$read_mem dst,src {
 
 
   ; add base and offset to get absolute
-  dst = @ipret.read_mem.tab.base+dst
+  dst = bipret.memarg.tab.base+dst
 
   ; shift out the already read values
   src = src shr bits
@@ -404,29 +299,29 @@ macro @ipret$read_mem dst,src {
 
 ; ---   *   ---   *   ---
 ; inconditional reload of ice
-; and sb into the read_mem table
+; and sb into the memarg table
 ;
 ; this makes it so we can read
 ; addresses that are relative to
 ; these pointers without an if
 
-macro @ipret$read_mem$reload {
+macro $bipret.memarg.reload {
 
-  load @ipret.read_mem.tab.sb qword \
+  load bipret.memarg.tab.sb qword \
   from ANIMA.base:$58
 
-  load @ipret.read_mem.tab.ice qword \
+  load bipret.memarg.tab.ice qword \
   from ANIMA.base:$60
 
-  @ipret.read_mem.tab.sb = \
-    @ipret.read_mem.tab.sb + sizeof.ANIMA
+  bipret.memarg.tab.sb = \
+    bipret.memarg.tab.sb + sizeof.ANIMA
 
 
-  store qword @ipret.read_mem.tab.sb \
-  at @ipret.read_mem.tab:$00
+  store qword bipret.memarg.tab.sb \
+  at bipret.memarg.tab:$00
 
-  store qword @ipret.read_mem.tab.ice \
-  at @ipret.read_mem.tab:$10
+  store qword bipret.memarg.tab.ice \
+  at bipret.memarg.tab:$10
 
 }
 
@@ -443,7 +338,7 @@ macro @ipret$read_mem$reload {
 ;
 ; * 2-bit scale, used as shift
 
-macro @ipret$read_mem$rel16 dst {
+macro $bipret.memarg.rel16 dst {
 
   local rX
   local rY
@@ -451,8 +346,8 @@ macro @ipret$read_mem$rel16 dst {
   local scale
 
   ; decode register part
-  @ipret$read_mem$rel_reg rX,dst
-  @ipret$read_mem$rel_reg rY,dst
+  $bipret.memarg.rel16reg rX,dst
+  $bipret.memarg.rel16reg rY,dst
 
   ; get scale and offset
   off   = dst and $FF
@@ -483,14 +378,14 @@ macro @ipret$read_mem$rel16 dst {
 ; ---   *   ---   *   ---
 ; conditionally get register
 
-macro @ipret$read_mem$rel_reg dst,src {
+macro $bipret.memarg.rel16reg dst,src {
 
   dst = src and 7
   src = src shr 3
 
   if dst > 0
-    dst = (dst-1) shl 3
-    load dst qword from ANIMA.base:dst
+    dst = (dst-1) shl 1
+    load dst word from ANIMA.base:dst
 
   end if
 
@@ -499,26 +394,47 @@ macro @ipret$read_mem$rel_reg dst,src {
 ; ---   *   ---   *   ---
 ; makes binary opcode
 
-macro $encode NE& {
+macro $bencode dst,NE& {
 
   local ok
   local _name
   local _expr
+  local _size
 
   ok    equ 0
   _name equ NE
   _expr equ
+  _size equ _
 
 
   ; got expression?
   match N E , NE \{
+
+    local ok2
+    ok2 equ 0
+
     _name equ N
     _expr equ E
 
+    ; ^got size?
+    match =byte _E , _expr \\{
+      _size equ _byte
+      _expr equ _E
+      ok2 equ 1
+
+    \\}
+
+    match =0 =word _E , ok _expr \\{
+      _size equ _word
+      _expr equ _E
+
+    \\}
+
   \}
 
-  ; ^yes
-  match name expr , _name _expr \{
+
+  ; get args
+  match name size expr , _name _size _expr \{
 
     ; two operands
     match A =, B , expr \\{
@@ -533,19 +449,49 @@ macro $encode NE& {
 
       bitsz = 0
 
-      $encode.rat rX,rflag_a,bitsz,A
+      $bencode.arg rX,rflag_a,bitsz,A
       out   = bitsz
       bitsz = 0
 
-      $encode.rat rY,rflag_b,bitsz,B
+      $bencode.arg rY,rflag_b,bitsz,B
 
-      out = \
-         (rflag_a shl 0) \
-      or (rflag_b shl 1) \
-      or (rX      shl 3) \
-      or (rY      shl (out+3))
 
-      $mov ar,out
+      local id
+      local opcode
+
+      local sizen
+      sizen equ size
+      match =r =i , rflag_a rflag_b \\\{
+        sizen equ
+
+      \\\}
+
+      match =r =r , rflag_a rflag_b \\\{
+        sizen equ
+
+      \\\}
+
+
+      match AF BF SF , rflag_a rflag_b sizen \\\{
+        id equ name\#_\\\#AF\\\#BF\\\#SF
+        ok equ 1
+
+      \\\}
+
+      match =0 AF BF , ok rflag_a rflag_b sizen \\\{
+        id equ name\#_\\\#AF\\\#BF
+
+      \\\}
+
+      match any , id \\\{
+        opcode equ A9M.OPCODE.\\\#any
+
+      \\\}
+
+      dst = opcode \
+        or (rX shl OPCODE_ID_BITS) \
+        or (rY shl (OPCODE_ID_BITS+out))
+
 
       ok equ 1
 
@@ -553,7 +499,6 @@ macro $encode NE& {
 
     ; ^single
     match =0 A , ok expr \\{\\}
-
     ok equ 1
 
   \}
@@ -568,21 +513,21 @@ macro $encode NE& {
 ; gives encoded value and
 ; writes type to rflag
 
-macro $encode.rat dst,rflag,bitsz,expr {
+macro $bencode.arg dst,rflag,bitsz,expr {
 
   local ok
   ok equ 0
 
-  $encode.reg ok,dst,rflag,bitsz,expr
-  $encode.mem ok,dst,rflag,bitsz,expr
-  $encode.imm ok,dst,rflag,bitsz,expr
+  $bencode.reg ok,dst,rflag,bitsz,expr
+  $bencode.mem ok,dst,rflag,bitsz,expr
+  $bencode.imm ok,dst,rflag,bitsz,expr
 
 }
 
 ; ---   *   ---   *   ---
 ; value is register?
 
-macro $encode.reg ok,dst,rflag,bitsz,expr {
+macro $bencode.reg ok,dst,rflag,bitsz,expr {
 
   match =0 list , ok A9M.REGISTERS \{
 
@@ -593,7 +538,7 @@ macro $encode.reg ok,dst,rflag,bitsz,expr {
     match idex , ok \\{
       dst   = idex
       bitsz = 4
-      rflag = 00b
+      rflag equ \r
 
       ok equ 1
 
@@ -612,11 +557,13 @@ macro $encode.reg ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; value is memory?
 
-macro $encode.mem ok,dst,rflag,bitsz,expr {
+macro $bencode.mem ok,dst,rflag,bitsz,expr {
 
-  match size =[ subexpr =] , expr \{
-    rflag = 01b
-    $encode.rel16 ok,dst,rflag,bitsz,subexpr
+  match =[ subexpr =] , expr \{
+
+    rflag equ \m
+
+    $bencode.rel16 ok,dst,rflag,bitsz,subexpr
 
     ok equ 1
 
@@ -627,12 +574,12 @@ macro $encode.mem ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; value is immediate?
 
-macro $encode.imm ok,dst,rflag,bitsz,expr {
+macro $bencode.imm ok,dst,rflag,bitsz,expr {
 
   match =0 , ok \{
-    bitsz = 8
+    bitsz = $10
     dst   = expr
-    rflag = 10b
+    rflag equ \i
 
   \}
 
@@ -641,7 +588,7 @@ macro $encode.imm ok,dst,rflag,bitsz,expr {
 ; ---   *   ---   *   ---
 ; is value a 16-bit relative?
 
-macro $encode.rel16 ok,dst,rflag,bitsz,expr {
+macro $bencode.rel16 ok,dst,rflag,bitsz,expr {
 
   local dummy
 
@@ -659,15 +606,15 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX + rY + (off << scale)]
   match A =+ B =+ C =* D , expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
     rX = (rX+1) and 7
 
     ok equ 0
-    $encode.reg ok,rY,dummy,dummy,B
+    $bencode.reg ok,rY,dummy,dummy,B
     rY = (rY+1) and 7
 
     ok equ 0
-    $encode.imm ok,off,dummy,dummy,C
+    $bencode.imm ok,off,dummy,dummy,C
 
     scale = (bsf D) and 3
 
@@ -678,18 +625,18 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX + ((rY|off) << scale)]
   match =0 A =+ B =* C , ok expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
     rX = (rX+1) and 7
 
     ok equ 0
-    $encode.reg ok,rY,dummy,dummy,B
+    $bencode.reg ok,rY,dummy,dummy,B
 
     if ok
       rY  = (rY+1) and 7
 
     end if
 
-    $encode.imm ok,off,dummy,dummy,B
+    $bencode.imm ok,off,dummy,dummy,B
 
     scale = (bsf C) and 3
 
@@ -700,15 +647,15 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX + rY + off]
   match =0 A =+ B =+ C , ok expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
     rX = (rX+1) and 7
 
     ok equ 0
-    $encode.reg ok,rY,dummy,dummy,B
+    $bencode.reg ok,rY,dummy,dummy,B
     rY = (rY+1) and 7
 
     ok equ 0
-    $encode.imm ok,off,dummy,dummy,C
+    $bencode.imm ok,off,dummy,dummy,C
 
     ok equ 1
 
@@ -717,7 +664,7 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX << scale]
   match =0 A =* B , ok expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
 
     rX    = (rX+1) and 7
     scale = (bsf B) and 3
@@ -729,18 +676,18 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX + (rY|off)]
   match =0 A =+ B , ok expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
     rX=(rX+1) and 7
 
     ok equ 0
-    $encode.reg ok,rY,dummy,dummy,B
+    $bencode.reg ok,rY,dummy,dummy,B
 
     if ok
       rY  = (rY+1) and 7
 
     end if
 
-    $encode.imm ok,off,dummy,dummy,B
+    $bencode.imm ok,off,dummy,dummy,B
 
     ok equ 1
 
@@ -749,14 +696,14 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   ; [rX|off]
   match =0 A , ok expr \{
 
-    $encode.reg ok,rX,dummy,dummy,A
+    $bencode.reg ok,rX,dummy,dummy,A
 
     if ok
       rX=(rX+1) and 7
 
     end if
 
-    $encode.imm ok,off,dummy,dummy,A
+    $bencode.imm ok,off,dummy,dummy,A
 
     ok equ 1
 
@@ -779,23 +726,5 @@ macro $encode.rel16 ok,dst,rflag,bitsz,expr {
   \}
 
 }
-
-; ---   *   ---   *   ---
-; Arcane 9 mov $24 to sb-1
-; but in binary!
-;
-;            STACK
-;            +------>:   /-->operand modes
-;            |           |
-;     .......^.......|.|.||
-;            [           [
-;$ipret 001001000000000101101b
-;            ]        -]
-;     .......v         v
-;            |         |
-;     <------+         \-->segment
-;     IMM32
-
-;STACK.bprich
 
 ; ---   *   ---   *   ---

@@ -312,22 +312,19 @@ sub collapse($self) {
 # ---   *   ---   *   ---
 # join array of blocks
 
-sub cat($class,$name,%O) {
+sub cat($class,$name,@ar) {
 
   # get lowest first
-  my @ar=sort {
+  @ar=sort {
     $a->{loc} > $b->{loc}
 
-  } @{$O{elems}};
+  } @ar;
 
   # ^paste in order
-  my $buf=$NULLSTR;
-
   my $out=join "\n",map {
     $ARG->collapse()
 
   } @ar;
-
 
   # repl top
   my $top=shift @ar;

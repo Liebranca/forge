@@ -38,7 +38,7 @@ library.import
 ; ^bat-decl
 
 macro vmc._decl_reg [name] {
-  forward szmy qword name
+  forward szmy word name
 
 }
 

@@ -37,187 +37,335 @@ package f1::ismaker;
 
   use f1::macro;
   use f1::logic;
+  use f1::ROM;
 
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # ROM
 
-  Readonly our $NULLARY=>[qw(
-    enter leave ret
+  Readonly our $SIZED_OP=>qr{rm|mr|m};
 
-  )];
+# ---   *   ---   *   ---
+# GBL
 
-  Readonly our $UNARY=>[qw(
-    push pop not neg inc dec
-
-  )];
-
-  Readonly our $BINARY=>[qw(
-    mov lea xor and
-    shl shr or  not
-
-  )];
-
-  Readonly our $NO_OPSZ=>[
-    @$NULLARY,qw(push pop)
-
-  ];
+  our $Opcode_ID = 0;
+  our $Table     = 0;
 
 # ---   *   ---   *   ---
 # crux
 
 sub import($class,@args) {
 
-  my ($enum,$rng)=get_enum(
-    $NULLARY,$UNARY,$BINARY
+  my $ROM=$class->build_ROM();
+  my $EXE=$class->build_EXE();
 
-  );
+  my $INC=f1::blk->cat('pinc',$ROM,$EXE);
 
-
-  # get opid width
-  my $cnt  = $rng->{binary}->[1];
-  my $bits = bitsize($cnt);
-
-  $enum->lines("MASKOF OPID,$bits");
-
-  # must read opsz bits?
-  my $opsz=get_opsz(@$NO_OPSZ);
-
-  # make optype branch
-  my $ratcnt=get_ratcnt($rng);
-
-
-  # dbout
-  map {
-    map {say $ARG} $ARG->collapse()
-
-  } $enum,$opsz,$ratcnt;
-
+  say $INC->{buf};
 
 };
 
 # ---   *   ---   *   ---
-# make unique ids from enums
+# makes "procs" to fetch
+# instruction data
+#
+# done to simplify decode ;>
 
-sub get_enum($nullary,$unary,$binary) {
+sub build_EXE($class) {
 
-  my $blk=f1::blk->new('non',loc=>0);
-  my $key='OPID';
 
-  my $rng={
+  # decode helper
+  my $EXE=f1::macro->new(
 
-    nullary => [0,int @$unary-1],
+    'A9M.OPCODE.read',
 
-    unary   => [int @$nullary,0],
-    binary  => [0,0],
+    loc  => 1,
+    args => [qw(
+
+      src
+
+      load_src load_dst overwrite
+      argcnt argflag
+      opsize opsize_bm opsize_bs
+
+    )]
+
+  );
+
+  # ^paste the proc
+  $EXE->lines(q[
+
+
+    opid      = src and OPCODE_ID_MASK;
+    src       = src shr OPCODE_ID_BITS;
+
+
+    local flags;
+    load  flags word from A9M.OPCODE:opid shl 1;
+
+
+    load_src  = (flags shr 0) and 1;
+    load_dst  = (flags shr 1) and 1;
+    overwrite = (flags shr 2) and 1;
+
+    argcnt    = (flags shr 3) and 3;
+    argflag   = (flags shr 5) and 7;
+
+
+    opsize    = 1 shl ((flags shr 8) and 1);
+    opsize_bs = opsize shl 3
+    opsize_bm = 1 shl opsize
+
+
+  ]);
+
+  return $EXE;
+
+};
+
+# ---   *   ---   *   ---
+# makes fasm virtual from
+# generated opcode table
+
+sub build_ROM($class) {
+
+  # access array like a hash
+  my $idex   = 0;
+
+  my @keys   = array_keys($Table);
+  my @values = array_values($Table);
+
+  # meaningless; pads the equal signs
+  my $pad = max(map {length $ARG} @keys);
+
+
+  # build map of opcode to flags
+  my $data = join ";",map {
+
+    my $e=$values[$idex++];
+
+    sprintf
+
+      "A9M.OPCODE.%-${pad}s = \$%04X;"
+    . "dw \$%04X",
+
+      $ARG,$e->{id},$e->{ROM}
+
+    ;
+
+  } @keys;
+
+
+  # make new block
+  my $ROM = f1::ROM->new(
+    'A9M.OPCODE',
+    loc=>0
+
+  );
+
+
+  # get bitsize of opcodes
+  my $opbits = bitsize($Opcode_ID-1);
+  my $opmask = (1 << $opbits)-1;
+
+
+  # ^write as constants
+  $ROM->lines(sprintf
+    "OPCODE_ID_MASK = %04X;"
+  . "OPCODE_ID_BITS = %04X;",
+
+    $opmask,$opbits
+
+  );
+
+  # ^write the table itself
+  $ROM->lines($data);
+
+
+  return $ROM;
+
+};
+
+# ---   *   ---   *   ---
+# cstruc instruction(s)
+
+sub opcode($name,$ct,%O) {
+
+  # defaults
+  $O{args}      //= 2;
+  $O{nosize}    //= 0;
+
+  $O{load_src}  //= 1;
+  $O{load_dst}  //= 1;
+
+  $O{overwrite} //= 1;
+  $O{dst}       //= 'r';
+  $O{src}       //= 'ri';
+
+  # ^binpacked
+  my $ROM =
+    ($O{load_src}  << 0)
+  | ($O{load_dst}  << 1)
+  | ($O{overwrite} << 2)
+  | ($O{args}      << 3)
+  ;
+
+
+  # get possible operand sizes
+  state $sizetab={
+    'byte' => 0,
+    'word' => 1,
 
   };
 
-  my $align=max(map {
-    length $ARG
+  my @size=(! $O{nosize})
+    ? qw(byte word)
+    : qw(word)
+    ;
 
-  } @$nullary,@$unary,@$binary);
+  # get possible operand combinations
+  my @combo=();
+
+  # ^for two-operand instruction
+  if($O{args} eq 2) {
+
+    @combo=grep {length $ARG} map {
+
+      my $dst   = substr $ARG,0,1;
+      my $src   = substr $ARG,1,1;
+
+      my $allow =
+         (0 <= index $O{dst},$dst)
+      && (0 <= index $O{src},$src)
+      ;
+
+      $ARG if $allow;
+
+    } 'rr','rm','ri','mr','mi';
 
 
-  $blk->stcache('align',$align);
+  # ^single operand, so no combo ;>
+  } else {
+    @combo=split $NULLSTR,$O{dst};
+
+  };
 
 
-  # "nullary" as in zero args ;>
-  $blk->enum('OPID',@$nullary);
+  # make descriptors
+  my $rflag_tab={
 
-  # define unary ops
-  $blk->enum('OPID',@$unary);
-  $rng->{unary}->[1]=$blk->ldcache($key);
-  $rng->{binary}->[0]=$blk->ldcache($key)+1;
+    $NULLSTR => 0b000,
 
-  # define binary ops
-  $blk->enum('OPID',@$binary);
-  $rng->{binary}->[1]=$blk->ldcache($key);
+    'dr'     => 0b000,
+    'dm'     => 0b001,
 
-  return $blk,$rng;
+    'sr'     => 0b000,
+    'sm'     => 0b010,
+    'si'     => 0b100,
+
+  };
+
+  return map {
+
+    my $dst  = substr $ARG,0,1;
+    my $src  = substr $ARG,1,1;
+
+    my $args =
+      ($rflag_tab->{"d$dst"})
+    | ($rflag_tab->{"s$src"})
+
+    ;
+
+    my $ins  = "${name}_$ARG";
+
+
+    # combo is rm/mr
+    if("$dst$src" =~ $SIZED_OP) {
+
+      map {
+
+        my $data=
+
+          $ROM
+
+        | ($args << 5)
+        | ($sizetab->{$ARG} << 8)
+
+        ;
+
+
+        "${ins}_${ARG}" => {
+          id  => $Opcode_ID++,
+          ROM => $data,
+
+        };
+
+      } @size;
+
+    # ^combo is rr
+    } else {
+
+      my $data=$ROM | ($args << 5) | (1 << 8);
+
+      "${name}_${ARG}" => {
+        id  => $Opcode_ID++,
+        ROM => $data,
+
+      };
+
+    };
+
+  } @combo;
 
 };
 
 # ---   *   ---   *   ---
-# ^makes check for ins
-# having operand size
+# ^definitions
 
-sub get_opsz(@names) {
-
-  my $mac=f1::macro->new(
-
-    '@ipret$get_opsz',
-
-    loc   => 1,
-    args  => [],
-
-  );
-
-
-  # make condition
-  my $nohave=join '|',map {
-    "(\@ipret.opid = OPID.$ARG)"
-
-  } @names;
-
-
-  # ^make body
-  $mac->switch(
-
-     $nohave => '@ipret.opsz=0;',
-     'else'  => '@ipret.opsz=1;'
-
-  );
-
-  return $mac;
-
-};
+$Table=[
 
 # ---   *   ---   *   ---
-# ^makes check for ins type
+# most used ones
 
-sub get_ratcnt($rng) {
+  # imm/mem to reg
+  opcode(
 
-  # make new block
-  my $mac=f1::macro->new(
+    load     => q[dst = src;],
+    load_dst => 0,
 
-    '@ipret$get_ratcnt',
+    dst      => 'r',
+    src      => 'mi',
 
-    loc   => 2,
-    args  => [],
+  ),
 
-  );
+  # reg/imm to mem
+  opcode(
 
-  # ^make body
-  $mac->switch(
+    store    => q[dst = src;],
+    load_dst => 0,
 
-     "  (\@ipret.opid >= $rng->{nullary}->[0])"
-  .  "| (\@ipret.opid <= $rng->{nullary}->[1])"
+    dst      => 'm',
+    src      => 'ri',
 
-  => '@ipret.ratcnt=0;@ipret.ratmask=0',
+  ),
 
+  # reg to reg
+  opcode(
 
-     "  (\@ipret.opid >= $rng->{unary}->[0])"
-  .  "| (\@ipret.opid <= $rng->{unary}->[1])"
+    copy     => q[dst = src;],
+    load_dst => 0,
 
-  => '@ipret.ratcnt=1;@ipret.ratmask=1',
+    dst      => 'r',
+    src      => 'r',
 
+  ),
 
-     "  (\@ipret.opid >= $rng->{binary}->[0])"
-  .  "| (\@ipret.opid <= $rng->{binary}->[1])"
-
-  => '@ipret.ratcnt=2;@ipret.ratmask=3'
-
-  );
-
-  return $mac;
-
-};
+];
 
 # ---   *   ---   *   ---
 1; # ret

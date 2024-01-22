@@ -12,6 +12,7 @@
 *.p3
 *.pinc
 *.vhash
+*.is
 .avto-cache
 
 # irrelevant
