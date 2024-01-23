@@ -73,4 +73,20 @@ sub as_const($fmat,$base,@keys) {
 };
 
 # ---   *   ---   *   ---
+# get flags by SHL + OR
+
+sub as_flag($fmat,$base,@keys) {
+
+  return (join ';',map {
+
+    "$base.$ARG="
+
+  .( $fmat->{mask}->{$ARG}
+  << $fmat->{pos}->{$ARG} )
+
+  } @ keys) . ';';
+
+};
+
+# ---   *   ---   *   ---
 1; # ret

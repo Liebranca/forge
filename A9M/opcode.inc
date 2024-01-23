@@ -95,15 +95,6 @@ macro $bipret X {
       end if
 
 
-      display 'ARG0   '
-      hexsay  vX,$10
-      out@nl
-
-      display 'ARG1   '
-      hexsay  vY,$10
-      out@nl
-
-
       ; handle deref
       local pX
       local pY
@@ -113,12 +104,13 @@ macro $bipret X {
 
       match id , vmc.CAS \{
 
-        if load_dst & argflag and 001b
+        if load_dst=1
           load vX word from id\#.base:pX
 
         end if
 
-        if load_src & argflag and 010b
+        if load_src \
+        &~ (argflag and A9M.OPCODE.IMMSRC)
           load vY word from id\#.base:pY
 
         end if
@@ -203,7 +195,7 @@ bipret.memarg.tab::
   ; sb register
   dq $00
 
-  ; lea
+  ; long-form relative
   dq $00
 
   ; segment relative :o
@@ -214,8 +206,7 @@ bipret.memarg.tab::
 
 
   ; used for branchless fetch
-  .sb   = $00
-  .ice  = $00
+  .sb = $00
 
   ; used to offset result
   .base = $00
@@ -244,14 +235,16 @@ macro $bipret.memarg dst,src {
 
   ; copy the segment flags
   local mflag
-  mflag = src and A9M.OPCODE.MFLAG_BM
+  mflag = src and A9M.OPCODE.MFLAG._fmat_bm
 
   ; then shift them out
-  src = src shr A9M.OPCODE.MFLAG_BS
+  src = src shr A9M.OPCODE.MFLAG._fmat_bs
 
 
   ; double size if long-form relative
-  dst = 8 shl (mflag and A9M.OPCODE.MFLAG_REL)
+  dst = 8 shl (\
+    (mflag and A9M.OPCODE.MFLAG.rel)\
+  shr A9M.OPCODE.MFLAG.rel_pos)
 
   ; (byte) dst shl (src/3)
   ; thanks gcc ;>
@@ -273,9 +266,11 @@ macro $bipret.memarg dst,src {
   from bipret.memarg.tab:mflag shl sizep2.qword
 
 
-  ; the worst case: 16-bit relative
-  ; can't do it without a switch :c
-  if mflag = A9M.OPCODE.MFLAG_REL
+  ; the worst case: long-form relative
+  ; this is when you [r+r+imm*scale]
+  ;
+  ; i can't decode that without switches :c
+  if mflag = A9M.OPCODE.MFLAG.rel
     $bipret.memarg.rel dst
 
   end if
@@ -291,7 +286,9 @@ macro $bipret.memarg dst,src {
   ;
   ; ie this means mul by -1 if both
   ; bits are turned off
-  mflag = not mflag and A9M.OPCODE.MFLAG_BM
+  mflag = not mflag \
+    and A9M.OPCODE.MFLAG._fmat_bm
+
   dst   = dst * (1 - (((mflag * $AB) shr 9) shl 1))
 
 
@@ -304,12 +301,12 @@ macro $bipret.memarg dst,src {
 }
 
 ; ---   *   ---   *   ---
-; inconditional reload of ice
-; and sb into the memarg table
+; inconditional reload of sb
+; into the memarg table
 ;
 ; this makes it so we can read
 ; addresses that are relative to
-; these pointers without an if
+; the stack base without an if
 
 macro $bipret.memarg.reload {
 
@@ -317,22 +314,14 @@ macro $bipret.memarg.reload {
   load bipret.memarg.tab.sb qword \
   from ANIMA.base:$0B shl A9M.REGISTER_SZP2
 
-  ; ^get ice register
-  load bipret.memarg.tab.ice qword \
-  from ANIMA.base:$0C shl A9M.REGISTER_SZP2
-
-
-  ; make sb absolute
+  ; make absolute
   bipret.memarg.tab.sb = \
     bipret.memarg.tab.sb + sizeof.ANIMA
 
 
-  ; store addrs in table
+  ; ^store absolute in table
   store qword bipret.memarg.tab.sb \
   at bipret.memarg.tab:$00
-
-  store qword bipret.memarg.tab.ice \
-  at bipret.memarg.tab:$10
 
 }
 
@@ -387,6 +376,7 @@ macro $bipret.memarg.rel dst {
     rX = rX shl scale
 
   end if
+
 
   dst = rX+rY+off
 
@@ -727,7 +717,7 @@ macro $bencode.rel ok,dst,argflag,bitsz,expr {
     $bencode.reg ok,rX,dummy,dummy,A
 
     rX    = (rX+1) and A9M.REGISTER_CNT_BM
-    scale = (bsf B) and \
+    scale = (bsf B) \
       and bipret.memarg.rel.scale_bm
 
     ok equ 1
@@ -784,8 +774,8 @@ macro $bencode.rel ok,dst,argflag,bitsz,expr {
     or (off   shl bipret.memarg.rel.off_pos) \
     or (scale shl bipret.memarg.rel.scale_pos)
 
-    dst = A9M.OPCODE.MFLAG_REL \
-    or (dst shl A9M.OPCODE.MFLAG_BS)
+    dst = A9M.OPCODE.MFLAG.rel \
+    or (dst shl A9M.OPCODE.MFLAG._fmat_bs)
 
     bitsz = bipret.memarg.rel._fmat_bs
 

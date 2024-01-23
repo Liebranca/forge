@@ -87,8 +87,8 @@ sub head($self) {
   case_common:
     return "$self->{type} $self->{expr}";
 
-  case_switch_smol:
-    return "$self->{type} $self->{expr}";
+  case_switch:
+    return "else $self->{type} $self->{expr}";
 
   case_noexpr:
     return "else";

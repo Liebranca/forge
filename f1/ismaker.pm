@@ -82,6 +82,15 @@ my $OPCODE_ROM=Arstd::Bitformat->new(
 );
 
 # ---   *   ---   *   ---
+# fmat for memargs flag
+
+my $OPCODE_MFLAG=Arstd::Bitformat->new(
+  rel => 1,
+  seg => 1,
+
+);
+
+# ---   *   ---   *   ---
 # fmat for relative memargs
 
 my $MEMARG_REL=Arstd::Bitformat->new(
@@ -350,34 +359,37 @@ sub build_ROM($class) {
   $ROM->lines(
 
 
-      "A9M.OPCODE.MEMDST    = 001b;"
-    . "A9M.OPCODE.MEMSRC    = 010b;"
-    . "A9M.OPCODE.IMMSRC    = 100b;"
+    "A9M.OPCODE.MEMDST    = 001b;"
+  . "A9M.OPCODE.MEMSRC    = 010b;"
+  . "A9M.OPCODE.IMMSRC    = 100b;"
 
-    # TODO: stop hardcoding imm size;>
-    . "A9M.OPCODE.IMM_BS    = \$10;"
-    . "A9M.OPCODE.IMM_BM    = \$FFFF;"
+  # TODO: stop hardcoding imm size;>
+  . "A9M.OPCODE.IMM_BS    = \$10;"
+  . "A9M.OPCODE.IMM_BM    = \$FFFF;"
 
-    . "A9M.OPCODE.MFLAG_BS  = 2;"
-    . "A9M.OPCODE.MFLAG_BM  = 3;"
-
-    . "A9M.OPCODE.MFLAG_REL = 01b;"
+  . "A9M.OPCODE.MFLAG_BS  = 2;"
+  . "A9M.OPCODE.MFLAG_BM  = 3;"
 
 
   . f1::bits::as_const(
       $MEMARG_REL,'bipret.memarg.rel',
       qw(rX rY off scale),
 
-    )
+  ) . f1::bits::as_const(
+      $OPCODE_MFLAG,'A9M.OPCODE.MFLAG',
+      qw(rel seg)
 
+  ) . f1::bits::as_flag(
+      $OPCODE_MFLAG,'A9M.OPCODE.MFLAG',
+      qw(rel seg)
 
-  . (sprintf
+  ) . (sprintf
 
-      "OPCODE_ID_MASK  = %04X;"
-    . "OPCODE_ID_BITS  = %04X;"
+      "OPCODE_ID_MASK  = \$%04X;"
+    . "OPCODE_ID_BITS  = \$%04X;"
 
-    . "OPCODE_IDX_MASK = %04X;"
-    . "OPCODE_IDX_BITS = %04X;",
+    . "OPCODE_IDX_MASK = \$%04X;"
+    . "OPCODE_IDX_BITS = \$%04X;",
 
       $opmask,$opbits,
       $exemask,$exebits
@@ -597,6 +609,18 @@ $ROM_Table=[
 
     copy     => q[dst = src;],
     load_dst => 0,
+
+    dst      => 'r',
+    src      => 'r',
+
+  ),
+
+
+  # reg ^ reg
+  opcode(
+
+    xor      => q[dst = dst xor src;],
+    load_dst => 1,
 
     dst      => 'r',
     src      => 'r',

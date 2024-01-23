@@ -22,7 +22,7 @@ library.import
 
   TITLE     A9M.vmc.registers
 
-  VERSION   v0.00.3b
+  VERSION   v0.00.4b
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -64,9 +64,16 @@ end if
 
 macro vmc._decl_reg [name] {
 
+  common
+    local cnt
+    cnt equ 0
+
   forward
     szmy A9M.REGISTER_SZ_K name
-    A9M.REGISTER_CNT = A9M.REGISTER_CNT+1
+    cnt equ cnt+1
+
+  common
+    A9M.REGISTER_CNT = cnt
 
 }
 
@@ -84,8 +91,7 @@ vreg.end
 ; ---   *   ---   *   ---
 ; ^set encoding consts
 
-A9M.REGISTER_CNT_BS = \
-  $40-bsr A9M.REGISTER_CNT
+A9M.REGISTER_CNT_BS = bsr A9M.REGISTER_CNT
 
 A9M.REGISTER_CNT_BM = \
   (1 shl A9M.REGISTER_CNT_BS)-1
