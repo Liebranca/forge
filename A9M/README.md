@@ -29,6 +29,12 @@ The Arcane 9 is a *theoretical* virtual machine and compiler, which right here a
 
 ## CHANGELOG
 
+### v0.01.4b
+
+- Implemented encoder and interpreter for bytecode instructions through `*::opcode`.
+
+- Added `*::ismaker` perl module for easier generation of instruction sets for `*::vmc`. We should now move to compiling Arcane 9 programs into binaries than can be opened as virtual segments, rather than writing every program as a macro.
+
 ### v0.01.3b
 
 - Implemented basic memory allocator through `*::valloc`.

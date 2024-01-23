@@ -35,9 +35,11 @@ macro saywat? arg0,arg1& {
 
 The macro `f1.to_disk` will then dump the contents of the virtual buffer to a file on a succesful run.
 
+A few perl modules for generating fasm code are also included in this package, mostly for interop with `AR/avtomat`.
+
 ## DEPENDENCIES
 
-`f1` includes no files, so here's a manual listing:
+`f1` fasm files `include` nothing, so here's a manual listing:
 
 ### `Arstd::INCFILE`
 
@@ -55,6 +57,10 @@ The macro `f1.to_disk` will then dump the contents of the virtual buffer to a fi
 
 
 ## CHANGELOG
+
+### v0.00.2b
+
+- Added some old (and new!) perl code to the package for general convenience when doing commandline incantations.
 
 ### v0.00.1b
 

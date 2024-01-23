@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # ---   *   ---   *   ---
-# F1 ISMAKER
+# A9M ISMAKER
 # Makes instruction sets
 # for the Arcane 9
 #
@@ -14,7 +14,7 @@
 # ---   *   ---   *   ---
 # deps
 
-package f1::ismaker;
+package A9M::ismaker;
 
   use v5.36.0;
   use strict;
@@ -45,13 +45,14 @@ package f1::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.4;#b
+  our $VERSION = v0.00.5;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # ROM
 
-  Readonly our $SIZED_OP=>qr{rm|mr|m};
+  Readonly our $SIZED_OP   => qr{rm|mr|m};
+  Readonly our $INS_DEF_SZ => 'word';
 
 # ---   *   ---   *   ---
 # GBL
@@ -359,16 +360,17 @@ sub build_ROM($class) {
   $ROM->lines(
 
 
-    "A9M.OPCODE.MEMDST    = 001b;"
+    "define A9M.INS_DEF_SZ $INS_DEF_SZ;"
+
+  . "A9M.OPCODE.MEMDST    = 001b;"
   . "A9M.OPCODE.MEMSRC    = 010b;"
   . "A9M.OPCODE.IMMSRC    = 100b;"
 
-  # TODO: stop hardcoding imm size;>
-  . "A9M.OPCODE.IMM_BS    = \$10;"
-  . "A9M.OPCODE.IMM_BM    = \$FFFF;"
-
   . "A9M.OPCODE.MFLAG_BS  = 2;"
   . "A9M.OPCODE.MFLAG_BM  = 3;"
+
+  . "A9M.OPCODE.MEM_BS_BASE = "
+  . $MEMARG_REL->{pos}->{'$:top;>'} . ';'
 
 
   . f1::bits::as_const(
@@ -437,7 +439,7 @@ sub opcode($name,$ct,%O) {
   $O{argcnt}    //= 2;
   $O{nosize}    //= 0;
 
-  $O{load_src}  //= 1;
+  $O{load_src}  //= int($O{argcnt} == 2);
   $O{load_dst}  //= 1;
 
   $O{overwrite} //= 1;
@@ -462,14 +464,16 @@ sub opcode($name,$ct,%O) {
 
   # get possible operand sizes
   state $sizetab={
-    'byte' => 0,
-    'word' => 1,
+    'byte'  => 0,
+    'word'  => 1,
+    'dword' => 2,
+    'qword' => 3,
 
   };
 
   my @size=(! $O{nosize})
-    ? qw(byte word)
-    : qw(word)
+    ? qw(byte word dword qword)
+    : $INS_DEF_SZ
     ;
 
   # get possible operand combinations
@@ -504,6 +508,7 @@ sub opcode($name,$ct,%O) {
   my $argflag_tab={
 
     $NULLSTR => 0b000,
+    's'      => 0b000,
 
     'dr'     => 0b000,
     'dm'     => 0b001,
@@ -514,10 +519,13 @@ sub opcode($name,$ct,%O) {
 
   };
 
+
   return map {
 
-    my $dst  = substr $ARG,0,1;
-    my $src  = substr $ARG,1,1;
+    my $dst   = substr $ARG,0,1;
+
+    my $src   = substr $ARG,1,1;
+       $src //= $NULLSTR;
 
     my $argflag =
       ($argflag_tab->{"d$dst"})
@@ -528,47 +536,24 @@ sub opcode($name,$ct,%O) {
     my $ins  = "${name}_$ARG";
 
 
-    # combo is rm/mr
-    if("$dst$src" =~ $SIZED_OP) {
-
-      map {
-
-        my $data=$ROM | $OPCODE_ROM->bor(
-
-          argflag => $argflag,
-          opsize  => $sizetab->{$ARG},
-          idx     => $idx,
-
-        );
-
-
-        "${ins}_${ARG}" => {
-          id  => $Opcode_ROM++,
-          ROM => $data,
-
-        };
-
-      } @size;
-
-    # ^combo is rr
-    } else {
+    map {
 
       my $data=$ROM | $OPCODE_ROM->bor(
 
         argflag => $argflag,
-        opsize  => 1,
-
+        opsize  => $sizetab->{$ARG},
         idx     => $idx,
 
       );
 
-      "${name}_${ARG}" => {
+
+      "${ins}_${ARG}" => {
         id  => $Opcode_ROM++,
         ROM => $data,
 
       };
 
-    };
+    } @size;
 
   } @combo;
 
@@ -582,48 +567,59 @@ $ROM_Table=[
 # ---   *   ---   *   ---
 # most used ones
 
-  # imm/mem to reg
+  # imm/mem/reg to reg
   opcode(
 
-    load     => q[dst = src;],
+    cpy      => q[dst = src;],
     load_dst => 0,
 
-    dst      => 'r',
-    src      => 'mi',
+    dst      => 'rm',
+    src      => 'rmi',
 
   ),
 
-  # reg/imm to mem
   opcode(
 
-    store    => q[dst = src;],
+    lea      => q[dst = src;],
     load_dst => 0,
+    load_src => 0,
 
-    dst      => 'm',
-    src      => 'ri',
+    dst      => 'rm',
+    src      => 'm',
 
   ),
 
-  # reg to reg
-  opcode(
 
-    copy     => q[dst = src;],
-    load_dst => 0,
-
-    dst      => 'r',
-    src      => 'r',
-
-  ),
-
+# ---   *   ---   *   ---
+# bitops
 
   # reg ^ reg
   opcode(
 
     xor      => q[dst = dst xor src;],
-    load_dst => 1,
 
-    dst      => 'r',
-    src      => 'r',
+    dst      => 'rm',
+    src      => 'rmi',
+
+  ),
+
+  # reg ^ reg
+  opcode(
+
+    and      => q[dst = dst and src;],
+
+    dst      => 'rm',
+    src      => 'rmi',
+
+  ),
+
+  # reg ^ reg
+  opcode(
+
+    not      => q[dst = not dst;],
+
+    dst      => 'rm',
+    argcnt   => 1,
 
   ),
 

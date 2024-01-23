@@ -29,7 +29,7 @@ library.import
 ; ROM
 
 if ~ defined A9M.REGISTER_SZ_K
-  define A9M.REGISTER_SZ_K word
+  define A9M.REGISTER_SZ_K qword
 
 end if
 
