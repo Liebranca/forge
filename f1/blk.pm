@@ -25,13 +25,16 @@ package f1::blk;
   use lib $ENV{ARPATH}.'/lib/sys/';
 
   use Style;
+  use Type;
+  use Chk;
+
   use Arstd::Array;
   use Arstd::String;
 
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 
@@ -66,27 +69,32 @@ sub new($class,$name,%O) {
   };
 
   # defaults
-  $O{par}  //= undef;
-  $O{chd}  //= [];
+  $O{par}     //= undef;
+  $O{chd}     //= [];
+  $O{seg}     //= [];
 
-  $O{buf}  //= $NULLSTR;
-  $O{loc}  //= 0x0000;
-  $O{lvl}  //= 0x00;
+  $O{buf}     //= $NULLSTR;
+  $O{loc}     //= 0x0000;
+  $O{lvl}     //= 0x00;
+
+  $O{binary}  //= 0;
 
 
   # make ice
   my $self=bless {
 
-    name => $name,
+    name   => $name,
 
-    par  => $O{par},
-    chd  => $O{chd},
+    par    => $O{par},
+    chd    => $O{chd},
+    seg    => $O{seg},
 
-    buf  => $O{buf},
-    loc  => $O{loc},
-    lvl  => $O{lvl},
+    buf    => $O{buf},
+    loc    => $O{loc},
+    lvl    => $O{lvl},
 
-    mlvl => 0,
+    mlvl   => 0,
+    binary => $O{binary},
 
   },$class;
 
@@ -127,7 +135,11 @@ sub ances($self) {
 # ^as ident
 
 sub ident($self,$off=0) {
-  my $lvl=$self->{lvl}+$off;
+  my $lvl=(! $self->{binary})
+    ? $self->{lvl}+$off
+    : 0
+    ;
+
   return ' ' x ($lvl*2);
 
 }
@@ -138,16 +150,16 @@ sub ident($self,$off=0) {
 sub idented($self,$lvl) {
 
   my $pad = $self->ident($lvl);
-  my @ar  = map {
+  my @ar  = grep {length $ARG} map {
     strip(\$ARG);
     $ARG;
 
   } split $NEWLINE_RE,$self->{buf};
 
-  return join "\n",map {
-    "$pad$ARG"
-
-  } grep {length $ARG} @ar;
+  return (! $self->{binary})
+    ? join "\n",map {"$pad$ARG"} @ar
+    : join $NULLSTR,@ar
+    ;
 
 };
 
@@ -271,8 +283,14 @@ sub collapse($self) {
       shift @pending;
 
       my $body=shift @foot;
-      $out .= (length $body)
+
+      $body = (! $self->{binary})
         ? "$body\n"
+        : $body
+        ;
+
+      $out .= (length $body)
+        ? $body
         : $NULLSTR
         ;
 
@@ -288,7 +306,10 @@ sub collapse($self) {
       $ice->idented_full();
 
     # ^cat header, postpone footer
-    $out .= joinfilt("\n",$head,$buf)."\n";
+    $out .= (! $self->{binary})
+      ? joinfilt("\n",$head,$buf)."\n"
+      : joinfilt($NULLSTR,$head,$buf)
+      ;
 
     push @foot,$foot;
 
@@ -302,7 +323,10 @@ sub collapse($self) {
   my ($head,$buf,$foot)=
     $self->idented_full();
 
-  $out=joinfilt("\n",$head,$buf,$out,$foot)."\n";
+  $out=(! $self->{binary})
+    ? joinfilt("\n",$head,$buf,$out,$foot)."\n"
+    : joinfilt($NULLSTR,$head,$buf,$out,$foot)
+    ;
 
   # ^give collapsed buf
   return $out;
@@ -321,7 +345,12 @@ sub cat($class,$name,@ar) {
   } @ar;
 
   # ^paste in order
-  my $out=join "\n",map {
+  my $c   = (! $ar[0]->{binary})
+    ? "\n"
+    : $NULLSTR
+    ;
+
+  my $out = join $c,map {
     $ARG->collapse()
 
   } @ar;
@@ -355,6 +384,72 @@ sub lines($self,$s) {
 
   $self->{buf}.=join "\n",map {"$pad$ARG"} @lines;
   $self->{buf}.="\n";
+
+};
+
+# ---   *   ---   *   ---
+# ^add raw binary
+
+sub blines($self,$ezy,@data) {
+
+  my ($ct,@cnt) = bpack($ezy,@data);
+  $self->{buf} .= $ct;
+
+  return ((length $ct),@cnt);
+
+};
+
+# ---   *   ---   *   ---
+# ^labeled binary
+
+sub seg($self,@order) {
+
+  # array as hash
+  my $idex   = 0;
+  my @keys   = array_keys(\@order);
+  my @values = array_values(\@order);
+
+  # ^walk
+  map {
+
+    # get beg of next segment
+    my $label = $ARG;
+    my $loc   = length $self->{buf};
+
+    # ^put into buf
+    my $arg=$values[$idex++];
+
+    my $len=0;
+    my @cnt=();
+
+    # content passed?
+    if(is_arrayref($arg)) {
+      my ($ezy,@data)=@$arg;
+      ($len,@cnt)=$self->blines($ezy,@data);
+
+    # else assume N-reserved
+    } else {
+      my ($ezy,$data)=split $SPACE_RE,$arg;
+      ($len,@cnt)=$self->blines(
+        $ezy,(0x00) x $data
+
+      );
+
+    };
+
+
+    # record beg,len
+    push @{$self->{seg}},$label=>[$loc,$len,@cnt];
+
+  } @keys;
+
+};
+
+# ---   *   ---   *   ---
+# ^overwrite
+
+sub segat($self,$loc,$len,@order) {
+  substr $self->{buf},$loc,$len,bpack(@order);
 
 };
 

@@ -27,6 +27,7 @@ package A9M::ismaker;
   use lib $ENV{ARPATH}.'/lib/sys/';
 
   use Style;
+  use Type;
 
   use Arstd::Array;
   use Arstd::String;
@@ -45,7 +46,7 @@ package A9M::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.5;#b
+  our $VERSION = v0.00.6;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -68,24 +69,27 @@ package A9M::ismaker;
 # ---   *   ---   *   ---
 # fmat for opcode data
 
-my $OPCODE_ROM=Arstd::Bitformat->new(
+our $OPCODE_ROM=Arstd::Bitformat->new(
 
-  load_src  => 1,
-  load_dst  => 1,
-  overwrite => 1,
+  load_src    => 1,
+  load_dst    => 1,
+  overwrite   => 1,
 
-  argcnt    => 2,
-  argflag   => 3,
+  fix_immsrc  => 2,
+  fix_regsrc  => 4,
 
-  opsize    => 1,
-  idx       => 16,
+  argcnt      => 2,
+  argflag     => 3,
+
+  opsize      => 2,
+  idx         => 16,
 
 );
 
 # ---   *   ---   *   ---
 # fmat for memargs flag
 
-my $OPCODE_MFLAG=Arstd::Bitformat->new(
+our $OPCODE_MFLAG=Arstd::Bitformat->new(
   rel => 1,
   seg => 1,
 
@@ -94,13 +98,26 @@ my $OPCODE_MFLAG=Arstd::Bitformat->new(
 # ---   *   ---   *   ---
 # fmat for relative memargs
 
-my $MEMARG_REL=Arstd::Bitformat->new(
+our $MEMARG_REL=Arstd::Bitformat->new(
 
   rX    => 4,
   rY    => 4,
 
   off   => 8,
   scale => 2,
+
+);
+
+# ---   *   ---   *   ---
+# fmat for binary section
+# of resulting ROM
+
+our $BIN_HEADER=Arstd::Bitformat->new(
+
+  opcode_len  => 16,
+  opcode_cnt  => 16,
+
+  string_base => 16,
 
 );
 
@@ -117,14 +134,20 @@ sub import($class,@args) {
 
 
   # make include
-  my $ROM=$class->build_ROM();
+  my ($ROM,$fdata)=$class->build_ROM();
   my $EXE=$class->build_EXE();
 
+  # ^append opcode section to ROM
+  $ROM->lines("file '$dst/$name.bin';");
+
+
+  # flatten
   my $INC=join "\n",$ROM->collapse(),$EXE->{buf};
 
 
   # write to file
   owc("$dst/$name.pinc",$INC);
+  owc("$dst/$name.bin",$fdata);
 
 };
 
@@ -165,6 +188,7 @@ sub build_EXE_decoder($class) {
       load_src load_dst overwrite
       argcnt argflag
       opsize opsize_bm opsize_bs
+      immbs immbm
 
     )]
 
@@ -181,13 +205,17 @@ sub build_EXE_decoder($class) {
 
 
     local flags;
-    load  flags word from A9M.OPCODE:idex shl 1;
+    load  flags dword from A9M.OPCODE:idex shl 2;
+
+    local fix_immsrc;
 
   ] . f1::bits::csume(
 
     $OPCODE_ROM,'flags',qw(
 
       load_src load_dst overwrite
+      fix_immsrc
+
       argcnt argflag
       opsize
 
@@ -197,6 +225,18 @@ sub build_EXE_decoder($class) {
     opsize    = 1 shl opsize;
     opsize_bs = opsize shl 3;
     opsize_bm = (1 shl opsize_bs)-1;
+    opsize_bm = opsize_bm
+    or (sizebm.qword * (opsize_bs shr 6));
+
+    if fix_immsrc > 0;
+      immbs = (1 shl (fix_immsrc-1)) shl 3;
+      immbm = (1 shl immbs)-1;
+
+    else;
+      immbs = opsize_bs;
+      immbm = opsize_bm;
+
+    end if;
 
 
     idx=
@@ -253,7 +293,7 @@ sub build_EXE_logic($class) {
 
         "A9M.OPCODE.switch_args$cnt",
 
-        loc  => $idex++,
+        loc  => ++$idex,
         args => ['opid',@{$ARGNAMES->[$cnt]}],
 
       );
@@ -329,15 +369,56 @@ sub build_ROM($class) {
     my $e=$values[$idex++];
 
     sprintf
-
-      "A9M.OPCODE.%-${pad}s = \$%04X;"
-    . "dw \$%04X",
-
-      $ARG,$e->{id},$e->{ROM}
+      "A9M.OPCODE.%-${pad}s = \$%04X;",
+      $ARG,$e->{id}
 
     ;
 
   } @keys;
+  $idex=0;
+
+
+  # the actual flags?
+  # out them to a separate file!
+  #
+  # done so anvil can imp them too ;>
+  my $fdata  = f1::blk->new('fdata',binary=>1);
+
+  # get name=>opid
+  my @strtab = map {
+    $ARG=>$values[$idex++]->{id}
+
+  } @keys;
+
+  # ^make binary ROM part
+  $fdata->seg(
+
+    header => 'byte ' . $BIN_HEADER->bytesize(),
+
+    opcode => ['brad',map {$ARG->{ROM}} @values],
+    string => ['plcstr,wide',@strtab],
+
+  );
+
+
+  # overwrite header
+  my @head=$BIN_HEADER->array_bor(
+
+    opcode_len  => $fdata->{seg}->[3]->[1],
+    opcode_cnt  => $fdata->{seg}->[3]->[2],
+
+    string_base => $fdata->{seg}->[5]->[0],
+
+  );
+
+  $fdata->segat(
+    0,$BIN_HEADER->bytesize(),
+    word=>@head
+
+  );
+
+  owc('.fdata',$fdata->{buf});
+  exit;
 
 
   # make new block
@@ -404,7 +485,7 @@ sub build_ROM($class) {
   $ROM->lines($data);
 
 
-  return $ROM;
+  return $ROM,$fdata;
 
 };
 
@@ -436,24 +517,30 @@ sub fetch_logic($name,%O) {
 sub opcode($name,$ct,%O) {
 
   # defaults
-  $O{argcnt}    //= 2;
-  $O{nosize}    //= 0;
+  $O{argcnt}      //= 2;
+  $O{nosize}      //= 0;
 
-  $O{load_src}  //= int($O{argcnt} == 2);
-  $O{load_dst}  //= 1;
+  $O{load_src}    //= int($O{argcnt} == 2);
+  $O{load_dst}    //= 1;
 
-  $O{overwrite} //= 1;
-  $O{dst}       //= 'r';
-  $O{src}       //= 'ri';
+  $O{fix_immsrc}  //= 0;
+  $O{fix_regsrc}  //= 0;
+
+  $O{overwrite}   //= 1;
+  $O{dst}         //= 'rm';
+  $O{src}         //= 'rmi';
 
   # ^binpacked
   my $ROM=$OPCODE_ROM->bor(
 
-    load_src  => $O{load_src},
-    load_dst  => $O{load_dst},
-    overwrite => $O{overwrite},
+    load_src    => $O{load_src},
+    load_dst    => $O{load_dst},
+    overwrite   => $O{overwrite},
 
-    argcnt    => $O{argcnt},
+    fix_immsrc  => $O{fix_immsrc},
+    fix_regsrc  => $O{fix_regsrc},
+
+    argcnt      => $O{argcnt},
 
   );
 
@@ -569,22 +656,18 @@ $ROM_Table=[
 
   # imm/mem/reg to reg
   opcode(
-
     cpy      => q[dst = src;],
     load_dst => 0,
 
-    dst      => 'rm',
-    src      => 'rmi',
-
   ),
 
+  # our beloved
+  # load effective address ;>
   opcode(
-
     lea      => q[dst = src;],
     load_dst => 0,
     load_src => 0,
 
-    dst      => 'rm',
     src      => 'm',
 
   ),
@@ -593,35 +676,131 @@ $ROM_Table=[
 # ---   *   ---   *   ---
 # bitops
 
-  # reg ^ reg
+  opcode(xor  => q[dst = dst xor src;]),
+  opcode(and  => q[dst = dst and src;]),
+  opcode(or   => q[dst = dst or src;]),
+
+  opcode(not  => q[dst = not dst;],argcnt => 1),
+
+  opcode(xnor => q[dst = not (dst xor src);]),
+  opcode(nor  => q[dst = not (dst or src);]),
+  opcode(nand => q[dst = not (dst and src);]),
+
+
+  # bitmask, all ones
   opcode(
 
-    xor      => q[dst = dst xor src;],
+    bones => q[
+      dst = (1 shl (src and $3F))-1;
+      dst = dst or (sizebm.qword * (src shr 6));
 
-    dst      => 'rm',
-    src      => 'rmi',
+    ],
+
+    fix_immsrc => 1,
 
   ),
 
-  # reg ^ reg
   opcode(
 
-    and      => q[dst = dst and src;],
+    shl        => q[dst = dst shl src;],
 
-    dst      => 'rm',
-    src      => 'rmi',
+    fix_immsrc => 1,
+    fix_regsrc => 3,
 
   ),
 
-  # reg ^ reg
   opcode(
 
-    not      => q[dst = not dst;],
+    shr        => q[dst = dst shr src;],
 
-    dst      => 'rm',
-    argcnt   => 1,
+    fix_immsrc => 1,
+    fix_regsrc => 3,
 
   ),
+
+  opcode(bsf => q[dst = bsf src;]),
+  opcode(bsr => q[dst = bsr src;]),
+
+
+  # bit rotate right
+  # a thing of pure beauty!
+  opcode(
+
+    ror => q[
+
+      local out;
+      local mask;
+      local shift;
+
+      A9M.OPCODE._exe_bones mask,src;
+
+      shift = bipret.opsize_bs-src;
+      out   = (dst and mask) shl shift;
+      dst   = (dst shr src)  or  out;
+
+    ],
+
+    fix_immsrc => 1,
+    fix_regsrc => 3,
+
+  ),
+
+  # ^rotate left ;>
+  opcode(
+
+    rol => q[
+
+      local out;
+      local mask;
+      local shift;
+
+      A9M.OPCODE._exe_bones mask,src;
+
+      shift = bipret.opsize_bs-src;
+      out   = dst and (mask shl shift);
+      dst   = (dst shl src)  or  (out shr shift);
+
+    ],
+
+    fix_immsrc => 1,
+    fix_regsrc => 3,
+
+  ),
+
+# ---   *   ---   *   ---
+# math
+
+  opcode(add  => q[dst = dst+src;]),
+
+  opcode(sub  => q[dst = dst-src;]),
+  opcode(mul  => q[dst = dst*src;]),
+  opcode(div  => q[dst = dst/src;]),
+
+  opcode(inc => q[dst = dst+1;],argcnt => 1),
+  opcode(dec => q[dst = dst-1;],argcnt => 1),
+  opcode(neg => q[dst = -dst;] ,argcnt => 1),
+
+
+  # waltzaround for integer overflow
+  opcode(badd => q[
+
+    local shift;
+    local carry;
+    local res;
+
+    carry = dst and src;
+    res   = dst xor src;
+
+    while ~(carry = 0);
+      shift = (carry and 0x7FFFFFFFFFFFFFFF) shl 1;
+      carry = res and shift;
+      res   = res xor shift;
+
+    end while;
+
+    dst = res;
+
+  ]),
 
 ];
 

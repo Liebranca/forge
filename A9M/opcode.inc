@@ -23,6 +23,13 @@
   include   '%ARPATH%/forge/A9M/ROM/isbasic.pinc'
 
 ; ---   *   ---   *   ---
+; GBL
+
+  bipret.opsize    = $00
+  bipret.opsize_bs = $00
+  bipret.opsize_bm = $00
+
+; ---   *   ---   *   ---
 ; read opcode
 
 macro $bipret X {
@@ -37,19 +44,21 @@ macro $bipret X {
   local load_src
   local load_dst
   local overwrite
+  local immbs
+  local immbm
 
   local argcnt
   local argflag
 
-  local opsize
-  local opsize_bm
-  local opsize_bs
-
   ; ^fetch em from ROM ;>
   A9M.OPCODE.read opid,opcode,\
+\
     load_src,load_dst,overwrite,\
+\
     argcnt,argflag,\
-    opsize,opsize_bm,opsize_bs
+\
+    bipret.opsize,bipret.opsize_bm,\
+    bipret.opsize_bs,immbs,immbm
 
 
   ; ^consume operand bits if any
@@ -84,7 +93,7 @@ macro $bipret X {
     pX = vX
 
     if load_dst=1
-      vmem.xldus vX,vmc.CAS,pX,opsize
+      vmem.xldus vX,vmc.CAS,pX,bipret.opsize
 
     end if
 
@@ -99,7 +108,7 @@ macro $bipret X {
       ; ^immediate
       else if argflag and A9M.OPCODE.IMMSRC
         $bipret.immarg vY,opcode,\
-          opsize_bm,opsize_bs
+          immbm,immbs
 
       ; ^register
       else
@@ -111,9 +120,10 @@ macro $bipret X {
       ; handle deref B
       pY=vY
 
+
       if load_src \
       &~ (argflag and A9M.OPCODE.IMMSRC)
-        vmem.xldus vY,vmc.CAS,pY,opsize
+        vmem.xldus vY,vmc.CAS,pY,bipret.opsize
 
       end if
 
@@ -131,7 +141,7 @@ macro $bipret X {
 
     ; store result to dst?
     if overwrite
-      vmem.xstus vmc.CAS,vX,pX,opsize
+      vmem.xstus vmc.CAS,vX,pX,bipret.opsize
 
     end if
 
@@ -180,10 +190,10 @@ macro $bipret.regarg dst,src {
 
 ; ---   *   ---   *   ---
 ; read immediate operand
-; always 16-bit for now
+; 32-bit capped
 
 macro $bipret.immarg dst,src,bm,bs {
-  dst = src and bm
+  dst = src and (bm shr (bs shr $06))
   src = src shr bs
 
 }
@@ -435,8 +445,8 @@ macro $bencode dst,NE& {
 
     \\}
 
-    match =0 =word _E , ok2 _expr \\{
-      _size equ word
+    match =0 =qword _E , ok2 _expr \\{
+      _size equ qword
       _expr equ _E
       ok2   equ 1
 
@@ -449,8 +459,8 @@ macro $bencode dst,NE& {
 
     \\}
 
-    match =0 =qword _E , ok2 _expr \\{
-      _size equ qword
+    match =0 =word _E , ok2 _expr \\{
+      _size equ word
       _expr equ _E
       ok2   equ 1
 
@@ -468,16 +478,9 @@ macro $bencode dst,NE& {
   local argflag_b
   local bitsz
   local opcode
-  local opsze_bs
-
   local args
 
-  bitsz   = 0
-
-  match size , _size \{
-    opsz_bs = (sizeof.\#size shl 3)
-
-  \}
+  bitsz = 0
 
 
   ; get args
@@ -487,14 +490,14 @@ macro $bencode dst,NE& {
     match A =, B , expr \\{
 
       ; encode first argument
-      $bencode.arg rX,argflag_a,bitsz,A,opsz_bs
+      $bencode.arg rX,argflag_a,bitsz,A,_size
 
       ; ^get size
       out   = bitsz
       bitsz = 0
 
       ; ^encode second argument
-      $bencode.arg rY,argflag_b,bitsz,B,opsz_bs
+      $bencode.arg rY,argflag_b,bitsz,B,_size
       args = rX or (rY shl out)
 
 
@@ -506,7 +509,7 @@ macro $bencode dst,NE& {
     match =0 A , ok expr \\{
 
       ; encode first argument
-      $bencode.arg rX,argflag_a,bitsz,A,opsz_bs
+      $bencode.arg rX,argflag_a,bitsz,A,_size
 
       argflag_b equ
       args=rX
@@ -571,14 +574,14 @@ macro $bencode.get_opcode dst,name,size,\
 ; writes type to argflag
 
 macro $bencode.arg dst,\
-  argflag,bitsz,expr,immbs {
+  argflag,bitsz,expr,size {
 
   local ok
   ok equ 0
 
   $bencode.reg ok,dst,argflag,bitsz,expr
   $bencode.mem ok,dst,argflag,bitsz,expr
-  $bencode.imm ok,dst,argflag,bitsz,expr,immbs
+  $bencode.imm ok,dst,argflag,bitsz,expr,size
 
 }
 
@@ -634,11 +637,15 @@ macro $bencode.mem ok,dst,argflag,bitsz,expr {
 ; value is immediate?
 
 macro $bencode.imm ok,dst,\
-  argflag,bitsz,expr,bs {
+  argflag,bitsz,expr,size {
 
-  match =0 , ok \{
-    bitsz = bs
-    dst   = expr
+  match =0 any , ok size \{
+
+    bitsz = \
+        (sizeof.\#any shl 3) \
+    shr (sizeof.\#any shr 3)
+
+    dst   = expr and sizebm.dword
     argflag equ \i
 
   \}
