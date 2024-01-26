@@ -34,7 +34,7 @@ package f1::blk;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#b
+  our $VERSION = v0.00.4;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 
@@ -393,7 +393,10 @@ sub lines($self,$s) {
 sub blines($self,$ezy,@data) {
 
   my ($ct,@cnt) = bpack($ezy,@data);
+
+  $ct           = join $NULLSTR,@$ct;
   $self->{buf} .= $ct;
+
 
   return ((length $ct),@cnt);
 
@@ -448,8 +451,20 @@ sub seg($self,@order) {
 # ---   *   ---   *   ---
 # ^overwrite
 
-sub segat($self,$loc,$len,@order) {
-  substr $self->{buf},$loc,$len,bpack(@order);
+sub segat($self,$pos,$len,@order) {
+
+  my ($ct,@cnt)=bpack(@order);
+  $ct=join $NULLSTR,@$ct;
+
+  substr $self->{buf},$pos,$len,$ct;
+
+};
+
+# ---   *   ---   *   ---
+# ^from bitformat
+
+sub bfsegat($self,$fmat,$pos,%data) {
+  $fmat->write(\$self->{buf},$pos,%data);
 
 };
 

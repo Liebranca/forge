@@ -38,6 +38,8 @@ package A9M::ismaker;
 
   use lib $ENV{ARPATH}.'/forge/';
 
+  use A9M::SHARE::is;
+
   use f1::bits;
   use f1::macro;
   use f1::logic;
@@ -46,14 +48,8 @@ package A9M::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.6;#b
+  our $VERSION = v0.00.7;#b
   our $AUTHOR  = 'IBN-3DILA';
-
-# ---   *   ---   *   ---
-# ROM
-
-  Readonly our $SIZED_OP   => qr{rm|mr|m};
-  Readonly our $INS_DEF_SZ => 'word';
 
 # ---   *   ---   *   ---
 # GBL
@@ -67,64 +63,10 @@ package A9M::ismaker;
   our $EXE_Crux   = {};
 
 # ---   *   ---   *   ---
-# fmat for opcode data
-
-our $OPCODE_ROM=Arstd::Bitformat->new(
-
-  load_src    => 1,
-  load_dst    => 1,
-  overwrite   => 1,
-
-  fix_immsrc  => 2,
-  fix_regsrc  => 4,
-
-  argcnt      => 2,
-  argflag     => 3,
-
-  opsize      => 2,
-  idx         => 16,
-
-);
-
-# ---   *   ---   *   ---
-# fmat for memargs flag
-
-our $OPCODE_MFLAG=Arstd::Bitformat->new(
-  rel => 1,
-  seg => 1,
-
-);
-
-# ---   *   ---   *   ---
-# fmat for relative memargs
-
-our $MEMARG_REL=Arstd::Bitformat->new(
-
-  rX    => 4,
-  rY    => 4,
-
-  off   => 8,
-  scale => 2,
-
-);
-
-# ---   *   ---   *   ---
-# fmat for binary section
-# of resulting ROM
-
-our $BIN_HEADER=Arstd::Bitformat->new(
-
-  opcode_len  => 16,
-  opcode_cnt  => 16,
-
-  string_base => 16,
-
-);
-
-# ---   *   ---   *   ---
 # crux
 
 sub import($class,@args) {
+
 
   # defaults
   my ($name,$dst)=@args;
@@ -147,7 +89,7 @@ sub import($class,@args) {
 
   # write to file
   owc("$dst/$name.pinc",$INC);
-  owc("$dst/$name.bin",$fdata);
+  owc("$dst/$name.bin",$fdata->{buf});
 
 };
 
@@ -402,7 +344,9 @@ sub build_ROM($class) {
 
 
   # overwrite header
-  my @head=$BIN_HEADER->array_bor(
+  $fdata->bfsegat(
+
+    $BIN_HEADER => 0,
 
     opcode_len  => $fdata->{seg}->[3]->[1],
     opcode_cnt  => $fdata->{seg}->[3]->[2],
@@ -410,15 +354,6 @@ sub build_ROM($class) {
     string_base => $fdata->{seg}->[5]->[0],
 
   );
-
-  $fdata->segat(
-    0,$BIN_HEADER->bytesize(),
-    word=>@head
-
-  );
-
-  owc('.fdata',$fdata->{buf});
-  exit;
 
 
   # make new block
