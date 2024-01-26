@@ -25,7 +25,7 @@ package A9M::SHARE::is;
   use lib $ENV{ARPATH}.'/lib/sys/';
 
   use Style;
-  use Arstd::Bitformat;
+  use Arstd::Struc;
 
 # ---   *   ---   *   ---
 # adds to your namespace
@@ -33,7 +33,6 @@ package A9M::SHARE::is;
   use Exporter 'import';
   our @EXPORT=qw(
 
-    $SIZED_OP
     $INS_DEF_SZ
 
     $OPCODE_ROM
@@ -47,69 +46,62 @@ package A9M::SHARE::is;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # ROM
 
-  Readonly our $SIZED_OP   => qr{rm|mr|m};
-  Readonly our $INS_DEF_SZ => 'word';
+  Readonly our $INS_DEF_SZ    => 'word';
+  Readonly our $OPCODE_ROM_SZ => 'brad';
 
-# ---   *   ---   *   ---
-# fmat for opcode data
 
-our $OPCODE_ROM=Arstd::Bitformat->new(
+  # fmat for opcode data
+  our $OPCODE_ROM=Arstd::Bitformat->new(
 
-  load_src    => 1,
-  load_dst    => 1,
-  overwrite   => 1,
+    load_src    => 1,
+    load_dst    => 1,
+    overwrite   => 1,
 
-  fix_immsrc  => 2,
-  fix_regsrc  => 4,
+    fix_immsrc  => 2,
+    fix_regsrc  => 4,
 
-  argcnt      => 2,
-  argflag     => 3,
+    argcnt      => 2,
+    argflag     => 3,
 
-  opsize      => 2,
-  idx         => 16,
+    opsize      => 2,
+    idx         => 16,
 
-);
+  );
 
-# ---   *   ---   *   ---
-# fmat for memargs flag
 
-our $OPCODE_MFLAG=Arstd::Bitformat->new(
-  rel => 1,
-  seg => 1,
+  # fmat for memargs flag
+  our $OPCODE_MFLAG=Arstd::Bitformat->new(
+    rel => 1,
+    seg => 1,
 
-);
+  );
 
-# ---   *   ---   *   ---
-# fmat for relative memargs
 
-our $MEMARG_REL=Arstd::Bitformat->new(
+  # fmat for relative memargs
+  our $MEMARG_REL=Arstd::Bitformat->new(
 
-  rX    => 4,
-  rY    => 4,
+    rX    => 4,
+    rY    => 4,
 
-  off   => 8,
-  scale => 2,
+    off   => 8,
+    scale => 2,
 
-);
+  );
 
-# ---   *   ---   *   ---
-# fmat for binary section
-# of resulting ROM
 
-our $BIN_HEADER=Arstd::Bitformat->new(
+  # fmat for binary section
+  # of resulting ROM
+  our $OPCODE_TAB=Arstd::Struc->new(
+    opcode => [$OPCODE_ROM,'word'],
+    idx    => 'plcstr,word * [^opcode]',
 
-  opcode_len  => 16,
-  opcode_cnt  => 16,
-
-  string_base => 16,
-
-);
+  );
 
 # ---   *   ---   *   ---
 1; # ret

@@ -22,6 +22,8 @@ package f1::blk;
   use Readonly;
   use English qw(-no_match_words);
 
+  use List::Util qw(sum);
+
   use lib $ENV{ARPATH}.'/lib/sys/';
 
   use Style;
@@ -30,11 +32,12 @@ package f1::blk;
 
   use Arstd::Array;
   use Arstd::String;
+  use Arstd::Struc;
 
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.4;#b
+  our $VERSION = v0.00.5;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 
@@ -461,12 +464,186 @@ sub segat($self,$pos,$len,@order) {
 };
 
 # ---   *   ---   *   ---
-# ^from bitformat
+# makes segments from an
+# Arstd::Struc
 
-sub bfsegat($self,$fmat,$pos,%data) {
-  $fmat->write(\$self->{buf},$pos,%data);
+sub strucseg($self,$struc,%data) {
+
+  # get current size/start address
+  my $addr=length $self->{buf};
+
+  # extend buffer with encoded data
+  my ($ct,$len)  = $struc->to_bytes(%data);
+  $self->{buf}  .= $ct;
+
+
+  # ^make labels from struc fields
+  map {
+
+    # nested struc!
+    if(is_hashref($len->{$ARG})) {
+
+      $self->_rec_strucseg(
+
+        $struc,
+        $len,$ARG,$ARG,
+
+        \$addr
+
+      );
+
+
+    # ^flat struc
+    } elsif(exists $len->{$ARG}) {
+
+      push @{$self->{seg}},$ARG
+      => [$addr,$len->{$ARG}];
+
+      $addr+=$len->{$ARG};
+
+    };
+
+
+  } '$:head;>',@{$struc->{order}};
+
+
+  return;
 
 };
+
+# ---   *   ---   *   ---
+# guts. gets labels for a
+# recursive structure!
+
+sub _rec_strucseg(
+
+  $self,
+  $struc,
+
+  $len,$sf,$base,
+
+  $addrref
+
+) {
+
+  my $fmat = $struc->{substruc}->{$sf};
+  my $xlen = (exists $len->{$sf})
+    ? $len->{$sf}
+    : $len
+    ;
+
+
+  # add label for whole substruc
+  my $label = int @{$self->{seg}};
+  my $name  = ($base eq $sf)
+    ? $base
+    : "$base.sf"
+    ;
+
+  push @{$self->{seg}},$name => [$$addrref,0];
+
+
+  # ^add labels for subfields of substruc!
+  map {
+
+    # recurse *again* ??!
+    if(is_hashref($xlen->{$ARG})) {
+
+      $self->_rec_strucseg(
+
+        $fmat,
+        $xlen->{$ARG},$ARG,"$base.$ARG",
+
+        $addrref
+
+      );
+
+    # ^nope, write common field
+    } elsif(exists $xlen->{$ARG}) {
+
+      push @{$self->{seg}},"$base.$ARG"
+      => [$$addrref,$xlen->{$ARG}];
+
+      $$addrref += $xlen->{$ARG};
+
+    };
+
+  } '$:head;>',@{$fmat->{order}};
+
+
+  # get total size
+  $label=$self->{seg}->[$label+1];
+  $label->[1]=$$addrref-$label->[0];
+
+};
+
+# ---   *   ---   *   ---
+# ^test
+
+use Arstd::Bytes;
+use Fmat;
+
+
+my $bfmat=Arstd::Bitformat->new(
+  b0=>7,
+  b1=>1,
+
+);
+
+my $fmat=Arstd::Struc->new(
+  sf0=>['brad'],
+  sf1=>['brad'],
+
+);
+
+my $ntfmat=Arstd::Struc->new(
+  ntsf0=>[$fmat],
+  ntsf1=>[$fmat],
+
+);
+
+my $struc=Arstd::Struc->new(
+
+  f0=>[brad   => 'byte'],
+
+  f1=>[$bfmat => '^f0'],
+  f2=>[$fmat  => '^f0'],
+
+  f3=>[$ntfmat],
+
+);
+
+
+use Arstd::xd;
+
+my $blk=f1::blk->new('testy');
+
+$blk->strucseg($struc,
+
+  f0=>[0x24],
+  f1=>[{b0=>0x21,b1=>0x01}],
+
+  f2=>[{
+    sf0=>[0x25],
+    sf1=>[0x25],
+
+  }],
+
+  f3=>[{
+    ntsf0=>[{sf0=>[0x24],sf1=>[0x24]}],
+    ntsf1=>[{sf0=>[0x40],sf1=>[0x40]}],
+
+  }],
+
+);
+
+my $buf=$blk->{buf};
+delete $blk->{buf};
+
+xd($buf);
+fatdump(\$blk,blessed=>1,recurse=>1);
+
+exit;
 
 # ---   *   ---   *   ---
 # makes enum from name list
