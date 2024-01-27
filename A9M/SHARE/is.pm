@@ -39,7 +39,7 @@ package A9M::SHARE::is;
     $OPCODE_MFLAG
     $MEMARG_REL
 
-    $BIN_HEADER
+    $OPCODE_TAB
 
   );
 
@@ -98,8 +98,8 @@ package A9M::SHARE::is;
   # fmat for binary section
   # of resulting ROM
   our $OPCODE_TAB=Arstd::Struc->new(
-    opcode => [$OPCODE_ROM,'word'],
-    idx    => 'plcstr,word * [^opcode]',
+    opcode => [$OPCODE_ROM   => 'wide'],
+    idx    => ['plcstr,wide' => '^opcode'],
 
   );
 

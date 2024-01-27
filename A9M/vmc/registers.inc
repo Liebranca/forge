@@ -40,40 +40,18 @@ match __key , A9M.REGISTER_SZ_K {
 }
 
 ; ---   *   ---   *   ---
-; ^names of
+; load generated
 
-if ~ defined A9M.REGISTERS
+library ARPATH '/forge/'
+  use '.pinc' A9M::ROM::registers
 
-  define A9M.REGISTERS \
-    ar,br,cr,dr,\
-    er,fr,gr,hr,\
-    xp,xs,sp,sb,\
-    ice,ctx,opt,chan
-
-end if
+library.import
 
 ; ---   *   ---   *   ---
-; consts for encoding
-
-  A9M.REGISTER_CNT    = $00
-  A9M.REGISTER_CNT_BM = $00
-  A9M.REGISTER_CNT_BS = $00
-
-; ---   *   ---   *   ---
-; ^bat-decl
+; bat-decl
 
 macro vmc._decl_reg [name] {
-
-  common
-    local cnt
-    cnt equ 0
-
-  forward
-    szmy A9M.REGISTER_SZ_K name
-    cnt equ cnt+1
-
-  common
-    A9M.REGISTER_CNT = cnt
+  forward szmy A9M.REGISTER_SZ_K name
 
 }
 
@@ -87,14 +65,6 @@ match __list , A9M.REGISTERS {
 }
 
 vreg.end
-
-; ---   *   ---   *   ---
-; ^set encoding consts
-
-A9M.REGISTER_CNT_BS = bsr A9M.REGISTER_CNT
-
-A9M.REGISTER_CNT_BM = \
-  (1 shl A9M.REGISTER_CNT_BS)-1
 
 ; ---   *   ---   *   ---
 ; ^nit yourself!

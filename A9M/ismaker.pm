@@ -48,7 +48,7 @@ package A9M::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.7;#b
+  our $VERSION = v0.00.8;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -61,6 +61,7 @@ package A9M::ismaker;
   our $EXE_Table  = {};
 
   our $EXE_Crux   = {};
+  our $Paths      = {};
 
 # ---   *   ---   *   ---
 # crux
@@ -74,22 +75,19 @@ sub import($class,@args) {
   $name //= 'isbasic';
   $dst  //= "$ENV{ARPATH}/forge/A9M/ROM";
 
+  $Paths->{fdst}  = $dst;
+  $Paths->{fname} = $name;
+
 
   # make include
-  my ($ROM,$fdata)=$class->build_ROM();
+  my ($ROM)=$class->build_ROM();
   my $EXE=$class->build_EXE();
 
-  # ^append opcode section to ROM
-  $ROM->lines("file '$dst/$name.bin';");
-
-
-  # flatten
+  # ^flatten
   my $INC=join "\n",$ROM->collapse(),$EXE->{buf};
 
-
-  # write to file
-  owc("$dst/$name.pinc",$INC);
-  owc("$dst/$name.bin",$fdata->{buf});
+  # ^write to file
+  owc("$Paths->{fdst}/$Paths->{fname}.pinc",$INC);
 
 };
 
@@ -333,30 +331,17 @@ sub build_ROM($class) {
   } @keys;
 
   # ^make binary ROM part
-  $fdata->seg(
+  $fdata->strucseg(
 
-    header => 'byte ' . $BIN_HEADER->bytesize(),
+    $OPCODE_TAB,
 
-    opcode => ['brad',map {$ARG->{ROM}} @values],
-    string => ['plcstr,wide',@strtab],
-
-  );
-
-
-  # overwrite header
-  $fdata->bfsegat(
-
-    $BIN_HEADER => 0,
-
-    opcode_len  => $fdata->{seg}->[3]->[1],
-    opcode_cnt  => $fdata->{seg}->[3]->[2],
-
-    string_base => $fdata->{seg}->[5]->[0],
+    opcode => [map {$ARG->{ROM}} @values],
+    idx    => [@strtab],
 
   );
 
 
-  # make new block
+  # make new block for constants...
   my $ROM = f1::ROM->new(
     'A9M.OPCODE',
     loc=>0
@@ -416,11 +401,35 @@ sub build_ROM($class) {
 
   );
 
-  # ^write the table itself
+  # ^write the nshare table bits
   $ROM->lines($data);
 
+  # ^append opcode section to ROM
+  my $seg={@{$fdata->{seg}}};
 
-  return $ROM,$fdata;
+  $ROM->lines(
+
+    "file '$Paths->{fdst}"
+  . "/$Paths->{fname}.bin'"
+
+  . ":$seg->{opcode}->[0]"
+  . ",$seg->{opcode}->[1]"
+
+  . ';'
+
+  );
+
+
+  # save share table bits to file
+  owc(
+
+    "$Paths->{fdst}/$Paths->{fname}.bin",
+    $fdata->{buf}
+
+  );
+
+
+  return $ROM;
 
 };
 
@@ -465,8 +474,8 @@ sub opcode($name,$ct,%O) {
   $O{dst}         //= 'rm';
   $O{src}         //= 'rmi';
 
-  # ^binpacked
-  my $ROM=$OPCODE_ROM->bor(
+  # ^for writing/instancing
+  my $ROM={
 
     load_src    => $O{load_src},
     load_dst    => $O{load_dst},
@@ -477,7 +486,7 @@ sub opcode($name,$ct,%O) {
 
     argcnt      => $O{argcnt},
 
-  );
+  };
 
 
   # queue logic generation
@@ -560,13 +569,15 @@ sub opcode($name,$ct,%O) {
 
     map {
 
-      my $data=$ROM | $OPCODE_ROM->bor(
+      my $data={
+
+        %$ROM,
 
         argflag => $argflag,
         opsize  => $sizetab->{$ARG},
         idx     => $idx,
 
-      );
+      };
 
 
       "${ins}_${ARG}" => {
