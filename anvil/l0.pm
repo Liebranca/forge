@@ -25,10 +25,13 @@ package anvil::l0;
   use lib $ENV{ARPATH}.'/lib/sys/';
   use Style;
 
+  use lib $ENV{ARPATH}.'/forge/';
+  use A9M;
+
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -154,7 +157,7 @@ sub delim_beg($self) {
   commit($self);
 
   $self->{l1}=
-    "[*ins] "
+    "[*cmd] "
   . $DELIM_TAB->{$self->{l0}}
   ;
 
@@ -192,13 +195,19 @@ sub commit($self) {
   if(length $self->{l1}) {
 
     if(! defined $self->{anchor}) {
-      $self->{anchor}=$self->{l2}->init(
-        "\[*ins] $self->{l1}"
+
+      my $tag=(defined $A9M->is_ins($self->{l1}))
+        ? '[*ins]'
+        : '[*cmd]'
+        ;
+
+      $self->{anchor}=$self->{l2}->inew(
+        "$tag $self->{l1}"
 
       );
 
     } else {
-      $self->{anchor}->init($self->{l1});
+      $self->{anchor}->inew($self->{l1});
 
     };
 

@@ -24,13 +24,15 @@ package A9M::SHARE::registers;
 
   use Style;
 
+  use Arstd::Array;
   use Arstd::Bytes;
+  use Arstd::Re;
   use Arstd::IO;
 
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.1;#b
+  our $VERSION = v0.00.2;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -51,6 +53,22 @@ package A9M::SHARE::registers;
 
   Readonly our $CNT_BS => bitsize($CNT);
   Readonly our $CNT_BM => bitmask($CNT_BS);
+
+  Readonly our $RE     => re_eiths($LIST);
+
+# ---   *   ---   *   ---
+# get token is register
+# if so, give idex
+# else undef
+
+sub tokin($name) {
+
+  return ($name=~ $RE)
+    ? array_iof($LIST,$name)
+    : undef
+    ;
+
+};
 
 # ---   *   ---   *   ---
 # generates *.pinc ROM file

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # ---   *   ---   *   ---
-# A9M ISMAKER
-# Makes instruction sets
+# A9M ISA
+# Makes instruction set
 # for the Arcane 9
 #
 # LIBRE SOFTWARE
@@ -14,7 +14,7 @@
 # ---   *   ---   *   ---
 # deps
 
-package A9M::ismaker;
+package A9M::ISA;
 
   use v5.36.0;
   use strict;
@@ -38,7 +38,7 @@ package A9M::ismaker;
 
   use lib $ENV{ARPATH}.'/forge/';
 
-  use A9M::SHARE::is;
+  use A9M::SHARE::ISA;
 
   use f1::bits;
   use f1::macro;
@@ -48,46 +48,53 @@ package A9M::ismaker;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.8;#b
+  our $VERSION = v0.00.9;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # GBL
 
-  our $Opcode_ROM = 0;
-  our $Opcode_EXE = 0;
+  my $Opcode_ROM = 0;
+  my $Opcode_EXE = 0;
+  my $Mnemonic   = [];
 
-  our $ROM_Table  = [];
-  our $EXE_Table  = {};
+  my $ROM_Table  = [];
+  my $EXE_Table  = {};
 
-  our $EXE_Crux   = {};
-  our $Paths      = {};
+  my $EXE_Crux   = {};
+  my $Fdst       = $NULLSTR;
 
 # ---   *   ---   *   ---
 # crux
 
-sub import($class,@args) {
+sub update($class,$A9M) {
 
+  # get additional deps
+  use Shb7::Path;
 
-  # defaults
-  my ($name,$dst)=@args;
+  # get fpath
+  $Fdst="$A9M->{fpath}->{isa}";
 
-  $name //= 'isbasic';
-  $dst  //= "$ENV{ARPATH}/forge/A9M/ROM";
+  # ^missing or older?
+  if(moo("$Fdst.pinc",__FILE__)) {
 
-  $Paths->{fdst}  = $dst;
-  $Paths->{fname} = $name;
+    $A9M->{log}->substep('ISA');
 
+    # make include
+    my $ROM=$class->build_ROM();
+    my $EXE=$class->build_EXE();
 
-  # make include
-  my ($ROM)=$class->build_ROM();
-  my $EXE=$class->build_EXE();
+    # ^flatten
+    my $INC=join "\n",
+      $ROM->collapse(),
+      $EXE->{buf}
 
-  # ^flatten
-  my $INC=join "\n",$ROM->collapse(),$EXE->{buf};
+    ;
 
-  # ^write to file
-  owc("$Paths->{fdst}/$Paths->{fname}.pinc",$INC);
+    # ^write to file
+    owc("$Fdst.pinc",$INC);
+
+  };
 
 };
 
@@ -335,8 +342,10 @@ sub build_ROM($class) {
 
     $OPCODE_TAB,
 
-    opcode => [map {$ARG->{ROM}} @values],
-    idx    => [@strtab],
+    opcode   => [map {$ARG->{ROM}} @values],
+
+    mnemonic => $Mnemonic,
+    idx      => [@strtab],
 
   );
 
@@ -401,7 +410,7 @@ sub build_ROM($class) {
 
   );
 
-  # ^write the nshare table bits
+  # ^write the nshared table bits
   $ROM->lines($data);
 
   # ^append opcode section to ROM
@@ -409,8 +418,7 @@ sub build_ROM($class) {
 
   $ROM->lines(
 
-    "file '$Paths->{fdst}"
-  . "/$Paths->{fname}.bin'"
+    "file '$Fdst.bin'"
 
   . ":$seg->{opcode}->[0]"
   . ",$seg->{opcode}->[1]"
@@ -420,14 +428,8 @@ sub build_ROM($class) {
   );
 
 
-  # save share table bits to file
-  owc(
-
-    "$Paths->{fdst}/$Paths->{fname}.bin",
-    $fdata->{buf}
-
-  );
-
+  # save shared table bits to file
+  owc("$Fdst.bin",$fdata->{buf});
 
   return $ROM;
 
@@ -487,6 +489,9 @@ sub opcode($name,$ct,%O) {
     argcnt      => $O{argcnt},
 
   };
+
+  # remember!
+  push @$Mnemonic,$name;
 
 
   # queue logic generation
@@ -610,10 +615,12 @@ $ROM_Table=[
   # our beloved
   # load effective address ;>
   opcode(
+
     lea      => q[dst = src;],
     load_dst => 0,
     load_src => 0,
 
+    dst      => 'r',
     src      => 'm',
 
   ),
@@ -642,13 +649,17 @@ $ROM_Table=[
 
     ],
 
+    dst        => 'r',
     fix_immsrc => 1,
 
   ),
 
+
+  # bitshift left/right
   opcode(
 
     shl        => q[dst = dst shl src;],
+    dst        => 'r',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -658,14 +669,32 @@ $ROM_Table=[
   opcode(
 
     shr        => q[dst = dst shr src;],
+    dst        => 'r',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
 
   ),
 
-  opcode(bsf => q[dst = bsf src;]),
-  opcode(bsr => q[dst = bsr src;]),
+
+  # biscan <3
+  opcode(
+
+    bsf => q[dst = bsf src;],
+
+    dst => 'r',
+    src => 'r',
+
+  ),
+
+  opcode(
+
+    bsr => q[dst = bsr src;],
+
+    dst => 'r',
+    src => 'r',
+
+  ),
 
 
   # bit rotate right
@@ -685,6 +714,8 @@ $ROM_Table=[
       dst   = (dst shr src)  or  out;
 
     ],
+
+    dst        => 'r',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -708,6 +739,8 @@ $ROM_Table=[
 
     ],
 
+    dst        => 'r',
+
     fix_immsrc => 1,
     fix_regsrc => 3,
 
@@ -717,14 +750,39 @@ $ROM_Table=[
 # math
 
   opcode(add  => q[dst = dst+src;]),
-
   opcode(sub  => q[dst = dst-src;]),
-  opcode(mul  => q[dst = dst*src;]),
-  opcode(div  => q[dst = dst/src;]),
+
+  opcode(
+
+    mul  => q[dst = dst*src;],
+
+    dst  => 'r',
+    src  => 'r',
+
+  ),
+
+  # the mnemonic for 'division' should be 'avoid'
+  # but that may confuse some people ;>
+  opcode(
+
+    div  => q[dst = dst/src;],
+
+    dst  => 'r',
+    src  => 'r',
+
+  ),
 
   opcode(inc => q[dst = dst+1;],argcnt => 1),
   opcode(dec => q[dst = dst-1;],argcnt => 1),
-  opcode(neg => q[dst = -dst;] ,argcnt => 1),
+
+  opcode(
+
+    neg    => q[dst = -dst;],
+
+    argcnt => 1,
+    dst    => 'r',
+
+  ),
 
 
   # waltzaround for integer overflow

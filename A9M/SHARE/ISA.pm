@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # ---   *   ---   *   ---
-# A9M IS:SHARE
+# A9M ISA:SHARE
 # General instruction set data
 #
 # LIBRE SOFTWARE
@@ -13,7 +13,7 @@
 # ---   *   ---   *   ---
 # deps
 
-package A9M::SHARE::is;
+package A9M::SHARE::ISA;
 
   use v5.36.0;
   use strict;
@@ -53,7 +53,7 @@ package A9M::SHARE::is;
 # ROM
 
   Readonly our $INS_DEF_SZ    => 'word';
-  Readonly our $OPCODE_ROM_SZ => 'brad';
+  Readonly our $OPCODE_ROM_SZ => 'dword';
 
 
   # fmat for opcode data
@@ -98,8 +98,11 @@ package A9M::SHARE::is;
   # fmat for binary section
   # of resulting ROM
   our $OPCODE_TAB=Arstd::Struc->new(
-    opcode => [$OPCODE_ROM   => 'wide'],
-    idx    => ['plcstr,wide' => '^opcode'],
+
+    opcode   => [$OPCODE_ROM   => 'word'],
+
+    mnemonic => ['plcstr'      => 'byte'],
+    idx      => ['plcstr,word' => '^opcode'],
 
   );
 
