@@ -79,10 +79,6 @@ sub proc($self) {
 
   } @ar;
 
-  $branch->prich();
-
-  exit;
-
 };
 
 # ---   *   ---   *   ---

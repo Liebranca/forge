@@ -25,6 +25,9 @@ package A9M::SHARE::ISA;
   use lib $ENV{ARPATH}.'/lib/sys/';
 
   use Style;
+  use Type;
+
+  use Arstd::Bytes;
   use Arstd::Struc;
 
 # ---   *   ---   *   ---
@@ -34,6 +37,10 @@ package A9M::SHARE::ISA;
   our @EXPORT=qw(
 
     $INS_DEF_SZ
+    $INS_DEF_SZ_BITS
+
+    $PTR_DEF_SZ
+    $PTR_DEF_SZ_BITS
 
     $OPCODE_ROM
     $OPCODE_MFLAG
@@ -46,14 +53,24 @@ package A9M::SHARE::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # ROM
 
   Readonly our $INS_DEF_SZ    => 'word';
+  Readonly our $PTR_DEF_SZ    => 'short';
   Readonly our $OPCODE_ROM_SZ => 'dword';
+
+
+  # default sizes as bitfield
+  Readonly our $INS_DEF_SZ_BITS =>
+    bitsize(sizeof($INS_DEF_SZ))-1;
+
+  Readonly our $PTR_DEF_SZ_BITS =>
+    bitsize(sizeof($PTR_DEF_SZ))-1;
+
 
 
   # fmat for opcode data

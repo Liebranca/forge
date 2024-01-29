@@ -677,7 +677,7 @@ $ROM_Table=[
   ),
 
 
-  # biscan <3
+  # bitscan <3
   opcode(
 
     bsf => q[dst = bsf src;],

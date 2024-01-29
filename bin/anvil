@@ -31,6 +31,7 @@ package anvil;
 
   use anvil::l0;
   use anvil::l1;
+  use anvil::l2;
 
 # ---   *   ---   *   ---
 # info
@@ -89,7 +90,7 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-cpy ar,word long [br+$10];
+cpy ar,qword thin [br+$10];
 
 ]);
 
