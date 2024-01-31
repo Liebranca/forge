@@ -136,12 +136,34 @@ package A9M;
 
     },
 
+
+    # directive interpreter state
+    cmdflag => {
+      public=>0,
+
+    },
+
+    # "public" (iface) symbols get added to this list
+    public=>[],
+
   },'A9M';
 
 
   # ^set filepaths
   $A9M->{fpath}->{isa}=
     "$A9M->{path}->{rom}/ISA";
+
+# ---   *   ---   *   ---
+# resets the directive interpreter
+
+sub reset_ipret($self) {
+
+  $self->{cmdflag}={
+    public=>0,
+
+  };
+
+};
 
 # ---   *   ---   *   ---
 # give error at lineno
@@ -362,6 +384,58 @@ sub load_ISA() {
     return 0;
 
   };
+
+};
+
+# ---   *   ---   *   ---
+# directive: segment decl
+
+sub cmd_seg($self,$branch) {
+
+  # get specs from previous iterations
+  my $public=$self->{cmdflag}->{public};
+
+  # get first operand
+  my $lv    = $branch->{leaves};
+  my $ahead = $lv->[0]->{leaves}->[0];
+  my $name  = $ahead->{value};
+
+  # ^clear tag
+  $name=~ s[$anvil::l2::ARG_SYM][];
+
+  # ^set as current segment
+  # then write to segment table
+  $self->{curseg}=$name;
+  $self->{segbase}->{$name}=$self->{'$'};
+
+
+  return undef;
+
+};
+
+# ---   *   ---   *   ---
+# directive specifier: make public
+
+sub cmd_public($self,$branch) {
+
+  # get first operand
+  my $lv    = $branch->{leaves};
+  my $ahead = $lv->[0]->{leaves}->[0];
+
+  # ^make first operand the next directive
+  # then pop it from the sub-branch
+  $branch->{value}=$ahead->{value};
+  $ahead->discard();
+
+  # ^convert from name to command
+  $branch->{value}=~ s[\*imm][\*cmd];
+
+  # ^setting this flag is the real point
+  # of having the directive ;>
+  $self->{cmdflag}->{public}=1;
+
+
+  return $branch;
 
 };
 

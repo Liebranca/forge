@@ -100,8 +100,10 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-xor ar,ar;
-cpy ar,qword thin [$2];
+public seg base;
+
+  xor ar,ar;
+  cpy ar,qword thin [base:$2];
 
 ]);
 

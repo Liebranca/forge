@@ -57,6 +57,7 @@ package anvil::l2;
     qr{[_A-Za-z][_A-Za-z0-9]*};
 
   Readonly our $INS_RE   => qr{^\[\*ins\]\s};
+  Readonly our $CMD_RE   => qr{^\[\*cmd\]\s};
 
   Readonly our $ARG_REG  => qr{^\[\*reg\]\s};
   Readonly our $ARG_EZY  => qr{^\[\*ezy\]\s};
@@ -69,7 +70,7 @@ package anvil::l2;
 
   Readonly our $SYM_LEFT => qr{($SYM_NAME\:\:)+};
 
-  Readonly our $CMD_ADDR => qr{^\[\*cmd\]\saddr};
+  Readonly our $CMD_ADDR => qr{${CMD_RE}addr};
 
   Readonly our $SPLITD   => qr{^B\d+$};
 
@@ -117,15 +118,54 @@ sub proc($self) {
 
   my $branch=$self->{l2}->{leaves}->[-1];
 
-  # get operand types and sizes
+  # make sub-branches from commas
   split_by_operand($branch);
 
-  map {
-    cat_symbols($ARG);
-    get_operand_type($ARG);
+  # get operand types and sizes
+  reproc_branch:
 
-  } @{$branch->{leaves}};
+    map {
+      cat_symbols($ARG);
+      get_operand_type($ARG);
 
+    } @{$branch->{leaves}};
+
+
+  # step into interpreter if top-level
+  # node is labeled "command"
+  #
+  # this means: do not encode, just execute
+  # some directive and evaluate it's result...
+  #
+  # IF the directive returns a new node,
+  # evaluate *that* as the next instruction or
+  # directive!
+  #
+  # this keeps repeating until we get an
+  # instruction to encode, or a directive that
+  # returns undef ;>
+
+  if($branch->{value}=~ $CMD_RE) {
+
+    # clear the [*cmd] tag
+    my $name =  $branch->{value};
+       $name =~ s[$CMD_RE][];
+
+    # ^get subroutine from cmd!
+    $name   = "cmd_$name";
+    $branch = $A9M->$name($branch);
+
+
+    # need for repeat?
+    goto reproc_branch if $branch;
+
+    # ^else terminate ipret and keep parsing
+    $A9M->reset_ipret();
+    return;
+
+  };
+
+  # ^else process instruction!
   my $opsize=check_operand_sizes($branch);
 
 
@@ -191,7 +231,7 @@ sub proc($self) {
   # dbout, nevermind this
   say sprintf "%016X",$opcode;
   say '',($cnt+$idex_bs) . "-bit opcode";
-  say $bytesize . " bytes";
+  say $bytesize . " bytes","\n";
 
 
   # cat opcode to out and advance ptr
@@ -275,13 +315,22 @@ sub split_by_operand($branch) {
 sub cat_symbols($branch) {
 
   my @series=(
+
+    # sym::
     [$IMM_SYM,$OP_COLON,$OP_COLON],
-    [$SYM_LEFT,$IMM_SYM,$OP_COLON],
+
+    # sym:: sub
+    [$SYM_LEFT,$IMM_SYM],
+
+    # sym::sub ::ssub
     [$SYM_LEFT,$OP_COLON,$OP_COLON,$IMM_SYM],
+
+    # sym:
+    [$IMM_SYM,$OP_COLON],
 
   );
 
-  my @pending=@{$branch->{leaves}};
+  my @pending=($branch);
 
   while(@pending) {
 
@@ -300,7 +349,7 @@ sub cat_symbols($branch) {
       $sym |= 1;
 
 
-      # got sym::
+      # sym::
       if($idex == 0) {
 
         my @lv=@{$nd->{leaves}}[0..2];
@@ -314,7 +363,7 @@ sub cat_symbols($branch) {
 
         goto repeat;
 
-      # ^got sym:: sub
+      # sym:: sub
       } elsif($idex == 1) {
 
         my @lv=@{$nd->{leaves}}[0..2];
@@ -327,8 +376,8 @@ sub cat_symbols($branch) {
 
         goto repeat;
 
-      # ^got sym::sub ::ssub
-      } else {
+      # sym::sub ::ssub
+      } elsif($idex == 2) {
 
         my @lv=@{$nd->{leaves}}[0..3];
 
@@ -341,6 +390,11 @@ sub cat_symbols($branch) {
 
 
         goto repeat;
+
+      # sym:
+      } elsif($idex == 3) {
+        $nd->{leaves}->[0]->{value}=~
+          s[$ARG_IMM][];
 
       };
 
