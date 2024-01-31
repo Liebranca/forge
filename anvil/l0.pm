@@ -178,6 +178,13 @@ sub delim_end($self) {
 
 sub blank($self) {
 
+  # tick line counter
+  if($self->{l0} eq "\n") {
+    $A9M->{parse}->{line}++;
+
+  };
+
+
   # terminate *token* if first blank
   if(! ($self->{status} & $SF->{blank})) {
     commit($self);

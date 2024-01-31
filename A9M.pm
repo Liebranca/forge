@@ -43,7 +43,7 @@ package A9M;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -100,9 +100,18 @@ package A9M;
 
     # stores current procedure metadata
     proc => {
-      segcnt=>1,
+      segcnt => 1,
 
     },
+
+    # output buffer, holding binary data
+    out => $NULLSTR,
+
+    # ^absolute pointer to current byte
+    '$' => 0x00000000,
+
+    # name of current segment
+    curseg => undef,
 
     # stores base addr of segments
     #
@@ -118,12 +127,49 @@ package A9M;
     # within a specific proc
     segref => {},
 
+
+    # parser metadata, mostly used for debug
+    parse => {
+
+      fname => $NULLSTR,
+      line  => 0,
+
+    },
+
   },'A9M';
 
 
   # ^set filepaths
   $A9M->{fpath}->{isa}=
     "$A9M->{path}->{rom}/ISA";
+
+# ---   *   ---   *   ---
+# give error at lineno
+
+sub parse_error($self,$me,$lvl=$AR_FATAL) {
+
+  my $pre='FATAL';
+
+  if($lvl eq $AR_WARNING) {
+    $pre='WARNING';
+
+  } elsif($lvl eq $AR_ERROR) {
+    $pre='ERROR';
+
+  };
+
+
+  say
+
+    "$pre: $me "
+  . "at $self->{parse}->{fname} "
+  . "line $self->{parse}->{line}"
+
+  ;
+
+  exit -1 if $lvl eq $AR_FATAL;
+
+};
 
 # ---   *   ---   *   ---
 # adds symbol reference to
@@ -138,6 +184,21 @@ sub symref($self,$name) {
   };
 
   return $self->{segref}->{$name};
+
+};
+
+# ---   *   ---   *   ---
+# get current position,
+# relative to current segment
+
+sub relpos($self) {
+
+  my $base=($self->{curseg})
+    ? $self->{segbase}->{$self->{curseg}}
+    : 0x00000000
+    ;
+
+  return $self->{'$'} - $base;
 
 };
 

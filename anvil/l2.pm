@@ -31,6 +31,7 @@ package anvil::l2;
   use Arstd::Bytes;
   use Arstd::Bitformat;
   use Arstd::String;
+  use Arstd::Int;
 
   use lib $ENV{ARPATH}.'/forge/';
 
@@ -40,7 +41,7 @@ package anvil::l2;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -48,6 +49,7 @@ package anvil::l2;
 
   Readonly our $OP_COMMA => qr{^\[\*op\]\s,};
   Readonly our $OP_PLUS  => qr{^\[\*op\]\s\+};
+  Readonly our $OP_MINUS => qr{^\[\*op\]\s\-};
   Readonly our $OP_COLON => qr{^\[\*op\]\s\:};
   Readonly our $OP_ASTER => qr{^\[\*op\]\s\*};
 
@@ -78,8 +80,8 @@ package anvil::l2;
 
   );
 
-  # format for segment relative ptrs
-  our $PTR_SEG=Arstd::Bitformat->new(
+  # format for position relative ptrs
+  our $PTR_POS=Arstd::Bitformat->new(
     seg   => 4,
     imm   => 16,
 
@@ -181,13 +183,24 @@ sub proc($self) {
   } @{$branch->{leaves}};
 
 
-  # ^join operands with opcode
-  say sprintf "%016X",
-    $idex | ($args << $idex_bs);
+  # get opcode and total bytesize
+  my $opcode   = $idex | ($args << $idex_bs);
+  my $bytesize = int_urdiv($cnt+$idex_bs,8);
 
+
+  # dbout, nevermind this
+  say sprintf "%016X",$opcode;
   say '',($cnt+$idex_bs) . "-bit opcode";
+  say $bytesize . " bytes";
 
-  exit;
+
+  # cat opcode to out and advance ptr
+  my $fmat=join ',',array_typeof($bytesize);
+
+  my ($ct,@len)=bpack($fmat,$opcode);
+
+  $A9M->{out} .= join $NULLSTR,@$ct;
+  $A9M->{'$'} += $bytesize;
 
 };
 
@@ -374,7 +387,7 @@ sub check_operand_sizes($branch) {
   my @lv   = @{$branch->{leaves}};
 
   # any sizes passed?
-  my $ezy  = $INS_DEF_SZ;
+  my $ezy  = sizeof($INS_DEF_SZ);
   my @have = grep {
     $ARG->{ezy} ne 'def'
 
@@ -387,7 +400,7 @@ sub check_operand_sizes($branch) {
     $ezy = $have[0]->{ezy};
 
     # ^die if they don't
-    croak "Operand sizes don't match"
+    $A9M->parse_error("operand sizes don't match")
     if @have > grep {$ARG->{ezy} eq $ezy} @have;
 
   };
@@ -606,18 +619,19 @@ sub pack_operand($e) {
   #   a scale (to be used as a left-bitshift!);
   #   stack is used as base addr if seg == 0
   #
-  # * [seg:imm] is position or segment relative,
-  #   we encode a segment idex plus an immediate,
-  #   that can be either an offset into a segment
-  #   (seg != 0), or the computed distance between
-  #   the current position and the absolute
-  #   address provided (seg == 0)
+  # * [seg:imm] is position relative, we encode a
+  #   segment idex plus an immediate, that can be
+  #   either an offset into a segment (seg != 0),
+  #   or the computed distance between the current
+  #   position and the absolute address provided
+  #   (seg == 0)
 
   } else {
 
     my $branch = $e->{value};
     my @data   = ();
 
+    # short-form segment relative
     if(@data=memarg_short($branch)) {
 
       $value=$PTR_SHORT->bor(
@@ -629,6 +643,7 @@ sub pack_operand($e) {
 
       $size=$PTR_SHORT->{bitsize};
 
+    # long-form segment relative
     } elsif(@data=memarg_long($branch)) {
 
       $value=$PTR_LONG->bor(
@@ -645,10 +660,24 @@ sub pack_operand($e) {
 
       $size=$PTR_LONG->{bitsize};
 
-    } else {
+    # stack relative
+    } elsif(@data=memarg_stack($branch)) {
+      $value = $PTR_STACK->bor(imm=>$data[0]);
+      $size  = $PTR_STACK->{bitsize};
 
-      $branch->prich();
-      exit;
+    # position relative
+    } elsif(@data=memarg_pos($branch)) {
+
+      $value=$PTR_POS->bor(
+        seg=>$data[0],
+        imm=>$data[1],
+
+      );
+
+      $size=$PTR_POS->{bitsize};
+
+    } else {
+      $A9M->parse_error('unencodable address');
 
     };
 
@@ -920,12 +949,124 @@ sub memarg_long($branch) {
     $scale = sstoi($scale);
 
 
-    $rX    = (++$rX) & 0xF if $rX_mod;
-    $rY    = (++$rY) & 0xF if $rY_mod;
+    $rX=(++$rX) & $PTR_LONG->{mask}->{rX}
+    if $rX_mod;
+
+    $rY=(++$rY) & $PTR_LONG->{mask}->{rY}
+    if $rY_mod;
+
 
     return ($sym,$rX,$rY,$imm,$scale);
 
   };
+
+  return ();
+
+};
+
+# ---   *   ---   *   ---
+# detect [sb-imm] form for
+# memory operand
+
+sub memarg_stack($branch) {
+
+  my @seq=(
+
+    qr{${ARG_REG}11},
+
+    $OP_MINUS,
+    $ARG_IMM,
+
+  );
+
+  if($branch->match_sequence(@seq)) {
+
+    my $value =  $branch->{leaves}->[2]->{value};
+       $value =~ s[$ARG_IMM][];
+
+    return (sstoi($value));
+
+  };
+
+
+  return ();
+
+};
+
+# ---   *   ---   *   ---
+# detect [sym:imm] form for
+# memory operand
+
+sub memarg_pos($branch) {
+
+  my @series=(
+
+    # imm
+    [$ARG_IMM],
+
+    # sym:imm
+    [@$SYM_COLON,$ARG_IMM],
+
+  );
+
+  # ^add segment-relative variation!
+  @series=(@series,map {
+    [@$SYM_COLON,@$ARG]
+
+  } @series);
+
+
+  # ^match any pattern sequence?
+  if(-1 < (my $idex=
+    $branch->match_series(@series))
+
+  ) {
+
+
+    # catch false positive ;>
+    if(@{$branch->{leaves}}
+    >  @{$series[$idex]}
+
+    ) {return ()};
+
+
+    my $sym=0x00;
+    my $imm=0x00;
+
+
+    # imm
+    if($idex==0) {
+      $imm=$branch->{leaves}->[0]->{value};
+
+    # sym:imm
+    } else {
+      $sym=$branch->{leaves}->[0]->{value};
+      $imm=$branch->{leaves}->[2]->{value};
+
+    };
+
+
+    $imm =~ s[$ARG_IMM][];
+    $sym =~ s[$ARG_SYM][];
+
+    $sym = $A9M->symref($sym) if $sym;
+    $imm = sstoi($imm);
+
+
+    # get distance
+    if(! $sym) {
+
+      my $pos=$A9M->relpos();
+
+      $imm  = ($pos-$imm);
+      $imm &= $PTR_POS->{mask}->{imm};
+
+    };
+
+    return ($sym,$imm);
+
+  };
+
 
   return ();
 

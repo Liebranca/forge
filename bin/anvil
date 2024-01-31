@@ -34,6 +34,7 @@ package anvil;
   use anvil::l0;
   use anvil::l1;
   use anvil::l2;
+  use Arstd::xd;
 
 # ---   *   ---   *   ---
 # info
@@ -74,15 +75,22 @@ sub new($class,%O) {
 
 sub read($self,$src) {
 
-  my $codestr = (is_filepath($src))
-    ? orc($src)
-    : $src
-    ;
+  my $codestr=$NULLSTR;
+
+  if(is_filepath($src)) {
+    $A9M->{parse}->{fname}="'$src'";
+    $codestr=orc($src);
+
+  } else {
+    $A9M->{parse}->{fname}='($codestr)';
+    $codestr=$src;
+
+  };
 
 
   anvil::l0::read($self,$codestr);
 
-  $self->{l2}->prich();
+  xd($A9M->{out});
 
 };
 
@@ -92,7 +100,8 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-cpy ar,qword thin [br+cr+$10];
+xor ar,ar;
+cpy ar,qword thin [$2];
 
 ]);
 
