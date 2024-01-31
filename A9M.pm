@@ -97,6 +97,27 @@ package A9M;
     isa   => undef,
     log   => undef,
 
+
+    # stores current procedure metadata
+    proc => {
+      segcnt=>1,
+
+    },
+
+    # stores base addr of segments
+    #
+    # we take references to this whenever
+    # working with symbols so that they don't
+    # have to be defined right away ;>
+    segbase => {},
+
+    # ^stores the references themselves
+    #
+    # done to keep track of undefined symbols
+    # and assign an idex to each required symbol
+    # within a specific proc
+    segref => {},
+
   },'A9M';
 
 
@@ -104,6 +125,21 @@ package A9M;
   $A9M->{fpath}->{isa}=
     "$A9M->{path}->{rom}/ISA";
 
+# ---   *   ---   *   ---
+# adds symbol reference to
+# current proc
+
+sub symref($self,$name) {
+
+  if(! exists $self->{segref}->{$name}) {
+    $self->{segref}->{$name}=
+      $self->{proc}->{segcnt}++;
+
+  };
+
+  return $self->{segref}->{$name};
+
+};
 
 # ---   *   ---   *   ---
 # regex wraps: got register?

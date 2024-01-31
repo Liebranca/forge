@@ -325,6 +325,14 @@ sub build_ROM($class) {
   $idex=0;
 
 
+  # get bitsize of opcodes
+  my $opbits  = bitsize($Opcode_ROM-1);
+  my $opmask  = (1 << $opbits)-1;
+
+  my $exebits = bitsize($Opcode_EXE-1);
+  my $exemask = (1 << $exebits)-1;
+
+
   # the actual flags?
   # out them to a separate file!
   #
@@ -342,6 +350,12 @@ sub build_ROM($class) {
 
     $OPCODE_TAB,
 
+    id_mask  => [$opmask],
+    idx_mask => [$exemask],
+
+    id_bits  => [$opbits],
+    idx_bits => [$exebits],
+
     opcode   => [map {$ARG->{ROM}} @values],
 
     mnemonic => $Mnemonic,
@@ -358,29 +372,20 @@ sub build_ROM($class) {
   );
 
 
-  # get bitsize of opcodes
-  my $opbits  = bitsize($Opcode_ROM-1);
-  my $opmask  = (1 << $opbits)-1;
-
-  my $exebits = bitsize($Opcode_EXE-1);
-  my $exemask = (1 << $exebits)-1;
-
-
   # ^write constants
   $ROM->lines(
 
 
     "define A9M.INS_DEF_SZ $INS_DEF_SZ;"
 
-  . "A9M.OPCODE.MEMDST    = 001b;"
-  . "A9M.OPCODE.MEMSRC    = 010b;"
-  . "A9M.OPCODE.IMMSRC    = 100b;"
+  . "A9M.OPCODE.MEMDST    = $ARGFLAG_MEMDST;"
+  . "A9M.OPCODE.MEMSRC    = $ARGFLAG_MEMSRC;"
+  . "A9M.OPCODE.IMMSRC    = $ARGFLAG_IMMSRC;"
 
-  . "A9M.OPCODE.MFLAG_BS  = 2;"
-  . "A9M.OPCODE.MFLAG_BM  = 3;"
+  . "A9M.OPCODE.MFLAG_BS  = $OPCODE_MFLAG_BS;"
+  . "A9M.OPCODE.MFLAG_BM  = $OPCODE_MFLAG_BM;"
 
-  . "A9M.OPCODE.MEM_BS_BASE = "
-  . $MEMARG_REL->{pos}->{'$:top;>'} . ';'
+  . "A9M.OPCODE.MEM_BS_BASE = $OPCODE_MEM_BS_BASE;"
 
 
   . f1::bits::as_const(

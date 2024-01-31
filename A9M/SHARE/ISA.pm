@@ -46,6 +46,16 @@ package A9M::SHARE::ISA;
     $OPCODE_MFLAG
     $MEMARG_REL
 
+    $OPCODE_MFLAG_BS
+    $OPCODE_MFLAG_BM
+
+    $ARGFLAG
+    $ARGFLAG_MEMDST
+    $ARGFLAG_MEMSRC
+    $ARGFLAG_IMMSRC
+
+    $OPCODE_MEM_BS_BASE
+
     $OPCODE_TAB
 
   );
@@ -91,11 +101,31 @@ package A9M::SHARE::ISA;
 
   );
 
+  # fmat for argument types
+  our $ARGFLAG=Arstd::Bitformat->new(
+    memdst => 1,
+    memsrc => 1,
+    immsrc => 1,
+
+  );
+
+  our $ARGFLAG_MEMDST=0b001;
+  our $ARGFLAG_MEMSRC=0b010;
+  our $ARGFLAG_IMMSRC=0b100;
+
 
   # fmat for memargs flag
   our $OPCODE_MFLAG=Arstd::Bitformat->new(
     rel => 1,
     seg => 1,
+
+  );
+
+  our $OPCODE_MFLAG_BS=
+    $OPCODE_MFLAG->{pos}->{'$:top;>'};
+
+  our $OPCODE_MFLAG_BM=bitmask(
+    $OPCODE_MFLAG_BS
 
   );
 
@@ -111,14 +141,23 @@ package A9M::SHARE::ISA;
 
   );
 
+  our $OPCODE_MEM_BS_BASE=
+    $MEMARG_REL->{pos}->{'$:top;>'};
+
 
   # fmat for binary section
   # of resulting ROM
   our $OPCODE_TAB=Arstd::Struc->new(
 
+    id_mask  => ['word'],
+    idx_mask => ['word'],
+
+    id_bits  => ['byte'],
+    idx_bits => ['byte'],
+
     opcode   => [$OPCODE_ROM   => 'word'],
 
-    mnemonic => ['plcstr'      => 'byte'],
+    mnemonic => ['plcstr'      => 'word'],
     idx      => ['plcstr,word' => '^opcode'],
 
   );

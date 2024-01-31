@@ -29,6 +29,8 @@ package anvil;
 
   use lib $ENV{ARPATH}.'/forge/';
 
+  use A9M;
+
   use anvil::l0;
   use anvil::l1;
   use anvil::l2;
@@ -90,7 +92,7 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-cpy ar,qword thin [br+$10];
+cpy ar,qword thin [br+cr+$10];
 
 ]);
 

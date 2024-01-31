@@ -20,7 +20,7 @@
 ; ---   *   ---   *   ---
 ; load tables
 
-  include   '%ARPATH%/forge/A9M/ROM/isbasic.pinc'
+  include   '%ARPATH%/forge/A9M/ROM/ISA.pinc'
 
 ; ---   *   ---   *   ---
 ; GBL
