@@ -48,7 +48,7 @@ package A9M::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.9;#b
+  our $VERSION = v0.00.9;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -147,21 +147,18 @@ sub build_EXE_decoder($class) {
 
     local idex;
 
-    idex      = src and OPCODE_ID_MASK;
-    src       = src shr OPCODE_ID_BITS;
+    idex = src and OPCODE_ID_MASK;
+    src  = src shr OPCODE_ID_BITS;
 
 
     local flags;
     load  flags dword from A9M.OPCODE:idex shl 2;
-
-    local fix_immsrc;
 
   ] . f1::bits::csume(
 
     $OPCODE_ROM,'flags',qw(
 
       load_src load_dst overwrite
-      fix_immsrc
 
       argcnt argflag
       opsize
@@ -175,13 +172,17 @@ sub build_EXE_decoder($class) {
     opsize_bm = opsize_bm
     or (sizebm.qword * (opsize_bs shr 6));
 
-    if fix_immsrc > 0;
-      immbs = (1 shl (fix_immsrc-1)) shl 3;
-      immbm = (1 shl immbs)-1;
+
+    local immflag;
+    immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS
+
+    if immflag = A9M.OPCODE.SRC_IMM8;
+      immbs = sizebs.byte;
+      immbm = sizebm.byte;
 
     else;
-      immbs = opsize_bs;
-      immbm = opsize_bm;
+      immbs = sizebs.word;
+      immbm = sizebm.word;
 
     end if;
 
@@ -378,29 +379,9 @@ sub build_ROM($class) {
 
     "define A9M.INS_DEF_SZ $INS_DEF_SZ;"
 
-  . "A9M.OPCODE.MEMDST    = $ARGFLAG_MEMDST;"
-  . "A9M.OPCODE.MEMSRC    = $ARGFLAG_MEMSRC;"
-  . "A9M.OPCODE.IMMSRC    = $ARGFLAG_IMMSRC;"
 
-  . "A9M.OPCODE.MFLAG_BS  = $OPCODE_MFLAG_BS;"
-  . "A9M.OPCODE.MFLAG_BM  = $OPCODE_MFLAG_BM;"
-
-  . "A9M.OPCODE.MEM_BS_BASE = $OPCODE_MEM_BS_BASE;"
-
-
-  . f1::bits::as_const(
-      $MEMARG_REL,'bipret.memarg.rel',
-      qw(rX rY off scale),
-
-  ) . f1::bits::as_const(
-      $OPCODE_MFLAG,'A9M.OPCODE.MFLAG',
-      qw(rel seg)
-
-  ) . f1::bits::as_flag(
-      $OPCODE_MFLAG,'A9M.OPCODE.MFLAG',
-      qw(rel seg)
-
-  ) . (sprintf
+  # masks for the opcodes themselves
+  . (sprintf
 
       "OPCODE_ID_MASK  = \$%04X;"
     . "OPCODE_ID_BITS  = \$%04X;"
@@ -411,9 +392,38 @@ sub build_ROM($class) {
       $opmask,$opbits,
       $exemask,$exebits
 
-    ),
+    )
+
+
+  # bit patterns for argument types
+  . (join ';',map {
+
+      my $sufix=uc $ARG;
+
+      "A9M.OPCODE.ARGFLAG_$sufix = "
+    . "$ARGFLAG->{$ARG}"
+
+
+    } qw(
+
+      reg
+
+      memstk memshort memlong mempos
+      imm8   imm16
+
+    )) . ';'
+
+
+  # ^bitsize/mask of the type field itself
+  . "A9M.OPCODE.ARGFLAG_FBS = "
+  . "$ARGFLAG->{size}->{dst};"
+
+  . "A9M.OPCODE.ARGFLAG_FBM = "
+  . "$ARGFLAG->{mask}->{dst};"
+
 
   );
+
 
   # ^write the nshared table bits
   $ROM->lines($data);
@@ -504,18 +514,14 @@ sub opcode($name,$ct,%O) {
 
 
   # get possible operand sizes
-  state $sizetab={
-    'byte'  => 0,
-    'word'  => 1,
-    'dword' => 2,
-    'qword' => 3,
-
-  };
-
   my @size=(! $O{nosize})
     ? qw(byte word dword qword)
     : $INS_DEF_SZ
     ;
+
+  @size=(@{$O{fix_size}})
+  if defined $O{fix_size};
+
 
   # get possible operand combinations
   my @combo=();
@@ -526,7 +532,7 @@ sub opcode($name,$ct,%O) {
     @combo=grep {length $ARG} map {
 
       my $dst   = substr $ARG,0,1;
-      my $src   = substr $ARG,1,1;
+      my $src   = substr $ARG,2,1;
 
       my $allow =
          (0 <= index $O{dst},$dst)
@@ -535,7 +541,7 @@ sub opcode($name,$ct,%O) {
 
       $ARG if $allow;
 
-    } 'rr','rm','ri','mr','mi';
+    } 'r_r','r_m','r_i','m_r','m_i';
 
 
   # ^single operand, so no combo ;>
@@ -545,28 +551,96 @@ sub opcode($name,$ct,%O) {
   };
 
 
+  # ^generate further variations
+  my $round=0;
+  combo_vars:
+
+  @combo=map {
+
+    my $cpy  = $ARG;
+    my @list = ();
+
+
+    # have memory operand?
+    if($round == 0) {
+      @list=(qr{m},qw(mstk mshort mlong mpos));
+
+    } else {
+
+      my @ar=($O{fix_immsrc})
+        ? 'i'.int((1 << ($O{fix_immsrc}-1)) << 3)
+        : qw(i8 i16)
+        ;
+
+      @list=(qr{i},@ar);
+
+    };
+
+
+    # ^need to generate specs?
+    if(@list) {
+
+      # replace plain combo with
+      # specific variations!
+
+      my ($re,@repl)=@list;
+
+      map {
+
+        my $cpy2=$cpy;
+
+        $cpy2=~ s[$re][$ARG];
+        $cpy2;
+
+      } @repl;
+
+
+    # ^nope, use plain combo
+    } else {
+      $ARG;
+
+    };
+
+
+  } @combo;
+
+  goto combo_vars if $round++ < 1;
+  array_dupop(\@combo);
+
+
   # make descriptors
   my $argflag_tab={
 
-    $NULLSTR => 0b000,
-    's'      => 0b000,
+    $NULLSTR => 0b00000,
+    d        => 0b00000,
+    s        => 0b00000,
 
-    'dr'     => 0b000,
-    'dm'     => 0b001,
 
-    'sr'     => 0b000,
-    'sm'     => 0b010,
-    'si'     => 0b100,
+    dr       => $ARGFLAG->{reg},
+    dmstk    => $ARGFLAG->{memstk},
+    dmshort  => $ARGFLAG->{memshort},
+    dmlong   => $ARGFLAG->{memlong},
+    dmpos    => $ARGFLAG->{mempos},
+
+
+    sr       => $ARGFLAG->{src_reg},
+    smstk    => $ARGFLAG->{src_memstk},
+    smshort  => $ARGFLAG->{src_memshort},
+    smlong   => $ARGFLAG->{src_memlong},
+    smpos    => $ARGFLAG->{src_mempos},
+
+    si8      => $ARGFLAG->{src_imm8},
+    si16     => $ARGFLAG->{src_imm16},
 
   };
 
 
   return map {
 
-    my $dst   = substr $ARG,0,1;
+    my ($dst,$src)=split '_',$ARG;
 
-    my $src   = substr $ARG,1,1;
-       $src //= $NULLSTR;
+    $src //= $NULLSTR;
+
 
     my $argflag =
       ($argflag_tab->{"d$dst"})
@@ -574,7 +648,14 @@ sub opcode($name,$ct,%O) {
 
     ;
 
-    my $ins  = "${name}_$ARG";
+    my $ins   = "${name}_$ARG";
+    my @sizeb = @size;
+
+
+    if($src eq 'i16') {
+      @sizeb=grep {$ARG ne 'byte'} @sizeb;
+
+    };
 
 
     map {
@@ -584,7 +665,7 @@ sub opcode($name,$ct,%O) {
         %$ROM,
 
         argflag => $argflag,
-        opsize  => $sizetab->{$ARG},
+        opsize  => sizeof($ARG),
         idx     => $idx,
 
       };
@@ -596,7 +677,7 @@ sub opcode($name,$ct,%O) {
 
       };
 
-    } @size;
+    } @sizeb;
 
   } @combo;
 
@@ -607,13 +688,27 @@ sub opcode($name,$ct,%O) {
 
 $ROM_Table=[
 
-# ---   *   ---   *   ---
-# most used ones
 
-  # imm/mem/reg to reg
+
+  # imm/mem to reg
   opcode(
-    cpy      => q[dst = src;],
+
+    load     => q[dst = src;],
     load_dst => 0,
+
+    dst      => 'r',
+    src      => 'mi',
+
+  ),
+
+  # reg to mem
+  opcode(
+
+    store    => q[dst = src;],
+    load_dst => 0,
+
+    dst      => 'm',
+    src      => 'r',
 
   ),
 
@@ -622,6 +717,7 @@ $ROM_Table=[
   opcode(
 
     lea      => q[dst = src;],
+
     load_dst => 0,
     load_src => 0,
 
@@ -631,18 +727,43 @@ $ROM_Table=[
   ),
 
 
-# ---   *   ---   *   ---
-# bitops
+  # bitops
+  opcode(
 
-  opcode(xor  => q[dst = dst xor src;]),
-  opcode(and  => q[dst = dst and src;]),
-  opcode(or   => q[dst = dst or src;]),
+    xor  => q[dst = dst xor src;],
 
-  opcode(not  => q[dst = not dst;],argcnt => 1),
+    dst  => 'r',
+    src  => 'ri',
 
-  opcode(xnor => q[dst = not (dst xor src);]),
-  opcode(nor  => q[dst = not (dst or src);]),
-  opcode(nand => q[dst = not (dst and src);]),
+  ),
+
+  opcode(
+
+    and  => q[dst = dst and src;],
+
+    dst  => 'r',
+    src  => 'ri',
+
+  ),
+
+  opcode(
+
+    or   => q[dst = dst or src;],
+
+    dst  => 'r',
+    src  => 'ri',
+
+  ),
+
+  opcode(
+
+    not    => q[dst = not dst;],
+    argcnt => 1,
+
+    dst    => 'r',
+    src    => 'ri',
+
+  ),
 
 
   # bitmask, all ones
@@ -655,7 +776,10 @@ $ROM_Table=[
     ],
 
     dst        => 'r',
+    src        => 'ri',
+
     fix_immsrc => 1,
+    fix_regsrc => 3,
 
   ),
 
@@ -664,7 +788,9 @@ $ROM_Table=[
   opcode(
 
     shl        => q[dst = dst shl src;],
+
     dst        => 'r',
+    src        => 'ri',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -674,7 +800,9 @@ $ROM_Table=[
   opcode(
 
     shr        => q[dst = dst shr src;],
+
     dst        => 'r',
+    src        => 'ri',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -721,6 +849,7 @@ $ROM_Table=[
     ],
 
     dst        => 'r',
+    src        => 'ri',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -745,6 +874,7 @@ $ROM_Table=[
     ],
 
     dst        => 'r',
+    src        => 'ri',
 
     fix_immsrc => 1,
     fix_regsrc => 3,
@@ -754,8 +884,24 @@ $ROM_Table=[
 # ---   *   ---   *   ---
 # math
 
-  opcode(add  => q[dst = dst+src;]),
-  opcode(sub  => q[dst = dst-src;]),
+  opcode(
+
+    add  => q[dst = dst+src;],
+
+    dst  => 'r',
+    src  => 'ri',
+
+  ),
+
+  opcode(
+
+    sub  => q[dst = dst-src;],
+
+    dst  => 'r',
+    src  => 'ri',
+
+  ),
+
 
   opcode(
 
@@ -777,39 +923,65 @@ $ROM_Table=[
 
   ),
 
-  opcode(inc => q[dst = dst+1;],argcnt => 1),
-  opcode(dec => q[dst = dst-1;],argcnt => 1),
+  opcode(
+
+    inc    => q[dst = dst+1;],
+    argcnt => 1,
+
+    dst    => 'r',
+
+  ),
+
+  opcode(
+
+    dec    => q[dst = dst-1;],
+    argcnt => 1,
+
+    dst    => 'r',
+
+  ),
 
   opcode(
 
     neg    => q[dst = -dst;],
 
     argcnt => 1,
+
     dst    => 'r',
+    src    => 'ri',
 
   ),
 
 
   # waltzaround for integer overflow
-  opcode(badd => q[
+  opcode(
 
-    local shift;
-    local carry;
-    local res;
+    badd => q[
 
-    carry = dst and src;
-    res   = dst xor src;
+      local shift;
+      local carry;
+      local res;
 
-    while ~(carry = 0);
-      shift = (carry and 0x7FFFFFFFFFFFFFFF) shl 1;
-      carry = res and shift;
-      res   = res xor shift;
+      carry = dst and src;
+      res   = dst xor src;
 
-    end while;
+      while ~(carry = 0);
+        shift = (carry and 0x7FFFFFFFFFFFFFFF) shl 1;
+        carry = res and shift;
+        res   = res xor shift;
 
-    dst = res;
+      end while;
 
-  ]),
+      dst = res;
+
+    ],
+
+    dst      => 'r',
+    src      => 'ri',
+
+    fix_size => ['qword'],
+
+  ),
 
 ];
 

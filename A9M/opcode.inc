@@ -14,7 +14,7 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.6b
+  VERSION   v0.00.7a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -72,19 +72,28 @@ macro $bipret X {
     local vY
     local pY
 
+    ; separate dst/src argflags
+    local dstflag
+    dstflag = argflag and A9M.OPCODE.ARGFLAG_FBM
 
-    ; reload offsets table for
-    ; memory operands
-    $bipret.memarg.reload
 
-
-    ; get destination: memory
-    if argflag and A9M.OPCODE.MEMDST
-      $bipret.memarg vX,opcode
-
-    ; ^register
-    else
+    ; destination is register
+    if dstflag = A9M.OPCODE.ARGFLAG_REG
       $bipret.regarg vX,opcode
+
+
+    ; destination is memory
+    else if dstflag = A9M.OPCODE.ARGFLAG_MEMSTK
+      $bipret.memarg_stk vX,opcode
+
+    else if dstflag = A9M.OPCODE.ARGFLAG_MEMSHORT
+      $bipret.memarg_short vX,opcode
+
+    else if dstflag = A9M.OPCODE.ARGFLAG_MEMLONG
+      $bipret.memarg_long vX,opcode
+
+    else if dstflag = A9M.OPCODE.ARGFLAG_MEMPOS
+      $bipret.memarg_pos vX,opcode
 
     end if
 
@@ -101,18 +110,38 @@ macro $bipret X {
     ; have source operand?
     if argcnt = 2
 
-      ; get source: memory
-      if argflag and A9M.OPCODE.MEMSRC
-        $bipret.memarg vY,opcode
+      local srcflag
+      local immflag
 
-      ; ^immediate
-      else if argflag and A9M.OPCODE.IMMSRC
-        $bipret.immarg vY,opcode,\
-          immbm,immbs
+      srcflag=argflag shr A9M.OPCODE.ARGFLAG_FBS
+      immflag= \
+        (srcflag and A9M.OPCODE.ARGFLAG_IMM8)  \
+      | (srcflag and A9M.OPCODE.ARGFLAG_IMM16) \
+      - srcflag
 
-      ; ^register
-      else
+
+      ; source is register
+      if srcflag = A9M.OPCODE.ARGFLAG_REG
         $bipret.regarg vY,opcode
+
+
+      ; source is immediate
+      else if immflag = 0
+        $bipret.immarg vY,opcode,immbm,immbs
+
+
+      ; source is memory
+      else if srcflag = A9M.OPCODE.ARGFLAG_MEMSTK
+        $bipret.memarg_stk vY,opcode
+
+      else if srcflag = A9M.OPCODE.ARGFLAG_MEMSHORT
+        $bipret.memarg_short vY,opcode
+
+      else if srcflag = A9M.OPCODE.ARGFLAG_MEMLONG
+        $bipret.memarg_long vY,opcode
+
+      else if srcflag = A9M.OPCODE.ARGFLAG_MEMPOS
+        $bipret.memarg_pos vY,opcode
 
       end if
 
@@ -121,8 +150,7 @@ macro $bipret X {
       pY=vY
 
 
-      if load_src \
-      &~ (argflag and A9M.OPCODE.IMMSRC)
+      if load_src &~ (immflag = 0)
         vmem.xldus vY,vmc.CAS,pY,bipret.opsize
 
       end if
@@ -148,6 +176,7 @@ macro $bipret X {
 
   ; no operands
   else
+    A9M.OPCODE.switch_args0 opid
 
   end if
 

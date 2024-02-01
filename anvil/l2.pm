@@ -41,7 +41,7 @@ package anvil::l2;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#b
+  our $VERSION = v0.00.3;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -73,42 +73,6 @@ package anvil::l2;
   Readonly our $CMD_ADDR => qr{${CMD_RE}addr};
 
   Readonly our $SPLITD   => qr{^B\d+$};
-
-
-  # format for stack relative ptrs
-  our $PTR_STACK=Arstd::Bitformat->new(
-    imm=>8,
-
-  );
-
-  # format for position relative ptrs
-  our $PTR_POS=Arstd::Bitformat->new(
-    seg   => 4,
-    imm   => 16,
-
-  );
-
-
-  # format for short-form relative ptrs
-  our $PTR_SHORT=Arstd::Bitformat->new(
-    seg=>4,
-    reg=>4,
-    imm=>8,
-
-  );
-
-  # format for long-form relative ptrs
-  our $PTR_LONG=Arstd::Bitformat->new(
-
-    seg   => 4,
-
-    rX    => 4,
-    rY    => 4,
-
-    imm   => 10,
-    scale => 2,
-
-  );
 
 
 # ---   *   ---   *   ---

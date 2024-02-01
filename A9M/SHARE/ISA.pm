@@ -43,18 +43,14 @@ package A9M::SHARE::ISA;
     $PTR_DEF_SZ_BITS
 
     $OPCODE_ROM
-    $OPCODE_MFLAG
-    $MEMARG_REL
-
-    $OPCODE_MFLAG_BS
-    $OPCODE_MFLAG_BM
 
     $ARGFLAG
-    $ARGFLAG_MEMDST
-    $ARGFLAG_MEMSRC
-    $ARGFLAG_IMMSRC
+    $ARGFLAG_FBS
 
-    $OPCODE_MEM_BS_BASE
+    $PTR_STACK
+    $PTR_SHORT
+    $PTR_LONG
+    $PTR_POS
 
     $OPCODE_TAB
 
@@ -63,7 +59,7 @@ package A9M::SHARE::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#b
+  our $VERSION = v0.00.3;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -82,6 +78,45 @@ package A9M::SHARE::ISA;
     bitsize(sizeof($PTR_DEF_SZ))-1;
 
 
+  # fmat for argument types
+  our $ARGFLAG_FBS = 3;
+  our $ARGFLAG     = Arstd::Bitformat->new(
+    dst => $ARGFLAG_FBS,
+    src => $ARGFLAG_FBS,
+
+  );
+
+
+  # ^possible values for dst/src
+  $ARGFLAG->{reg}      = 0b000;
+
+  $ARGFLAG->{memstk}   = 0b001;
+  $ARGFLAG->{memshort} = 0b010;
+  $ARGFLAG->{memlong}  = 0b011;
+  $ARGFLAG->{mempos}   = 0b100;
+
+  # ^additional values for src
+  $ARGFLAG->{imm8}     = 0b101;
+  $ARGFLAG->{imm16}    = 0b110;
+
+
+  # ^values shifted to src bit
+  map {
+
+    $ARGFLAG->{"src_$ARG"}=
+       $ARGFLAG->{$ARG}
+    << $ARGFLAG->{pos}->{src}
+    ;
+
+  } qw(
+
+    reg
+
+    memstk memshort memlong mempos
+    imm8   imm16
+
+  );
+
 
   # fmat for opcode data
   our $OPCODE_ROM=Arstd::Bitformat->new(
@@ -94,55 +129,48 @@ package A9M::SHARE::ISA;
     fix_regsrc  => 4,
 
     argcnt      => 2,
-    argflag     => 3,
+    argflag     => $ARGFLAG->{bitsize},
 
     opsize      => 2,
     idx         => 16,
 
   );
 
-  # fmat for argument types
-  our $ARGFLAG=Arstd::Bitformat->new(
-    memdst => 1,
-    memsrc => 1,
-    immsrc => 1,
+
+  # format for stack relative ptrs
+  our $PTR_STACK=Arstd::Bitformat->new(
+    imm=>8,
 
   );
 
-  our $ARGFLAG_MEMDST=0b001;
-  our $ARGFLAG_MEMSRC=0b010;
-  our $ARGFLAG_IMMSRC=0b100;
-
-
-  # fmat for memargs flag
-  our $OPCODE_MFLAG=Arstd::Bitformat->new(
-    rel => 1,
-    seg => 1,
-
-  );
-
-  our $OPCODE_MFLAG_BS=
-    $OPCODE_MFLAG->{pos}->{'$:top;>'};
-
-  our $OPCODE_MFLAG_BM=bitmask(
-    $OPCODE_MFLAG_BS
+  # format for position relative ptrs
+  our $PTR_POS=Arstd::Bitformat->new(
+    seg=>4,
+    imm=>16,
 
   );
 
 
-  # fmat for relative memargs
-  our $MEMARG_REL=Arstd::Bitformat->new(
+  # format for short-form relative ptrs
+  our $PTR_SHORT=Arstd::Bitformat->new(
+    seg=>4,
+    reg=>4,
+    imm=>8,
+
+  );
+
+  # format for long-form relative ptrs
+  our $PTR_LONG=Arstd::Bitformat->new(
+
+    seg   => 4,
 
     rX    => 4,
     rY    => 4,
 
-    off   => 8,
+    imm   => 10,
     scale => 2,
 
   );
-
-  our $OPCODE_MEM_BS_BASE=
-    $MEMARG_REL->{pos}->{'$:top;>'};
 
 
   # fmat for binary section
