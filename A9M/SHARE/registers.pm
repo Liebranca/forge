@@ -32,7 +32,7 @@ package A9M::SHARE::registers;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.2;#b
+  our $VERSION = v0.00.3;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -49,7 +49,7 @@ package A9M::SHARE::registers;
 
   )];
 
-  Readonly our $CNT    => int @$LIST;
+  Readonly our $CNT    => int @$LIST-1;
 
   Readonly our $CNT_BS => bitsize($CNT);
   Readonly our $CNT_BM => bitmask($CNT_BS);

@@ -41,7 +41,7 @@ package anvil::l2;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#a
+  our $VERSION = v0.00.4;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -133,6 +133,22 @@ sub proc($self) {
   my $opsize=check_operand_sizes($branch);
 
 
+  # bit-pack the operands
+  # this also expands them to full type
+  my $args = 0x00;
+  my $cnt  = 0x00;
+
+  map {
+
+    my ($size,$value)=
+      pack_operand($ARG->{value});
+
+    $args |= ($value << $cnt);
+    $cnt  += $size;
+
+  } @{$branch->{leaves}};
+
+
   # get full form of instruction
   #
   # we use this as a key into
@@ -143,7 +159,7 @@ sub proc($self) {
 
     $branch->{value}
 
-  . '_' . (join $NULLSTR,map {
+  . '_' . (join '_',map {
       $ARG->{value}->{type}
 
     } @{$branch->{leaves}})
@@ -169,22 +185,14 @@ sub proc($self) {
   # way more important ;>
 
   my $idex    = $A9M->{instab}->{$full_form};
-  my $idex_bs = $A9M->{isa}->{idx_bits}->[0];
-
-  my $args    = 0x00;
-  my $cnt     = 0x00;
+  my $idex_bs = $A9M->{isa}->{id_bits}->[0];
 
 
-  # bit-pack the operands
-  map {
+  # check that the form was valid!
+  $A9M->parse_error(
+    "invalid instruction $full_form"
 
-    my ($size,$value)=
-      pack_operand($ARG->{value});
-
-    $args  = ($value << $cnt);
-    $cnt  += $size;
-
-  } @{$branch->{leaves}};
+  ) if ! defined $idex;
 
 
   # get opcode and total bytesize
@@ -383,13 +391,9 @@ sub cat_symbols($branch) {
 
 sub get_operand_type($branch) {
 
-  if(is_reg($branch)) {
-
-  } elsif(is_mem($branch)) {
-
-  } else {
-
-  };
+     is_reg($branch)
+  or is_mem($branch)
+  or is_imm($branch);
 
 };
 
@@ -402,14 +406,18 @@ sub get_operand_type($branch) {
 sub check_operand_sizes($branch) {
 
   my $idex = -1;
-  my @lv   = @{$branch->{leaves}};
+  my @lv   = grep {
+    $ARG->{value}->{type} ne 'i'
+
+  } @{$branch->{leaves}};
+
 
   # any sizes passed?
   my $ezy  = sizeof($INS_DEF_SZ);
   my @have = grep {
-    $ARG->{ezy} ne 'def'
+    $ARG->{value}->{ezy} ne 'def'
 
-  } $branch->branch_values();
+  } @lv;
 
 
   # check that they're all equal if so
@@ -538,14 +546,14 @@ sub is_mem($branch) {
 
 
     # ^only element size
-    } elsif($idex==1) {
+    } elsif($idex == 1) {
       $ezy =  $branch->{leaves}->[0]->{value};
       $ezy =~ s[$ARG_EZY][];
 
       $cmd =  $branch->{leaves}->[1];
 
     # ^only ptr size
-    } else {
+    } elsif($idex == 2) {
 
       $ptr =  $branch->{leaves}->[0]->{value};
       $ptr =~ s[$ARG_PTR][];
@@ -580,6 +588,79 @@ sub is_mem($branch) {
 };
 
 # ---   *   ---   *   ---
+# is operand an immediate?
+
+sub is_imm($branch) {
+
+  my $ezy   = 0;
+  my $value = $branch->{leaves}->[0]->{value};
+
+  my $spec  = 0;
+
+
+  # have size specifier?
+  if($branch->match_sequence($ARG_EZY)) {
+
+    $spec  = 1;
+
+    $ezy   =  $branch->{leaves}->[0]->{value};
+    $ezy   =~ s[$ARG_EZY][];
+
+    $value = $branch->{leaves}->[1]->{value};
+
+  };
+
+
+  # transform to number if need
+  $value =~ s[$ARG_IMM][];
+
+  my $is_num=sstoi($value);
+
+  $value=(defined $is_num)
+    ? $is_num
+    : $value
+    ;
+
+
+  # calc size manually if no size specifier
+  if(! $spec && $is_num) {
+    $ezy=int_urdiv(bitsize($value),8)-1;
+
+  };
+
+  # validate size
+  $A9M->parse_error(
+    "immediate size limit is 16-bit"
+
+  ) if $ezy > 1;
+
+
+  # do not make hashref for bare words!
+  # those are solved... sometime after this ;>
+  if($is_num) {
+
+    $branch->{value}={
+
+      type  => 'i',
+
+      ezy   => $ezy,
+      value => $value,
+
+    };
+
+    $branch->clear();
+
+
+    return 1;
+
+  };
+
+
+  return 0;
+
+};
+
+# ---   *   ---   *   ---
 # convert argument to binary
 
 sub pack_operand($e) {
@@ -606,7 +687,8 @@ sub pack_operand($e) {
   #   and is calculated by get_operand_type
 
   } elsif($e->{type} eq 'i') {
-    $size=$e->{size};
+    $size=($e->{ezy}+1) << 3;
+    $e->{type}="i$size";
 
 
   # operand is memory:
@@ -644,7 +726,7 @@ sub pack_operand($e) {
   #   position and the absolute address provided
   #   (seg == 0)
 
-  } else {
+  } elsif($e->{type} eq 'm') {
 
     my $branch = $e->{value};
     my @data   = ();
@@ -660,6 +742,7 @@ sub pack_operand($e) {
       );
 
       $size=$PTR_SHORT->{bitsize};
+      $e->{type}='mshort';
 
     # long-form segment relative
     } elsif(@data=memarg_long($branch)) {
@@ -677,11 +760,13 @@ sub pack_operand($e) {
       );
 
       $size=$PTR_LONG->{bitsize};
+      $e->{type}='mlong';
 
     # stack relative
     } elsif(@data=memarg_stack($branch)) {
       $value = $PTR_STACK->bor(imm=>$data[0]);
       $size  = $PTR_STACK->{bitsize};
+      $e->{type} = 'mstk';
 
     # position relative
     } elsif(@data=memarg_pos($branch)) {
@@ -693,6 +778,7 @@ sub pack_operand($e) {
       );
 
       $size=$PTR_POS->{bitsize};
+      $e->{type}='mpos';
 
     } else {
       $A9M->parse_error('unencodable address');

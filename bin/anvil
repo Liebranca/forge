@@ -102,8 +102,7 @@ $ice->read(q[
 
 public seg base;
 
-  xor ar,ar;
-  cpy ar,qword thin [base:$2];
+  load ar,[ar+$20*8];
 
 ]);
 
