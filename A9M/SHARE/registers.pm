@@ -49,9 +49,9 @@ package A9M::SHARE::registers;
 
   )];
 
-  Readonly our $CNT    => int @$LIST-1;
+  Readonly our $CNT    => int @$LIST;
 
-  Readonly our $CNT_BS => bitsize($CNT);
+  Readonly our $CNT_BS => bitsize($CNT-1);
   Readonly our $CNT_BM => bitmask($CNT_BS);
 
   Readonly our $RE     => re_eiths($LIST);

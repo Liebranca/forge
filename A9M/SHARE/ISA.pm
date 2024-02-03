@@ -30,6 +30,10 @@ package A9M::SHARE::ISA;
   use Arstd::Bytes;
   use Arstd::Struc;
 
+  use lib $ENV{ARPATH}.'/forge/';
+
+  use A9M::SHARE::registers;
+
 # ---   *   ---   *   ---
 # adds to your namespace
 
@@ -41,6 +45,9 @@ package A9M::SHARE::ISA;
 
     $PTR_DEF_SZ
     $PTR_DEF_SZ_BITS
+
+    $SEGTAB_BS
+    $SEGTAB_BM
 
     $OPCODE_ROM
 
@@ -68,6 +75,9 @@ package A9M::SHARE::ISA;
   Readonly our $INS_DEF_SZ    => 'word';
   Readonly our $PTR_DEF_SZ    => 'short';
   Readonly our $OPCODE_ROM_SZ => 'dword';
+
+  Readonly our $SEGTAB_BS     => 4;
+  Readonly our $SEGTAB_BM     => 0xF;
 
 
   # default sizes as bitfield
@@ -145,7 +155,7 @@ package A9M::SHARE::ISA;
 
   # format for position relative ptrs
   our $PTR_POS=Arstd::Bitformat->new(
-    seg=>4,
+    seg=>$SEGTAB_BS,
     imm=>16,
 
   );
@@ -153,8 +163,8 @@ package A9M::SHARE::ISA;
 
   # format for short-form relative ptrs
   our $PTR_SHORT=Arstd::Bitformat->new(
-    seg=>4,
-    reg=>4,
+    seg=>$SEGTAB_BS,
+    reg=>$A9M::SHARE::registers::CNT_BS,
     imm=>8,
 
   );
@@ -162,10 +172,10 @@ package A9M::SHARE::ISA;
   # format for long-form relative ptrs
   our $PTR_LONG=Arstd::Bitformat->new(
 
-    seg   => 4,
+    seg   => $SEGTAB_BS,
 
-    rX    => 4,
-    rY    => 4,
+    rX    => $A9M::SHARE::registers::CNT_BS,
+    rY    => $A9M::SHARE::registers::CNT_BS,
 
     imm   => 10,
     scale => 2,

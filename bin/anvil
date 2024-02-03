@@ -101,8 +101,7 @@ my $ice=anvil->new();
 $ice->read(q[
 
 public seg base;
-
-  load ar,[ar+$20*8];
+  load ar,$20;
 
 ]);
 

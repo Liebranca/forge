@@ -48,7 +48,7 @@ package A9M::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.9;#a
+  our $VERSION = v0.01.0;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -152,13 +152,18 @@ sub build_EXE_decoder($class) {
 
 
     local flags;
-    load  flags dword from A9M.OPCODE:idex shl 2;
+    local fix_immsrc;
+    local fix_regsrc;
+
+    load  flags qword from A9M.OPCODE:
+      idex+(idex shl 2);
 
   ] . f1::bits::csume(
 
     $OPCODE_ROM,'flags',qw(
 
       load_src load_dst overwrite
+      fix_immsrc fix_regsrc
 
       argcnt argflag
       opsize
@@ -174,7 +179,7 @@ sub build_EXE_decoder($class) {
 
 
     local immflag;
-    immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS
+    immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS;
 
     if immflag = A9M.OPCODE.SRC_IMM8;
       immbs = sizebs.byte;
@@ -378,6 +383,50 @@ sub build_ROM($class) {
 
 
     "define A9M.INS_DEF_SZ $INS_DEF_SZ;"
+
+
+  # segment table constants
+  . "A9M.SEGTAB_SZ = " . (1 << $SEGTAB_BS) . ';'
+  . "A9M.SEGTAB_BS = $SEGTAB_BS;"
+  . "A9M.SEGTAB_BM = $SEGTAB_BM;"
+
+
+  # bit patterns for decoding ptrs
+  . f1::bits::as_const(
+
+      $PTR_STACK,
+      "bipret.memarg_stk",
+
+      qw(imm)
+
+    )
+
+  . f1::bits::as_const(
+
+      $PTR_POS,
+      "bipret.memarg_pos",
+
+      qw(imm)
+
+    )
+
+  . f1::bits::as_const(
+
+      $PTR_SHORT,
+      "bipret.memarg_short",
+
+      qw(imm)
+
+    )
+
+  . f1::bits::as_const(
+
+      $PTR_LONG,
+      "bipret.memarg_long",
+
+      qw(imm scale)
+
+    )
 
 
   # masks for the opcodes themselves
@@ -648,9 +697,9 @@ sub opcode($name,$ct,%O) {
 
     ;
 
+
     my $ins   = "${name}_$ARG";
     my @sizeb = @size;
-
 
     if($src eq 'i16') {
       @sizeb=grep {$ARG ne 'byte'} @sizeb;

@@ -14,7 +14,7 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.7a
+  VERSION   v0.00.8a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -115,15 +115,13 @@ macro $bipret X {
 
       srcflag=argflag shr A9M.OPCODE.ARGFLAG_FBS
       immflag= \
-        (srcflag and A9M.OPCODE.ARGFLAG_IMM8)  \
-      | (srcflag and A9M.OPCODE.ARGFLAG_IMM16) \
-      - srcflag
-
+         (srcflag and A9M.OPCODE.ARGFLAG_IMM8)  \
+      or (srcflag and A9M.OPCODE.ARGFLAG_IMM16) \
+      -  srcflag
 
       ; source is register
       if srcflag = A9M.OPCODE.ARGFLAG_REG
         $bipret.regarg vY,opcode
-
 
       ; source is immediate
       else if immflag = 0
@@ -176,7 +174,6 @@ macro $bipret X {
 
   ; no operands
   else
-    A9M.OPCODE.switch_args0 opid
 
   end if
 
@@ -219,156 +216,109 @@ macro $bipret.regarg dst,src {
 
 ; ---   *   ---   *   ---
 ; read immediate operand
-; 32-bit capped
 
 macro $bipret.immarg dst,src,bm,bs {
-  dst = src and (bm shr (bs shr $06))
+  dst = src and bm
   src = src shr bs
 
 }
 
 ; ---   *   ---   *   ---
-; mflag:GBL
+; segment table
+;
+; used to fetch address bases,
+; as all pointers are relative
+;
+; modified by call/ret
 
 virtual at $00
-bipret.memarg.tab::
+bipret.segtab::
 
-  ; sb register
-  dq $00
+  repeat A9M.SEGTAB_SZ
+    dq $00
 
-  ; long-form relative
-  dq $00
-
-  ; segment relative :o
-  dq $00
-
-  ; something something heap fetches
-  dq sizeof.vmc+$38
-
-
-  ; used for branchless fetch
-  .sb = $00
-
-  ; used to offset result
-  .base = $00
-
+  end repeat
 
 end virtual
 
 ; ---   *   ---   *   ---
-; read memory operand
-;
-;
-; here we map the flag to
-; read size like so:
-;
-; * 00 => stack-rel :$08
-; * 10 => seg-rel   :$08
-;
-; * 01 => long-rel  :$10
-; * 11 => heap-rel  :$20
-;
-;
-; the addr is then read
-; and casted to absolute
+; read stack relative memory
 
-macro $bipret.memarg dst,src {
+macro $bipret.memarg_stk dst,src {
 
-  ; copy the segment flags
-  local mflag
-  mflag = src and A9M.OPCODE.MFLAG._fmat_bm
-
-  ; then shift them out
-  src = src shr A9M.OPCODE.MFLAG._fmat_bs
-
-  ; base size if short-form relative
-  ; double size if long-form relative
-  dst = A9M.OPCODE.MEM_BS_BASE \
-  shl ((mflag and A9M.OPCODE.MFLAG.rel)\
-    shr A9M.OPCODE.MFLAG.rel_pos)
-
-  ; (byte) dst shl (src/3)
-  ; thanks gcc ;>
-  ;
-  ; this doubles size again
-  ; if *both* bits are set
-  dst = dst shl ((mflag * $AB) shr 9)
-
-  ; dst is now number of bits to read
-  ; make a copy of that
-  local bits
-  bits = dst
-
-
-  ; read bits to get offset
-  dst = src and ((1 shl bits)-1)
-
-  ; read base addr from table
-  load bipret.memarg.tab.base qword \
-  from bipret.memarg.tab:mflag shl sizep2.qword
-
-
-  ; the worst case: long-form relative
-  ; this is when you [r+r+imm*scale]
-  ;
-  ; i can't decode that without switches :c
-  if mflag = A9M.OPCODE.MFLAG.rel
-    $bipret.memarg.rel dst
-
-  end if
-
-
-  ; [negate offset if stack relative]
-  ;
-  ; we achieve this by using (again)
-  ; the GNU div3 formula
-  ;
-  ; except this time src is inverted,
-  ; so 0/3 becomes 3/3, and 3/3 becomes 0/3
-  ;
-  ; ie this means mul by -1 if both
-  ; bits are turned off
-  mflag = not mflag \
-    and A9M.OPCODE.MFLAG._fmat_bm
-
-  dst   = dst * (1 - (((mflag * $AB) shr 9) shl 1))
-
-
-  ; add base and offset to get absolute
-  dst = bipret.memarg.tab.base+dst
-
-  ; shift out the already read values
-  src = src shr bits
-
-}
-
-; ---   *   ---   *   ---
-; inconditional reload of sb
-; into the memarg table
-;
-; this makes it so we can read
-; addresses that are relative to
-; the stack base without an if
-
-macro $bipret.memarg.reload {
+  ; mask imm bits and shift them out
+  dst = src and bipret.memarg_stk.imm_bm
+  src = src shr bipret.memarg_stk.imm_bs
 
   ; get sb register
-  load bipret.memarg.tab.sb qword \
-  from ANIMA.base:$0B shl A9M.REGISTER_SZP2
-
-  ; make absolute
-  bipret.memarg.tab.sb = \
-    bipret.memarg.tab.sb + sizeof.ANIMA
+  local rX
+  rX = $0B shl A9M.REGISTER_SZP2
+  load rX word from ANIMA.base:rX
 
 
-  ; ^store absolute in table
-  store qword bipret.memarg.tab.sb \
-  at bipret.memarg.tab:$00
+  ; give sb-offset
+  dst = rX-dst
 
 }
 
 ; ---   *   ---   *   ---
-; relative offset, calc'd
+; read segment relative memory
+
+macro $bipret.memarg_pos dst,src {
+
+  ; mask seg/imm bits and shift them out
+  local seg
+  local imm
+
+  seg = src and A9M.SEGTAB_BM
+  src = src shr A9M.SEGTAB_BS
+
+  imm = src and bipret.memarg_pos.imm_bm
+  src = src shr bipret.memarg_pos.imm_bs
+
+
+  ; read base from segment table
+  load seg qword from bipret.segtab:seg shl 3
+
+  ; give absolute
+  dst = seg+imm
+
+}
+
+; ---   *   ---   *   ---
+; read short-form relative
+
+macro $bipret.memarg_short dst,src {
+
+  ; mask seg/imm/reg bits and shift them out
+  local seg
+  local reg
+  local imm
+
+  seg = src and A9M.SEGTAB_BM
+  src = src shr A9M.SEGTAB_BS
+
+  reg = src and A9M.REGISTER_CNT_BM
+  src = src shr A9M.REGISTER_CNT_BS
+
+  imm = src and bipret.memarg_short.imm_bm
+  src = src shr bipret.memarg_short.imm_bs
+
+
+  ; read base from segment table
+  load seg qword from bipret.segtab:seg shl 3
+
+  ; read register
+  load reg qword from ANIMA.base:\
+    reg shl A9M.REGISTER_SZP2
+
+  ; give absolute
+  dst = seg+reg+imm
+
+}
+
+; ---   *   ---   *   ---
+; long-form relative, calc'd
 ; by adding/shifting registers
 ;
 ; * first field is null or [0-register_sz)
@@ -379,7 +329,7 @@ macro $bipret.memarg.reload {
 ;
 ; * scale, used as shift
 
-macro $bipret.memarg.rel dst {
+macro $bipret.memarg_long dst,src {
 
   local rX
   local rY
@@ -388,20 +338,15 @@ macro $bipret.memarg.rel dst {
 
 
   ; decode register part
-  $bipret.memarg.relreg rX,dst,\
-    bipret.memarg.rel.rX_bm,\
-    bipret.memarg.rel.rX_bs
-
-  $bipret.memarg.relreg rY,dst,\
-    bipret.memarg.rel.rY_bm,\
-    bipret.memarg.rel.rY_bs
+  $bipret.memarg_long.reg rX,dst
+  $bipret.memarg_long.reg rY,dst
 
 
   ; get scale and offset
-  off   = dst and bipret.memarg.rel.off_bm
-  dst   = dst shr bipret.memarg.rel.off_bs
-  scale = dst and bipret.memarg.rel.scale_bm
-  dst   = dst shr bipret.memarg.rel.scale_bs
+  off   = dst and bipret.memarg_long.imm_bm
+  dst   = dst shr bipret.memarg_long.imm_bs
+  scale = dst and bipret.memarg_long.scale_bm
+  dst   = dst shr bipret.memarg_long.scale_bs
 
 
   ; apply scale to offset if non-zero
@@ -428,410 +373,16 @@ macro $bipret.memarg.rel dst {
 ; conditionally get value
 ; in register
 
-macro $bipret.memarg.relreg dst,src,bm,bs {
+macro $bipret.memarg_long.reg dst,src {
 
-  dst = src and bm
-  src = src shr bs
+  dst = src and A9M.REGISTER_CNT_BM
+  src = src shr A9M.REGISTER_CNT_BS
 
   if dst > 0
     dst = (dst-1) shl A9M.REGISTER_SZP2
     load dst word from ANIMA.base:dst
 
   end if
-
-}
-
-; ---   *   ---   *   ---
-; makes binary opcode
-
-macro $bencode dst,NE& {
-
-  local ok
-  local _name
-  local _expr
-  local _size
-
-  ok    equ 0
-  _name equ NE
-  _expr equ
-  _size equ A9M.INS_DEF_SZ
-
-
-  ; got expression?
-  match N E , NE \{
-
-    local ok2
-    ok2 equ 0
-
-    _name equ N
-    _expr equ E
-
-    ; ^got size?
-    match =byte _E , _expr \\{
-      _size equ byte
-      _expr equ _E
-      ok2   equ 1
-
-    \\}
-
-    match =0 =qword _E , ok2 _expr \\{
-      _size equ qword
-      _expr equ _E
-      ok2   equ 1
-
-    \\}
-
-    match =0 =dword _E , ok2 _expr \\{
-      _size equ dword
-      _expr equ _E
-      ok2   equ 1
-
-    \\}
-
-    match =0 =word _E , ok2 _expr \\{
-      _size equ word
-      _expr equ _E
-      ok2   equ 1
-
-    \\}
-
-  \}
-
-
-  ; block o vars
-  local rX
-  local rY
-  local out
-
-  local argflag_a
-  local argflag_b
-  local bitsz
-  local opcode
-  local args
-
-  bitsz = 0
-
-
-  ; get args
-  match name expr , _name _expr \{
-
-    ; two arguments
-    match A =, B , expr \\{
-
-      ; encode first argument
-      $bencode.arg rX,argflag_a,bitsz,A,_size
-
-      ; ^get size
-      out   = bitsz
-      bitsz = 0
-
-      ; ^encode second argument
-      $bencode.arg rY,argflag_b,bitsz,B,_size
-      args = rX or (rY shl out)
-
-
-      ok equ 1
-
-    \\}
-
-    ; ^one argument
-    match =0 A , ok expr \\{
-
-      ; encode first argument
-      $bencode.arg rX,argflag_a,bitsz,A,_size
-
-      argflag_b equ
-      args=rX
-
-    \\}
-
-
-    ; lookup opcode in table
-    $bencode.get_opcode opcode,name,_size,\
-      argflag_a,argflag_b
-
-    ; ^cat to encoded args
-    dst = opcode or (args shl OPCODE_ID_BITS)
-    ok equ 1
-
-  \}
-
-  ; ^no
-  match =0 name , ok _name \{\}
-
-}
-
-; ---   *   ---   *   ---
-; messy: gets name of a
-; constant holding the
-; opcode, based on the
-; instruction passed
-
-macro $bencode.get_opcode dst,name,size,\
-  argflag_a,argflag_b {
-
-  local id
-  local ok
-  ok equ 0
-
-  ; cat size to id
-  match AF BF SF , argflag_a argflag_b size \{
-    id equ name#_\#AF\#BF\#_\#SF
-    ok equ 1
-
-  \}
-
-  ; ^single-arg
-  match =0 AF SF , ok argflag_a size \{
-    id equ name#_\#AF\#_\#SF
-    ok equ 1
-
-  \}
-
-
-  ; give back opcode from id
-  match any , id \{
-    dst equ A9M.OPCODE.\#any
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; identifies operand type,
-; gives encoded value and
-; writes type to argflag
-
-macro $bencode.arg dst,\
-  argflag,bitsz,expr,size {
-
-  local ok
-  ok equ 0
-
-  $bencode.reg ok,dst,argflag,bitsz,expr
-  $bencode.mem ok,dst,argflag,bitsz,expr
-  $bencode.imm ok,dst,argflag,bitsz,expr,size
-
-}
-
-; ---   *   ---   *   ---
-; value is register?
-
-macro $bencode.reg ok,dst,argflag,bitsz,expr {
-
-  match =0 list , ok A9M.REGISTERS \{
-
-    ok equ 'I'
-    tokin ok,expr,list
-
-    ; yes
-    match idex , ok \\{
-
-      dst   = idex
-      bitsz = A9M.REGISTER_CNT_BS
-
-      argflag equ \r
-
-      ok equ 1
-
-    \\}
-
-    ; no
-    match , ok \\{
-      ok equ 0
-
-    \\}
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; value is memory?
-
-macro $bencode.mem ok,dst,argflag,bitsz,expr {
-
-  match =[ subexpr =] , expr \{
-
-    argflag equ \m
-    $bencode.rel ok,dst,argflag,bitsz,subexpr
-
-    ok equ 1
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; value is immediate?
-
-macro $bencode.imm ok,dst,\
-  argflag,bitsz,expr,size {
-
-  match =0 any , ok size \{
-
-    bitsz = \
-        (sizeof.\#any shl 3) \
-    shr (sizeof.\#any shr 3)
-
-    dst   = expr and sizebm.dword
-    argflag equ \i
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; is value a relative ptr?
-
-macro $bencode.rel ok,dst,argflag,bitsz,expr {
-
-  local dummy
-
-  local rX
-  local rY
-  local off
-  local scale
-
-  rX    = 0
-  rY    = 0
-  off   = 0
-  scale = 0
-
-
-  ; [rX + rY + (off << scale)]
-  match A =+ B =+ C =* D , expr \{
-
-    $bencode.rel.reg   rX,A
-    $bencode.rel.reg   rY,B
-    $bencode.rel.imm   off,C
-    $bencode.rel.scale scale,D
-
-    ok equ 1
-
-  \}
-
-  ; [rX + ((rY|off) << scale)]
-  match =0 A =+ B =* C , ok expr \{
-
-    $bencode.rel.reg        rX,A
-    $bencode.rel.reg_or_imm rY,off,B
-    $bencode.rel.scale      scale,C
-
-    ok equ 1
-
-  \}
-
-  ; [rX + rY + off]
-  match =0 A =+ B =+ C , ok expr \{
-
-    $bencode.rel.reg rX,A
-    $bencode.rel.reg rY,B
-    $bencode.rel.imm off,C
-
-    ok equ 1
-
-  \}
-
-  ; [(rX|off) << scale]
-  match =0 A =* B , ok expr \{
-
-    $bencode.rel.reg_or_imm rX,off,A
-    $bencode.rel.scale      scale,B
-
-    ok equ 1
-
-  \}
-
-  ; [rX + (rY|off)]
-  match =0 A =+ B , ok expr \{
-
-    $bencode.rel.reg        rX,A
-    $bencode.rel.reg_or_imm rY,off,B
-
-    ok equ 1
-
-  \}
-
-  ; [rX|off]
-  match =0 A , ok expr \{
-    $bencode.rel.reg_or_imm rX,off,A
-    ok equ 1
-
-  \}
-
-
-  ; pack result
-  match =1 , ok \{
-
-    off = off and bipret.memarg.rel.off_bm
-
-    dst = \
-       (rX    shl bipret.memarg.rel.rX_pos) \
-    or (rY    shl bipret.memarg.rel.rY_pos) \
-    or (off   shl bipret.memarg.rel.off_pos) \
-    or (scale shl bipret.memarg.rel.scale_pos)
-
-    dst = A9M.OPCODE.MFLAG.rel \
-    or (dst shl A9M.OPCODE.MFLAG._fmat_bs)
-
-    bitsz = bipret.memarg.rel._fmat_bs \
-    + A9M.OPCODE.MFLAG._fmat_bs
-
-  \}
-
-}
-
-; ---   *   ---   *   ---
-; value can be either of
-
-macro $bencode.rel.reg_or_imm reg,imm,X {
-
-  local dummy
-  local ok
-  ok equ 0
-
-  $bencode.reg ok,reg,dummy,dummy,X
-
-  if ok
-    reg=(reg+1) and A9M.REGISTER_CNT_BM
-
-  end if
-
-  $bencode.imm ok,imm,dummy,dummy,X,\
-    bipret.memarg.rel.off_bs
-
-}
-
-; ---   *   ---   *   ---
-; value can only be
-
-macro $bencode.rel.reg dst,X {
-
-  local dummy
-  local ok
-  ok equ 0
-
-  $bencode.reg ok,dst,dummy,dummy,X
-  dst=(dst+1) and A9M.REGISTER_CNT_BM
-
-}
-
-macro $bencode.rel.imm dst,X {
-
-  local dummy
-  local ok
-  ok equ 0
-
-  $bencode.imm ok,dst,dummy,dummy,X,\
-    bipret.memarg.rel.off_bs
-
-}
-
-macro $bencode.rel.scale dst,X {
-
-  dst = (bsf X) \
-    and bipret.memarg.rel.scale_bm
 
 }
 
