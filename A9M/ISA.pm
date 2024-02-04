@@ -46,23 +46,38 @@ package A9M::ISA;
   use f1::ROM;
 
 # ---   *   ---   *   ---
+# adds to your cache
+
+  use Vault 'ARPATH';
+
+  our $Cache={
+
+    romcode    => 0,
+    execode    => 0,
+
+    insmeta    => {},
+
+    mnemonic   => [],
+    exetab     => {},
+    romtab     => [],
+
+  };
+
+  $Cache=Vault::cached(
+    'Cache',\&gen_ROM_table
+
+  );
+
+# ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.01.0;#a
+  our $VERSION = v0.01.1;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
 # GBL
 
-  my $Opcode_ROM = 0;
-  my $Opcode_EXE = 0;
-  my $Mnemonic   = [];
-
-  my $ROM_Table  = [];
-  my $EXE_Table  = {};
-
-  my $EXE_Crux   = {};
-  my $Fdst       = $NULLSTR;
+  my $Fdst = $NULLSTR;
 
 # ---   *   ---   *   ---
 # crux
@@ -152,18 +167,15 @@ sub build_EXE_decoder($class) {
 
 
     local flags;
-    local fix_immsrc;
-    local fix_regsrc;
 
     load  flags qword from A9M.OPCODE:
-      idex+(idex shl 2);
+      idex shl 2;
 
   ] . f1::bits::csume(
 
     $OPCODE_ROM,'flags',qw(
 
       load_src load_dst overwrite
-      fix_immsrc fix_regsrc
 
       argcnt argflag
       opsize
@@ -234,9 +246,9 @@ sub build_EXE_logic($class) {
       $def;
 
     } grep {
-      $EXE_Table->{$ARG}->{argcnt} eq $cnt
+      $Cache->{exetab}->{$ARG}->{argcnt} eq $cnt
 
-    } keys %$EXE_Table;
+    } keys %{$Cache->{exetab}};
 
 
     # make conditionals?
@@ -269,7 +281,7 @@ sub build_EXE_logic($class) {
 
 sub inscode($body,$iref) {
 
-  my $attr=$EXE_Table->{$body};
+  my $attr=$Cache->{exetab}->{$body};
   my $args=$ARGNAMES->[$attr->{argcnt}];
 
   my $ins=f1::macro->new(
@@ -309,8 +321,8 @@ sub build_ROM($class) {
   # access array like a hash
   my $idex   = 0;
 
-  my @keys   = array_keys($ROM_Table);
-  my @values = array_values($ROM_Table);
+  my @keys   = array_keys($Cache->{romtab});
+  my @values = array_values($Cache->{romtab});
 
   # meaningless; pads the equal signs
   my $pad = max(map {length $ARG} @keys);
@@ -332,10 +344,10 @@ sub build_ROM($class) {
 
 
   # get bitsize of opcodes
-  my $opbits  = bitsize($Opcode_ROM-1);
+  my $opbits  = bitsize($Cache->{romcode}-1);
   my $opmask  = (1 << $opbits)-1;
 
-  my $exebits = bitsize($Opcode_EXE-1);
+  my $exebits = bitsize($Cache->{execode}-1);
   my $exemask = (1 << $exebits)-1;
 
 
@@ -344,12 +356,6 @@ sub build_ROM($class) {
   #
   # done so anvil can imp them too ;>
   my $fdata  = f1::blk->new('fdata',binary=>1);
-
-  # get name=>opid
-  my @strtab = map {
-    $ARG=>$values[$idex++]->{id}
-
-  } @keys;
 
   # ^make binary ROM part
   $fdata->strucseg(
@@ -363,9 +369,6 @@ sub build_ROM($class) {
     idx_bits => [$exebits],
 
     opcode   => [map {$ARG->{ROM}} @values],
-
-    mnemonic => $Mnemonic,
-    idx      => [@strtab],
 
   );
 
@@ -504,20 +507,48 @@ sub build_ROM($class) {
 
 sub fetch_logic($name,%O) {
 
-  if(! exists $EXE_Table->{$O{body}}) {
+  if(! exists $Cache->{exetab}->{$O{body}}) {
 
-    $EXE_Table->{$O{body}}={
+    $Cache->{exetab}->{$O{body}}={
 
       %O,
 
       name => $name,
-      idx  => $Opcode_EXE++,
+      idx  => $Cache->{execode}++,
 
     };
 
   };
 
-  return $EXE_Table->{$O{body}}->{idx};
+  return $Cache->{exetab}->{$O{body}}->{idx};
+
+};
+
+# ---   *   ---   *   ---
+# fetch instruction idex
+# from cache
+
+sub get_ins_idex($class,$name,$size,@ar) {
+
+  my $full_form=
+
+    $name
+
+  . '_' . (join '_',@ar)
+
+  . '_' . $Type::EZY_LIST->[$size]
+
+  ;
+
+  my $meta=$Cache->{insmeta}->{$name};
+
+  say {*STDERR}
+    "Invalid instruction: '$full_form'"
+
+  if ! exists $meta->{icetab}->{$full_form};
+
+
+  return $meta->{icetab}->{$full_form};
 
 };
 
@@ -540,6 +571,8 @@ sub opcode($name,$ct,%O) {
   $O{dst}         //= 'rm';
   $O{src}         //= 'rmi';
 
+  $Cache->{insmeta}->{$name}=\%O;
+
   # ^for writing/instancing
   my $ROM={
 
@@ -547,15 +580,16 @@ sub opcode($name,$ct,%O) {
     load_dst    => $O{load_dst},
     overwrite   => $O{overwrite},
 
-    fix_immsrc  => $O{fix_immsrc},
-    fix_regsrc  => $O{fix_regsrc},
-
     argcnt      => $O{argcnt},
 
   };
 
+  # ^just for the compiler
+  my $meta=$Cache->{insmeta}->{$name};
+  $meta->{icetab}={};
+
   # remember!
-  push @$Mnemonic,$name;
+  push @{$Cache->{mnemonic}},$name;
 
 
   # queue logic generation
@@ -684,6 +718,7 @@ sub opcode($name,$ct,%O) {
   };
 
 
+  # make argument type variations
   return map {
 
     my ($dst,$src)=split '_',$ARG;
@@ -707,6 +742,7 @@ sub opcode($name,$ct,%O) {
     };
 
 
+    # make sized variations
     map {
 
       my $data={
@@ -720,8 +756,13 @@ sub opcode($name,$ct,%O) {
       };
 
 
+      # perl-side copy
+      $meta->{icetab}->{"${ins}_${ARG}"}=
+        $Cache->{romcode};
+
+      # ^for use by decoder
       "${ins}_${ARG}" => {
-        id  => $Opcode_ROM++,
+        id  => $Cache->{romcode}++,
         ROM => $data,
 
       };
@@ -733,10 +774,21 @@ sub opcode($name,$ct,%O) {
 };
 
 # ---   *   ---   *   ---
+# load/save tables from cache
+
+sub gen_ROM_table() {
+
+  $Cache->{romtab}=
+    _gen_ROM_table();
+
+  return $Cache;
+
+};
+
+# ---   *   ---   *   ---
 # ^definitions
 
-$ROM_Table=[
-
+sub _gen_ROM_table() {return [
 
 
   # imm/mem to reg
@@ -1032,7 +1084,7 @@ $ROM_Table=[
 
   ),
 
-];
+]};
 
 # ---   *   ---   *   ---
 1; # ret

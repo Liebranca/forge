@@ -14,7 +14,7 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.8a
+  VERSION   v0.00.9a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---

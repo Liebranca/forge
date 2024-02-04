@@ -92,8 +92,6 @@ package A9M;
 
     },
 
-    instab => {},
-
     isa   => undef,
     log   => undef,
 
@@ -344,12 +342,14 @@ sub ON_USE($from,$to,@mods) {
   # get ROM if not loaded yet
   if(my $ROM=load_ISA()) {
 
+    $A9M->{isa}->{mnemonic}=
+      $A9M::ISA::Cache->{mnemonic};
+
     my $ins_re=re_eiths(
-      [@{$ROM->{mnemonic}}]
+      [@{$A9M->{isa}->{mnemonic}}]
 
     );
 
-    $A9M->{instab}       = {@{$ROM->{idx}}};
     $A9M->{retab}->{ins} = $ins_re;
 
   };

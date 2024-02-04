@@ -36,12 +36,13 @@ package anvil::l2;
   use lib $ENV{ARPATH}.'/forge/';
 
   use A9M;
+  use A9M::ISA;
   use A9M::SHARE::ISA;
 
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.4;#a
+  our $VERSION = v0.00.5;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -149,50 +150,46 @@ sub proc($self) {
   } @{$branch->{leaves}};
 
 
-  # get full form of instruction
-  #
-  # we use this as a key into
-  # the ISA ROM
+  # clear [*ins] tag
   $branch->{value}=~ s[$INS_RE][];
 
-  my $full_form =
-
-    $branch->{value}
-
-  . '_' . (join '_',map {
+  # fetch instruction matching opsize and
+  # argument types
+  my @argtypes=map {
       $ARG->{value}->{type}
 
-    } @{$branch->{leaves}})
+  } @{$branch->{leaves}};
 
-  . '_' . $Type::EZY_LIST->[$opsize]
+  my $idex=A9M::ISA->get_ins_idex(
 
-  ;
+    $branch->{value},
+    $opsize,
 
+    @argtypes
 
-  # ^with this idex, we can fetch instruction
-  # metadata from the $A9M->{opcode} array
-  #
-  # that's the table the decoder reads from,
-  # so all we need to encode is idex and operands!
-  #
-  # the tradeoff is that our ROM is pretty big,
-  # at about ~2KB for every 256 encodings,
-  # as it holds all the flags that we'd otherwise
-  # store within the opcode itself...
-  #
-  # but this way we can manage much shorter
-  # opcodes, and minimal decoder logic, which is
-  # way more important ;>
+  );
 
-  my $idex    = $A9M->{instab}->{$full_form};
-  my $idex_bs = $A9M->{isa}->{id_bits}->[0];
+  my $idex_bs=$A9M->{isa}->{id_bits}->[0];
 
-
-  # check that the form was valid!
-  $A9M->parse_error(
-    "invalid instruction $full_form"
-
-  ) if ! defined $idex;
+# ---   *   ---   *   ---
+# NOTE:
+#
+# with this idex, we can fetch instruction
+# metadata from the $A9M->{opcode} array
+#
+# that's the table the decoder reads from,
+# so all we need to encode is idex and operands!
+#
+# the tradeoff is that our ROM is pretty big,
+# at exactly 1KB for every 256 encodings,
+# as it holds all the flags that we'd otherwise
+# store within the opcode itself...
+#
+# but this way we can manage much shorter
+# opcodes, and minimal decoder logic, which is
+# way more important ;>
+#
+# ---   *   ---   *   ---
 
 
   # get opcode and total bytesize

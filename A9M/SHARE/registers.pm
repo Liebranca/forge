@@ -97,7 +97,7 @@ sub update($class,$A9M) {
 
     $blk->lines(
 
-      'define A9M.registers '
+      'define A9M.REGISTERS '
     . (join ',',@$LIST) . ';'
 
     . "A9M.REGISTER_CNT    = $CNT;"

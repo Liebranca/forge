@@ -347,7 +347,7 @@ macro vmc.stack.new {
     vmc.CAS,sizeof.ANIMA,A9M.STACK_SZ
 
   ; ^reset stack ptr
-;  $mov sp,A9M.STACK_SZ
+  $mov sp,A9M.STACK_SZ
 
 }
 

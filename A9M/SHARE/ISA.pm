@@ -135,9 +135,6 @@ package A9M::SHARE::ISA;
     load_dst    => 1,
     overwrite   => 1,
 
-    fix_immsrc  => 2,
-    fix_regsrc  => 4,
-
     argcnt      => 2,
     argflag     => $ARGFLAG->{bitsize},
 
@@ -194,9 +191,6 @@ package A9M::SHARE::ISA;
     idx_bits => ['byte'],
 
     opcode   => [$OPCODE_ROM   => 'word'],
-
-    mnemonic => ['plcstr'      => 'word'],
-    idx      => ['plcstr,word' => '^opcode'],
 
   );
 
