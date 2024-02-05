@@ -28,11 +28,57 @@
   bipret.opsize    = $00
   bipret.opsize_bs = $00
   bipret.opsize_bm = $00
+  bipret.bitsize   = $00
 
 ; ---   *   ---   *   ---
-; read opcode
+; executes binary A9M code
 
-macro $bipret X {
+macro $bipret src,len {
+
+  local addr
+  local ins
+
+  addr = 0
+
+
+  ; have at least dword bytes left
+  while addr+4 <= len
+
+    ; fetch instruction
+    bipret.bitsize=0
+    load ins dword from src:addr
+
+    ; ^read/execute
+    $bipret.read ins
+
+    ; discard used bits and go next
+    vuint.align bipret.bitsize,\
+      bipret.bitsize,3
+
+    addr=addr+(bipret.bitsize shr 3)
+
+
+  end while
+
+}
+
+; ---   *   ---   *   ---
+; shift out bits from opcode,
+; keeping count of total
+
+macro $bipret.mash dst,src,bm,bs {
+
+  dst = src and bm
+  src = src shr bs
+
+  bipret.bitsize = bipret.bitsize + bs
+
+}
+
+; ---   *   ---   *   ---
+; read next opcode
+
+macro $bipret.read X {
 
   ; copy input
   local opcode
@@ -207,10 +253,11 @@ macro $bipret X {
 
 macro $bipret.regarg dst,src {
 
-  dst = (src and A9M.REGISTER_CNT_BM) \
-    shl A9M.REGISTER_SZP2
+  $bipret.mash dst,src,\
+    A9M.REGISTER_CNT_BM,\
+    A9M.REGISTER_CNT_BS
 
-  src = src shr A9M.REGISTER_CNT_BS
+  dst=dst shl A9M.REGISTER_SZP2
 
 }
 
@@ -218,8 +265,7 @@ macro $bipret.regarg dst,src {
 ; read immediate operand
 
 macro $bipret.immarg dst,src,bm,bs {
-  dst = src and bm
-  src = src shr bs
+  $bipret.mash dst,src,bm,bs
 
 }
 
@@ -247,8 +293,10 @@ end virtual
 macro $bipret.memarg_stk dst,src {
 
   ; mask imm bits and shift them out
-  dst = src and bipret.memarg_stk.imm_bm
-  src = src shr bipret.memarg_stk.imm_bs
+  $bipret.mash dst,src,\
+    bipret.memarg_stk.imm_bm,\
+    bipret.memarg_stk.imm_bs
+
 
   ; get sb register
   local rX
@@ -270,11 +318,12 @@ macro $bipret.memarg_pos dst,src {
   local seg
   local imm
 
-  seg = src and A9M.SEGTAB_BM
-  src = src shr A9M.SEGTAB_BS
+  $bipret.mash seg,src,\
+    A9M.SEGTAB_BM,A9M.SEGTAB_BS
 
-  imm = src and bipret.memarg_pos.imm_bm
-  src = src shr bipret.memarg_pos.imm_bs
+  $bipret.mash imm,src,\
+    bipret.memarg_pos.imm_bm,\
+    bipret.memarg_pos.imm_bs
 
 
   ; read base from segment table
@@ -295,14 +344,17 @@ macro $bipret.memarg_short dst,src {
   local reg
   local imm
 
-  seg = src and A9M.SEGTAB_BM
-  src = src shr A9M.SEGTAB_BS
 
-  reg = src and A9M.REGISTER_CNT_BM
-  src = src shr A9M.REGISTER_CNT_BS
+  $bipret.mash seg,src,\
+    A9M.SEGTAB_BM,A9M.SEGTAB_BS
 
-  imm = src and bipret.memarg_short.imm_bm
-  src = src shr bipret.memarg_short.imm_bs
+  $bipret.mash reg,src,\
+    A9M.REGISTER_CNT_BM,\
+    A9M.REGISTER_CNT_BS
+
+  $bipret.mash imm,src,\
+    bipret.memarg_short.imm_bm,\
+    bipret.memarg_short.imm_bs
 
 
   ; read base from segment table
@@ -338,15 +390,18 @@ macro $bipret.memarg_long dst,src {
 
 
   ; decode register part
-  $bipret.memarg_long.reg rX,dst
-  $bipret.memarg_long.reg rY,dst
+  $bipret.memarg_long.reg rX,src
+  $bipret.memarg_long.reg rY,src
 
 
   ; get scale and offset
-  off   = dst and bipret.memarg_long.imm_bm
-  dst   = dst shr bipret.memarg_long.imm_bs
-  scale = dst and bipret.memarg_long.scale_bm
-  dst   = dst shr bipret.memarg_long.scale_bs
+  $bipret.mash off,src,\
+    bipret.memarg_long.imm_bm,\
+    bipret.memarg_long.imm_bs
+
+  $bipret.mash scale,src,\
+    bipret.memarg_long.scale_bm,\
+    bipret.memarg_long.scale_bs
 
 
   ; apply scale to offset if non-zero
@@ -375,8 +430,9 @@ macro $bipret.memarg_long dst,src {
 
 macro $bipret.memarg_long.reg dst,src {
 
-  dst = src and A9M.REGISTER_CNT_BM
-  src = src shr A9M.REGISTER_CNT_BS
+  $bipret.mash dst,src,\
+    A9M.REGISTER_CNT_BM,\
+    A9M.REGISTER_CNT_BS
 
   if dst > 0
     dst = (dst-1) shl A9M.REGISTER_SZP2

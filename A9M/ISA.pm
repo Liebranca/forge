@@ -162,8 +162,12 @@ sub build_EXE_decoder($class) {
 
     local idex;
 
-    idex = src and OPCODE_ID_MASK;
-    src  = src shr OPCODE_ID_BITS;
+    $bipret.mash
+      idex,src,
+      OPCODE_ID_MASK,
+      OPCODE_ID_BITS
+
+    ;
 
 
     local flags;
@@ -192,6 +196,7 @@ sub build_EXE_decoder($class) {
 
     local immflag;
     immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS;
+    immflag=immflag and A9M.IOCIDE.ARGFLAG_FBM;
 
     if immflag = A9M.OPCODE.SRC_IMM8;
       immbs = sizebs.byte;
