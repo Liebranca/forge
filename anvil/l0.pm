@@ -116,8 +116,10 @@ sub term($self) {
   $self->{nest}   = [];
 
 
+  my $lv=$self->{l2}->{leaves};
+
   anvil::l1::proc($self);
-  anvil::l2::proc($self);
+  anvil::l2::proc($self,$lv->[-1]);
 
 };
 

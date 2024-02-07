@@ -194,11 +194,15 @@ sub build_EXE_decoder($class) {
     or (sizebm.qword * (opsize_bs shr 6));
 
 
-    local immflag;
-    immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS;
-    immflag=immflag and A9M.IOCIDE.ARGFLAG_FBM;
+    local dst_immflag;
+    local src_immflag;
 
-    if immflag = A9M.OPCODE.SRC_IMM8;
+    dst_immflag=argflag and A9M.OPCODE.ARGFLAG_FBM;
+    src_immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS;
+    src_immflag=immflag and A9M.IOCIDE.ARGFLAG_FBM;
+
+    if (src_immflag = A9M.OPCODE.SRC_IMM8)
+    |  (dst_immflag = A9M.OPCODE.SRC_IMM8);
       immbs = sizebs.byte;
       immbm = sizebm.byte;
 
@@ -699,9 +703,9 @@ sub opcode($name,$ct,%O) {
   # make descriptors
   my $argflag_tab={
 
-    $NULLSTR => 0b00000,
-    d        => 0b00000,
-    s        => 0b00000,
+    $NULLSTR => 0b000000,
+    d        => 0b000000,
+    s        => 0b000000,
 
 
     dr       => $ARGFLAG->{reg},
@@ -709,6 +713,9 @@ sub opcode($name,$ct,%O) {
     dmshort  => $ARGFLAG->{memshort},
     dmlong   => $ARGFLAG->{memlong},
     dmpos    => $ARGFLAG->{mempos},
+
+    di8      => $ARGFLAG->{imm8},
+    di16     => $ARGFLAG->{imm16},
 
 
     sr       => $ARGFLAG->{src_reg},
@@ -730,7 +737,6 @@ sub opcode($name,$ct,%O) {
 
     $src //= $NULLSTR;
 
-
     my $argflag =
       ($argflag_tab->{"d$dst"})
     | ($argflag_tab->{"s$src"})
@@ -741,7 +747,7 @@ sub opcode($name,$ct,%O) {
     my $ins   = "${name}_$ARG";
     my @sizeb = @size;
 
-    if($src eq 'i16') {
+    if($src eq 'i16' || $dst eq 'i16') {
       @sizeb=grep {$ARG ne 'byte'} @sizeb;
 
     };
@@ -987,9 +993,8 @@ sub _gen_ROM_table() {return [
 
   ),
 
-# ---   *   ---   *   ---
-# math
 
+  # math
   opcode(
 
     add  => q[dst = dst+src;],
@@ -1088,6 +1093,20 @@ sub _gen_ROM_table() {return [
     fix_size => ['qword'],
 
   ),
+
+
+  # control
+  opcode(
+
+    jmp    => q[$bipret.jump dst;],
+
+    argcnt => 1,
+    dst    => 'rmi',
+
+    overwrite => 0,
+
+  ),
+
 
 ]};
 

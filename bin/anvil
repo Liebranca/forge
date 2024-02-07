@@ -27,6 +27,8 @@ package anvil;
   use Chk;
   use Tree;
 
+  use Arstd::IO;
+
   use lib $ENV{ARPATH}.'/forge/';
 
   use A9M;
@@ -88,9 +90,18 @@ sub read($self,$src) {
   };
 
 
+  $A9M->new_parse_block();
   anvil::l0::read($self,$codestr);
 
-  xd($A9M->{out});
+  $A9M->next_pass();
+  anvil::l2::solve_pending($self);
+
+
+  # get final out
+  my $out=$A9M->cat_parse_blocks();
+
+  xd($out);
+  owc("./a.bin",$out);
 
 };
 
@@ -100,8 +111,14 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-public seg base;
-  load ar,$20;
+public seg base::sub;
+
+  load br,$02;
+  jmp  skip;
+
+  load br,$01;
+
+seg skip;
 
 ]);
 

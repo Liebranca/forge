@@ -43,7 +43,7 @@ package A9M;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.3;#b
+  our $VERSION = v0.00.5;#b
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -102,21 +102,17 @@ package A9M;
 
     },
 
-    # output buffer, holding binary data
-    out => $NULLSTR,
+    # ^subdivs of
+    blk  => [],
 
-    # ^absolute pointer to current byte
-    '$' => 0x00000000,
+    iblk => 0,
+    cblk => undef,
+
 
     # name of current segment
-    curseg => undef,
+    segment => {},
+    curseg  => undef,
 
-    # stores base addr of segments
-    #
-    # we take references to this whenever
-    # working with symbols so that they don't
-    # have to be defined right away ;>
-    segbase => {},
 
     # ^stores the references themselves
     #
@@ -134,6 +130,8 @@ package A9M;
 
     },
 
+    pass => 0,
+
 
     # directive interpreter state
     cmdflag => {
@@ -143,6 +141,9 @@ package A9M;
 
     # "public" (iface) symbols get added to this list
     public=>[],
+
+    # enable/disable debug prints
+    debug => 0,
 
   },'A9M';
 
@@ -160,6 +161,125 @@ sub reset_ipret($self) {
     public=>0,
 
   };
+
+};
+
+# ---   *   ---   *   ---
+# resets state for a new
+# iteration of parse blocks
+
+sub next_pass($self) {
+  $self->{pass}++;
+  $self->{iblk}=0;
+
+};
+
+# ---   *   ---   *   ---
+# make output sub-segment
+
+sub new_parse_block($self) {
+
+  state $loc=0x00;
+
+
+  # calc base of new
+  # (old->base + old->ptr)
+  my $base=0x00;
+
+  if(defined $self->{cblk}) {
+    $base  = $self->{cblk}->{base};
+    $base += $self->{cblk}->{ptr}
+    if defined $base;
+
+  };
+
+
+  # make ice
+  my $blk={
+
+    loc  => $loc++,
+
+    ptr  => 0x0000,
+    buf  => $NULLSTR,
+
+    base => $base,
+
+
+    pending => [],
+    rewrit  => [],
+
+  };
+
+
+  # save and make current
+  push @{$self->{blk}},$blk;
+  $self->{cblk}=$blk;
+
+
+  return $blk;
+
+};
+
+# ---   *   ---   *   ---
+# ^walk
+
+sub get_parse_block($self) {
+
+  my $idex = $self->{iblk}++;
+  my $pool = $self->{blk};
+
+  # have blocks left?
+  if($idex < @$pool) {
+
+    my $blk=$pool->[$idex];
+
+    $blk->{ptr}   = 0;
+    $self->{cblk} = $blk;
+
+    return $blk;
+
+  # ^nope, signal endof
+  } else {
+    return undef;
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# combine output of all blocks
+
+sub cat_parse_blocks($self) {
+
+  my $out=$NULLSTR;
+
+  # reset
+  $self->next_pass();
+
+  # ^walk
+  while(my $blk=$self->get_parse_block()) {
+    $out .= $blk->{buf};
+
+  };
+
+  return $out;
+
+};
+
+# ---   *   ---   *   ---
+# put branch collapse on hold
+
+sub solve_next_pass($self,$branch,$mode=0) {
+
+  my $pool=($mode == 0)
+    ? $self->{cblk}->{pending}
+    : $self->{cblk}->{rewrit}
+    ;
+
+  push @$pool,[$self->{cblk}->{ptr},$branch];
+
+
+  return;
 
 };
 
@@ -192,6 +312,73 @@ sub parse_error($self,$me,$lvl=$AR_FATAL) {
 };
 
 # ---   *   ---   *   ---
+# cat data to current block
+
+sub blkout($self,$data) {
+
+  # lis current block
+  my $blk = $self->{cblk};
+
+
+  # array to string
+  my $s    = join $NULLSTR,@$data;
+  my $size = length $s;
+
+  # first pass
+  if(! $self->{pass}) {
+
+    # push to new block if branches
+    # pending collapse!
+    my $pool = $blk->{pending};
+
+    if($blk eq $self->{cblk} && @$pool) {
+      $blk=$self->new_parse_block();
+
+    };
+
+    # extend output buf
+    $blk->{buf} .= $s;
+
+
+  # ^overwrite existing buf bytes on
+  # any subsequent pass
+  } else {
+
+    substr $blk->{buf},
+      $blk->{ptr},$size,$s;
+
+  };
+
+
+  # go next
+  $blk->{ptr} += $size;
+
+};
+
+# ---   *   ---   *   ---
+# lookup value by name
+
+sub symfet($self,$name) {
+
+  my $value = undef;
+  my $ezy   = 1;
+
+  # is segment name?
+  if(exists $self->{segment}->{$name}) {
+
+    my $blk = $self->{segment}->{$name};
+
+    $value = $blk->{base};
+#    $ezy   = 1;
+
+  };
+
+
+  return ($ezy,$value);
+
+};
+
+# ---   *   ---   *   ---
 # adds symbol reference to
 # current proc
 
@@ -204,21 +391,6 @@ sub symref($self,$name) {
   };
 
   return $self->{segref}->{$name};
-
-};
-
-# ---   *   ---   *   ---
-# get current position,
-# relative to current segment
-
-sub relpos($self) {
-
-  my $base=($self->{curseg})
-    ? $self->{segbase}->{$self->{curseg}}
-    : 0x00000000
-    ;
-
-  return $self->{'$'} - $base;
 
 };
 
@@ -397,16 +569,32 @@ sub cmd_seg($self,$branch) {
 
   # get first operand
   my $lv    = $branch->{leaves};
-  my $ahead = $lv->[0]->{leaves}->[0];
-  my $name  = $ahead->{value};
-
-  # ^clear tag
-  $name=~ s[$anvil::l2::ARG_SYM][];
+  my $ahead = $lv->[0];
+  my $name  = $ahead->{value}->{name};
 
   # ^set as current segment
-  # then write to segment table
-  $self->{curseg}=$name;
-  $self->{segbase}->{$name}=$self->{'$'};
+  $self->new_parse_block();
+
+  $self->{curseg}           = $name;
+  $self->{segment}->{$name} = $self->{cblk};
+
+
+  # debug
+  if(defined $self->{cblk}->{base}) {
+
+    $self->dbout(sprintf "%-16s:SEGAT %04X",
+      $name,$self->{cblk}->{base}
+
+    );
+
+  } else {
+
+    $self->dbout(
+      sprintf "%-16s:SEGAT [0?]",$name
+
+    );
+
+  };
 
 
   return undef;
@@ -420,15 +608,16 @@ sub cmd_public($self,$branch) {
 
   # get first operand
   my $lv    = $branch->{leaves};
-  my $ahead = $lv->[0]->{leaves}->[0];
+  my $ahead = $lv->[0];
+  my $name  = $ahead->{value}->{name};
 
   # ^make first operand the next directive
   # then pop it from the sub-branch
-  $branch->{value}=$ahead->{value};
-  $ahead->discard();
+  $branch->{value}=$ahead->{value}->{name};
+  $ahead->flatten_branch();
 
   # ^convert from name to command
-  $branch->{value}=~ s[\*imm][\*cmd];
+  $branch->{value}= "[*cmd] $name";
 
   # ^setting this flag is the real point
   # of having the directive ;>
@@ -436,6 +625,16 @@ sub cmd_public($self,$branch) {
 
 
   return $branch;
+
+};
+
+# ---   *   ---   *   ---
+# out to stderr
+
+sub dbout($self,@me) {
+
+  map {say {*STDERR} $ARG} @me
+  if $self->{debug};
 
 };
 

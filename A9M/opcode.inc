@@ -14,7 +14,7 @@
 
   TITLE     A9M.opcode
 
-  VERSION   v0.00.9a
+  VERSION   v0.01.1a
   AUTHOR    'IBN-3DILA'
 
 ; ---   *   ---   *   ---
@@ -29,24 +29,22 @@
   bipret.opsize_bs = $00
   bipret.opsize_bm = $00
   bipret.bitsize   = $00
+  bipret.$         = $00
 
 ; ---   *   ---   *   ---
 ; executes binary A9M code
 
-macro $bipret src,len {
+macro $bipret src,len,addr=0 {
 
-  local addr
   local ins
-
-  addr = 0
-
+  bipret.$ = addr
 
   ; have at least dword bytes left
-  while addr+4 <= len
+  while bipret.$+4 <= len
 
     ; fetch instruction
     bipret.bitsize=0
-    load ins dword from src:addr
+    load ins dword from src:bipret.$
 
     ; ^read/execute
     $bipret.read ins
@@ -55,10 +53,26 @@ macro $bipret src,len {
     vuint.align bipret.bitsize,\
       bipret.bitsize,3
 
-    addr=addr+(bipret.bitsize shr 3)
+    bipret.$=bipret.$+(bipret.bitsize shr 3)
 
 
   end while
+
+}
+
+; ---   *   ---   *   ---
+; overwrites ptr, then substracts
+; the size of current instruction
+
+macro $bipret.jump to {
+
+  local adj
+  adj=0
+
+  vuint.align adj,bipret.bitsize,3
+
+  bipret.$=to
+  bipret.$=bipret.$-(adj shr 3)
 
 }
 
@@ -120,12 +134,23 @@ macro $bipret.read X {
 
     ; separate dst/src argflags
     local dstflag
+    local immflag
+
     dstflag = argflag and A9M.OPCODE.ARGFLAG_FBM
+    immflag = \
+       (dstflag and A9M.OPCODE.ARGFLAG_IMM8)  \
+    or (dstflag and A9M.OPCODE.ARGFLAG_IMM16) \
+    -  dstflag
 
 
     ; destination is register
     if dstflag = A9M.OPCODE.ARGFLAG_REG
       $bipret.regarg vX,opcode
+
+    ; destination is actually source and
+    ; it's value is an immediate!
+    else if immflag = 0
+      $bipret.immarg vX,opcode,immbm,immbs
 
 
     ; destination is memory
@@ -147,7 +172,7 @@ macro $bipret.read X {
     ; handle deref A
     pX = vX
 
-    if load_dst=1
+    if load_dst=1 &~ (immflag = 0)
       vmem.xldus vX,vmc.CAS,pX,bipret.opsize
 
     end if
@@ -157,13 +182,13 @@ macro $bipret.read X {
     if argcnt = 2
 
       local srcflag
-      local immflag
 
       srcflag=argflag shr A9M.OPCODE.ARGFLAG_FBS
       immflag= \
          (srcflag and A9M.OPCODE.ARGFLAG_IMM8)  \
       or (srcflag and A9M.OPCODE.ARGFLAG_IMM16) \
       -  srcflag
+
 
       ; source is register
       if srcflag = A9M.OPCODE.ARGFLAG_REG

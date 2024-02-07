@@ -42,7 +42,7 @@ package anvil::l2;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.5;#a
+  our $VERSION = v0.00.6;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -66,6 +66,12 @@ package anvil::l2;
   Readonly our $ARG_IMM  => qr{^\[\*imm\]\s};
   Readonly our $ARG_SYM  => qr{^\[\*sym\]\s};
 
+  Readonly our $ARG_PENDING => qr{
+    (?: $ARG_IMM|$ARG_SYM)
+    $SYM_NAME
+
+  }x;
+
   Readonly our $IMM_SYM  =>
     qr{$ARG_IMM$SYM_NAME};
 
@@ -77,18 +83,18 @@ package anvil::l2;
 
 
 # ---   *   ---   *   ---
-# ~
+# process token-tree representing
+# a single expression
 
-sub proc($self) {
+sub proc($self,$branch) {
 
-  my $branch=$self->{l2}->{leaves}->[-1];
 
   # make sub-branches from commas
+  reproc_branch:
+
   split_by_operand($branch);
 
   # get operand types and sizes
-  reproc_branch:
-
     map {
       cat_symbols($ARG);
       get_operand_type($ARG);
@@ -128,27 +134,84 @@ sub proc($self) {
     $A9M->reset_ipret();
     return;
 
-  };
 
   # ^else process instruction!
-  my $opsize=check_operand_sizes($branch);
+  } else {
+
+    # double-check sizes
+    $branch->{opsize}=
+      check_operand_sizes($branch);
+
+    # either encode the instruction now
+    # or push it to the next pass
+    pack_instruction($branch)
+    if defined_operands($branch);
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# revisit suspended branches
+
+sub solve_pending($self) {
+
+  while(my $blk=$A9M->get_parse_block()) {
+
+    my $pool=$blk->{rewrit};
+    next if ! @$pool;
+
+    # ^make copy and clear
+    my @pool  = @$pool;
+       @$pool = ();
+
+    # ^walk copy
+    map {
 
 
-  # bit-pack the operands
-  # this also expands them to full type
-  my $args = 0x00;
-  my $cnt  = 0x00;
+      # seek to saved position
+      my ($ptr,$branch)=@$ARG;
+      $blk->{ptr}=$ptr;
+
+
+      # get previously undefined values
+      resolve_symbols($branch);
+
+      # retry encoding the instruction
+      pack_instruction($branch)
+      if defined_operands($branch);
+
+    } @pool;
+
+  };
+
+};
+
+# ---   *   ---   *   ---
+# ^get value from symbol name
+
+sub resolve_symbols($branch) {
 
   map {
 
-    my ($size,$value)=
-      pack_operand($ARG->{value});
+    if($ARG->{type}=~ m[i]) {
 
-    $args |= ($value << $cnt);
-    $cnt  += $size;
+      my $name=$ARG->{name};
+      my ($size,$value)=$A9M->symfet($name);
 
-  } @{$branch->{leaves}};
+      $ARG->{size}  = $size;
+      $ARG->{value} = $value;
 
+    };
+
+  } $branch->branch_values();
+
+};
+
+# ---   *   ---   *   ---
+# bytepack instruction
+
+sub pack_instruction($branch) {
 
   # clear [*ins] tag
   $branch->{value}=~ s[$INS_RE][];
@@ -163,7 +226,7 @@ sub proc($self) {
   my $idex=A9M::ISA->get_ins_idex(
 
     $branch->{value},
-    $opsize,
+    $branch->{opsize},
 
     @argtypes
 
@@ -193,23 +256,91 @@ sub proc($self) {
 
 
   # get opcode and total bytesize
+  my ($cnt,$args) = @{$branch->{packed_args}};
+
   my $opcode   = $idex | ($args << $idex_bs);
   my $bytesize = int_urdiv($cnt+$idex_bs,8);
-
-
-  # dbout, nevermind this
-  say sprintf "%016X",$opcode;
-  say '',($cnt+$idex_bs) . "-bit opcode";
-  say $bytesize . " bytes","\n";
 
 
   # cat opcode to out and advance ptr
   my $fmat=join ',',array_typeof($bytesize);
 
-  my ($ct,@len)=bpack($fmat,$opcode);
+  my ($ct,@len) = bpack($fmat,$opcode);
+  my $diff      = $bytesize-$len[-1];
 
-  $A9M->{out} .= join $NULLSTR,@$ct;
-  $A9M->{'$'} += $bytesize;
+  push @$ct,chr(0x00) x $diff;
+  $A9M->blkout($ct);
+
+
+  # dbout, nevermind this
+  $A9M->dbout(
+
+    (sprintf "  %016X",$opcode),
+
+    '  ' . ($cnt+$idex_bs) . "-bit opcode",
+    '  ' . $bytesize . " bytes\n"
+
+  );
+
+};
+
+# ---   *   ---   *   ---
+# bit-pack operands
+# this also expands type
+
+sub defined_operands($branch) {
+
+  my $args   = 0x00;
+  my $cnt    = 0;
+  my $solved = 0b01;
+
+  # walk hashrefs
+  map {
+
+
+    # get numrepr for element
+    my $e=$ARG->{value};
+    my ($size,$value)=pack_operand($e);
+
+
+    # value known?
+    if(defined $value) {
+      $args |= $value << $cnt;
+      $cnt  += $size;
+
+    # ^value unknown, but known size!
+    } elsif(defined $size && $size ne 0) {
+      $cnt    += $size;
+      $solved |= 2;
+
+    # ^both value and size are unknown
+    # put encoding on hold
+    } else {
+      $solved |=  2;
+      $solved &=~ 1;
+
+    };
+
+
+  } @{$branch->{leaves}};
+
+
+  # save results in branch
+  $branch->{packed_args}=[$cnt,$args];
+
+
+  # true if arguments couldn't be fully resolved
+  #
+  # the instruction can still be *written*,
+  # but it must be re-evaluated at a later pass
+  $A9M->solve_next_pass($branch,$solved & 1)
+  if $solved & 2;
+
+  # true if instruction can be *written*
+  #
+  # if not, that means starting a new parse block
+  # to write encodable instructions...
+  return $solved & 1;
 
 };
 
@@ -596,56 +727,68 @@ sub is_imm($branch) {
 
 
   # have size specifier?
-  if($branch->match_sequence($ARG_EZY)) {
+  if(defined $value) {
+    if($branch->match_sequence($ARG_EZY)) {
 
-    $spec  = 1;
+      $spec  = 1;
 
-    $ezy   =  $branch->{leaves}->[0]->{value};
-    $ezy   =~ s[$ARG_EZY][];
+      $ezy   =  $branch->{leaves}->[0]->{value};
+      $ezy   =~ s[$ARG_EZY][];
 
-    $value = $branch->{leaves}->[1]->{value};
+      $value = $branch->{leaves}->[1]->{value};
 
-  };
-
-
-  # transform to number if need
-  $value =~ s[$ARG_IMM][];
-
-  my $is_num=sstoi($value);
-
-  $value=(defined $is_num)
-    ? $is_num
-    : $value
-    ;
+    };
 
 
-  # calc size manually if no size specifier
-  if(! $spec && $is_num) {
-    $ezy=int_urdiv(bitsize($value),8)-1;
+    # transform to number if need
+    $value =~ s[(?:$ARG_IMM|$ARG_SYM)][];
 
-  };
+    my $is_num=sstoi($value,0);
 
-  # validate size
-  $A9M->parse_error(
-    "immediate size limit is 16-bit"
-
-  ) if $ezy > 1;
+    $value=(defined $is_num)
+      ? $is_num
+      : $value
+      ;
 
 
-  # do not make hashref for bare words!
-  # those are solved... sometime after this ;>
-  if($is_num) {
+    # calc size manually if no size specifier
+    if(! $spec && $is_num) {
+      $ezy=int_urdiv(bitsize($value),8)-1;
 
+    };
+
+    # validate size
+    $A9M->parse_error(
+      "immediate size limit is 16-bit"
+
+    ) if $ezy > 1;
+
+    # is value a symbol name?
+    if(! defined $is_num) {
+      ($ezy,$is_num)=$A9M->symfet($value);
+
+    };
+
+
+    # make hashref
     $branch->{value}={
 
       type  => 'i',
 
       ezy   => $ezy,
-      value => $value,
+      value => $is_num,
+
+      name  => $value,
 
     };
 
-    $branch->clear();
+    # we clear only the first leave, from
+    # which the get the hashref for the immediate
+    #
+    # done because a sequence of barewords is
+    # parsed as a sequence of immediates, so
+    # cmd may be expecting them...
+    $branch->{leaves}->[0]->discard();
 
 
     return 1;
@@ -672,7 +815,7 @@ sub pack_operand($e) {
   #
   # * bitsize is a constant
 
-  if($e->{type} eq 'r') {
+  if($e->{type}=~ qr{^r}) {
     $size=$A9M->{reg}->{cnt_bs};
 
 
@@ -683,7 +826,7 @@ sub pack_operand($e) {
   # * bitsize depends on value,
   #   and is calculated by get_operand_type
 
-  } elsif($e->{type} eq 'i') {
+  } elsif($e->{type}=~ qr{^i}) {
     $size=($e->{ezy}+1) << 3;
     $e->{type}="i$size";
 
@@ -705,6 +848,10 @@ sub pack_operand($e) {
   # * [sb-imm] is stack relative,
   #   we simply encode an immediate
   #
+  # * [seg:imm] is segment relative with immediate
+  #   offset, we encode a segment idex plus an
+  #   immediate
+  #
   # * [seg:r+imm] is short-form segment-relative,
   #   we encode segment idex, register idex
   #   and an immediate; stack is used as base addr
@@ -715,15 +862,8 @@ sub pack_operand($e) {
   #   two register indices, an immediate and
   #   a scale (to be used as a left-bitshift!);
   #   stack is used as base addr if seg == 0
-  #
-  # * [seg:imm] is position relative, we encode a
-  #   segment idex plus an immediate, that can be
-  #   either an offset into a segment (seg != 0),
-  #   or the computed distance between the current
-  #   position and the absolute address provided
-  #   (seg == 0)
 
-  } elsif($e->{type} eq 'm') {
+  } elsif($e->{type}=~ qr{^m}) {
 
     my $branch = $e->{value};
     my @data   = ();
@@ -1153,16 +1293,6 @@ sub memarg_pos($branch) {
     $sym = $A9M->symref($sym) if $sym;
     $imm = sstoi($imm);
 
-
-    # get distance
-    if(! $sym) {
-
-      my $pos=$A9M->relpos();
-
-      $imm  = ($pos-$imm);
-      $imm &= $PTR_POS->{mask}->{imm};
-
-    };
 
     return ($sym,$imm);
 
