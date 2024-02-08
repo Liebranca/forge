@@ -71,7 +71,7 @@ package A9M::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.01.2;#a
+  our $VERSION = v0.01.3;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -172,7 +172,7 @@ sub build_EXE_decoder($class) {
 
     local flags;
 
-    load  flags qword from A9M.OPCODE:
+    load  flags dword from A9M.OPCODE:
       idex shl 2;
 
   ] . f1::bits::csume(
@@ -185,7 +185,6 @@ sub build_EXE_decoder($class) {
       opsize
 
     )) . q[
-
 
     opsize    = 1 shl opsize;
     opsize_bs = opsize shl 3;
@@ -539,17 +538,19 @@ sub fetch_logic($name,%O) {
 
 sub get_ins_idex($class,$name,$size,@ar) {
 
-  my $full_form=
+  my $meta      = $class->get_ins_meta($name);
+  my $full_form = ($meta->{argcnt})
 
-    $name
+    ? $name
 
-  . '_' . (join '_',@ar)
+    . '_' . (join '_',@ar)
 
-  . '_' . $Type::EZY_LIST->[$size]
+    . '_' . $Type::EZY_LIST->[$size]
 
-  ;
 
-  my $meta=$Cache->{insmeta}->{$name};
+    : $name
+
+    ;
 
   say {*STDERR}
     "Invalid instruction: '$full_form'"
@@ -652,8 +653,29 @@ sub opcode($name,$ct,%O) {
 
 
   # ^single operand, so no combo ;>
-  } else {
+  } elsif($O{argcnt} eq 1) {
     @combo=split $NULLSTR,$O{dst};
+
+  # ^no operands!
+  } else {
+
+    my $data={
+
+      %$ROM,
+
+      argflag => 0x00,
+      opsize  => 0x00,
+      idx     => $idx,
+
+    };
+
+    $meta->{icetab}->{$name}=$Cache->{romcode};
+
+    return $name => {
+      id  => $Cache->{romcode}++,
+      ROM => $data,
+
+    };
 
   };
 
@@ -776,10 +798,13 @@ sub opcode($name,$ct,%O) {
         %$ROM,
 
         argflag => $argflag,
-        opsize  => sizeof($ARG),
+        opsize  => (sizeof($ARG) >> 1),
         idx     => $idx,
 
       };
+
+      $data->{opsize} -= 1
+      if $data->{opsize} > 2;
 
 
       # perl-side copy
@@ -1157,14 +1182,14 @@ sub _gen_ROM_table() {return [
       store A9M.REGISTER_SZ_K sp at ANIMA.base:
         $0A shl A9M.REGISTER_SZP2;
 
-      store A9M.REGISTER_SZ_K value at ANIMA.base:
-        dst shl A9M.REGISTER_SZP2;
+
+      dst=value;
 
     ],
 
     dst       => 'r',
     argcnt    => 1,
-    overwrite => 0,
+    overwrite => 1,
 
     load_dst  => 0,
     fix_size  => ['qword'],
@@ -1181,6 +1206,43 @@ sub _gen_ROM_table() {return [
     dst    => 'rmi',
 
     overwrite => 0,
+    fix_size  => ['qword'],
+
+  ),
+
+  opcode(
+
+    call => q[
+
+      local step;
+
+      vuint.align step,bipret.bitsize,3;
+      A9M.OPCODE._exe_push bipret.$+(step shr 3);
+
+      $bipret.jump dst;
+
+    ],
+
+    argcnt    => 1,
+    dst       => 'rmi',
+
+    overwrite => 0,
+    fix_size  => ['qword'],
+
+  ),
+
+  opcode(
+
+    ret => q[
+
+      local where;
+
+      A9M.OPCODE._exe_pop where;
+      $bipret.jump where;
+
+    ],
+
+    argcnt   => 0,
 
   ),
 

@@ -111,8 +111,17 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
+seg fn;
+
   push $2424;
   pop  ar;
+
+  ret;
+
+
+seg crux;
+  call fn;
+
 
 ]);
 

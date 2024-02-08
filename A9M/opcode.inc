@@ -245,6 +245,7 @@ macro $bipret.read X {
 
   ; no operands
   else
+    A9M.OPCODE.switch_args0 opid
 
   end if
 
