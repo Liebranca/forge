@@ -42,7 +42,7 @@ package anvil::l2;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.00.6;#a
+  our $VERSION = v0.00.7;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -223,6 +223,28 @@ sub pack_instruction($branch) {
 
   } @{$branch->{leaves}};
 
+  # get the gory details!
+  my $meta=A9M::ISA->get_ins_meta(
+    $branch->{value}
+
+  );
+
+  # ^validate
+  $A9M->parse_error(
+    "unexistent"
+
+  ) if ! defined $meta;
+
+
+  # handle instruction quirks
+  $branch->{opsize} = ($meta->{fix_size})
+    ? (sizeof($meta->{fix_size}->[0]) >> 1)-1
+    : $branch->{opsize}
+    ;
+
+
+
+  # get encoding accto args
   my $idex=A9M::ISA->get_ins_idex(
 
     $branch->{value},
@@ -231,6 +253,13 @@ sub pack_instruction($branch) {
     @argtypes
 
   );
+
+  # ^validate
+  $A9M->parse_error(
+    "unencodable or unexistent"
+
+  ) if ! defined $idex;
+
 
   my $idex_bs=$A9M->{isa}->{id_bits}->[0];
 
@@ -258,17 +287,34 @@ sub pack_instruction($branch) {
   # get opcode and total bytesize
   my ($cnt,$args) = @{$branch->{packed_args}};
 
+
   my $opcode   = $idex | ($args << $idex_bs);
   my $bytesize = int_urdiv($cnt+$idex_bs,8);
 
 
-  # cat opcode to out and advance ptr
-  my $fmat=join ',',array_typeof($bytesize);
+  # break up into bpack chunks
+  my @types  = array_typeof($bytesize);
+  my @opcode = map {
 
-  my ($ct,@len) = bpack($fmat,$opcode);
+    my $bits = sizeof($ARG) << 3;
+    my $mask = bitmask($bits);
+
+    my $out  = $opcode & $mask;
+
+    $opcode >>= $bits;
+    $out;
+
+  } @types;
+
+
+  # cat opcode to out and advance ptr
+  my $fmat      = join ',',@types;
+  my ($ct,@len) = bpack($fmat,@opcode);
+
   my $diff      = $bytesize-$len[-1];
 
   push @$ct,chr(0x00) x $diff;
+
   $A9M->blkout($ct);
 
 

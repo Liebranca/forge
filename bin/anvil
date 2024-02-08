@@ -111,14 +111,8 @@ sub read($self,$src) {
 my $ice=anvil->new();
 $ice->read(q[
 
-public seg base::sub;
-
-  load br,$02;
-  jmp  skip;
-
-  load br,$01;
-
-seg skip;
+  push $2424;
+  pop  ar;
 
 ]);
 

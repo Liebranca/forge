@@ -71,7 +71,7 @@ package A9M::ISA;
 # ---   *   ---   *   ---
 # info
 
-  our $VERSION = v0.01.1;#a
+  our $VERSION = v0.01.2;#a
   our $AUTHOR  = 'IBN-3DILA';
 
 # ---   *   ---   *   ---
@@ -201,8 +201,8 @@ sub build_EXE_decoder($class) {
     src_immflag=argflag shr A9M.OPCODE.ARGFLAG_FBS;
     src_immflag=immflag and A9M.IOCIDE.ARGFLAG_FBM;
 
-    if (src_immflag = A9M.OPCODE.SRC_IMM8)
-    |  (dst_immflag = A9M.OPCODE.SRC_IMM8);
+    if (src_immflag = A9M.OPCODE.ARGFLAG_IMM8)
+    |  (dst_immflag = A9M.OPCODE.ARGFLAG_IMM8);
       immbs = sizebs.byte;
       immbm = sizebm.byte;
 
@@ -562,6 +562,20 @@ sub get_ins_idex($class,$name,$size,@ar) {
 };
 
 # ---   *   ---   *   ---
+# ^get the whole metadata hash
+
+sub get_ins_meta($class,$name) {
+
+  say {*STDERR}
+    "Invalid instruction: '$name'"
+
+  if ! exists $Cache->{insmeta}->{$name};
+
+  return $Cache->{insmeta}->{$name};
+
+};
+
+# ---   *   ---   *   ---
 # cstruc instruction(s)
 
 sub opcode($name,$ct,%O) {
@@ -575,6 +589,7 @@ sub opcode($name,$ct,%O) {
 
   $O{fix_immsrc}  //= 0;
   $O{fix_regsrc}  //= 0;
+  $O{fix_size}    //= undef;
 
   $O{overwrite}   //= 1;
   $O{dst}         //= 'rm';
@@ -1095,7 +1110,69 @@ sub _gen_ROM_table() {return [
   ),
 
 
-  # control
+  # stack
+  opcode(
+
+    push => q[
+
+      local sp;
+
+      load  sp A9M.REGISTER_SZ_K from ANIMA.base:
+        $0A shl A9M.REGISTER_SZP2;
+
+      sp = sp-A9M.REGISTER_SZ;
+
+      vmem.xstus vmc.STACK,
+        dst,sp,A9M.REGISTER_SZ;
+
+      store A9M.REGISTER_SZ_K sp  at ANIMA.base:
+        $0A shl A9M.REGISTER_SZP2;
+
+    ],
+
+    dst       => 'rmi',
+    argcnt    => 1,
+    overwrite => 0,
+
+    fix_size  => ['qword'],
+
+  ),
+
+  opcode(
+
+    pop => q[
+
+      local sp;
+      local value;
+
+      load  sp A9M.REGISTER_SZ_K from ANIMA.base:
+        $0A shl A9M.REGISTER_SZP2;
+
+      vmem.xldus value,vmc.STACK,
+        sp,A9M.REGISTER_SZ;
+
+
+      sp = sp+A9M.REGISTER_SZ;
+
+      store A9M.REGISTER_SZ_K sp at ANIMA.base:
+        $0A shl A9M.REGISTER_SZP2;
+
+      store A9M.REGISTER_SZ_K value at ANIMA.base:
+        dst shl A9M.REGISTER_SZP2;
+
+    ],
+
+    dst       => 'r',
+    argcnt    => 1,
+    overwrite => 0,
+
+    load_dst  => 0,
+    fix_size  => ['qword'],
+
+  ),
+
+
+  # control flow
   opcode(
 
     jmp    => q[$bipret.jump dst;],
